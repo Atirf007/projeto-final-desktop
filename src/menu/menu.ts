@@ -11,6 +11,8 @@ class MenuView {
     aluno: 'Aluno'
   }
 
+  private readonly svgNs = 'http://www.w3.org/2000/svg'
+
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
   private criarOpcao = (opcao: Opcao): HTMLButtonElement => {
@@ -19,13 +21,20 @@ class MenuView {
     botao.className = 'opcao'
     botao.disabled = !opcao.disponivel
 
+    const icone = document.createElementNS(this.svgNs, 'svg')
+    icone.setAttribute('class', 'opcao-icone')
+    icone.setAttribute('aria-hidden', 'true')
+    const referencia = document.createElementNS(this.svgNs, 'use')
+    referencia.setAttribute('href', `#ico-${opcao.id}`)
+    icone.append(referencia)
+
     const titulo = document.createElement('strong')
     titulo.textContent = opcao.titulo
 
     const descricao = document.createElement('span')
     descricao.textContent = opcao.descricao
 
-    botao.append(titulo, descricao)
+    botao.append(icone, titulo, descricao)
 
     if (!opcao.disponivel) {
       const selo = document.createElement('em')
@@ -55,7 +64,8 @@ class MenuView {
 
     try {
       const dados: DadosMenu = await ipcRenderer.invoke('menu:carregar')
-      this.el('usuario').textContent = `${dados.nome} - ${this.perfis[dados.perfil] ?? dados.perfil}`
+      this.el('nome').textContent = dados.nome
+      this.el('perfil').textContent = this.perfis[dados.perfil] ?? dados.perfil
       this.el('opcoes').replaceChildren(...dados.opcoes.map(this.criarOpcao))
     } catch {
       this.el('status').textContent = 'Sessão inválida. Faça login novamente.'

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
-  <title>Relatórios</title>
+  <title>Cotil — Relatórios</title>
   <style>
     :root {
       --primaria-900: #111827;
@@ -22,6 +22,11 @@
       --bg-card: #ffffff;
       --cinza-200: #e5e7eb;
       --cinza-100: #f3f4f6;
+
+      --erro: #b91c1c;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     }
 
     * { box-sizing: border-box; }
@@ -30,41 +35,98 @@
 
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: var(--fonte);
       background: var(--bg-pagina);
       color: var(--primaria-900);
       line-height: 1.5;
     }
 
     header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px 16px;
       background: var(--primaria-800);
       color: #ffffff;
-      padding: 20px 32px;
-      border-bottom: 4px solid var(--secundaria);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+      padding: 14px 28px;
+      border-bottom: 3px solid var(--secundaria);
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
     }
 
-    header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+    .marca { display: flex; align-items: center; gap: 10px; }
 
-    main { padding: 32px; max-width: 1280px; margin: 0 auto; }
+    .marca-logo {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      background: var(--secundaria);
+      border-radius: 8px;
+    }
+
+    .marca-logo svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cinza-200);
+    }
+
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+
+    main { padding: 28px 32px 40px; max-width: 1120px; margin: 0 auto; }
 
     .painel {
       background: var(--bg-card);
-      border-radius: 10px;
-      padding: 24px;
       border: 1px solid var(--cinza-200);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      border-radius: var(--raio-card);
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05);
     }
 
-    .filtros { display: flex; gap: 12px; margin-bottom: 24px; }
+    .filtros {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--cinza-200);
+    }
+
+    .campo { display: grid; gap: 6px; }
+
+    .campo span {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--primaria-600);
+    }
 
     select, input, button {
-      padding: 10px 16px;
+      padding: 10px 14px;
       font-size: 14px;
+      font-family: inherit;
       font-weight: 500;
-      border-radius: 8px;
+      border-radius: var(--raio-controle);
       outline: none;
-      transition: all 0.2s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     }
 
     select, input {
@@ -81,16 +143,39 @@
     .espaco { flex: 1; }
 
     button {
-      background: var(--primaria-800);
-      border: 1px solid var(--primaria-800);
+      background: var(--secundaria);
+      border: 1px solid var(--secundaria);
       color: #ffffff;
       font-weight: 600;
       cursor: pointer;
     }
 
-    button:hover { background: var(--primaria-700); border-color: var(--primaria-700); }
+    button:hover { background: var(--secundaria-hover); border-color: var(--secundaria-hover); }
+    button:focus-visible { outline: 2px solid var(--secundaria-hover); outline-offset: 2px; }
 
-    h2 { margin: 0 0 16px; font-size: 18px; font-weight: 700; color: var(--primaria-800); text-transform: capitalize; }
+    h2 {
+      position: relative;
+      margin: 0 0 16px;
+      padding-left: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primaria-800);
+      text-transform: capitalize;
+    }
+
+    h2::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 16px;
+      border-radius: 2px;
+      background: var(--secundaria);
+    }
+
+    h2:empty { display: none; }
 
     #grafico svg { width: 100%; height: auto; display: block; }
 
@@ -103,6 +188,11 @@
 
     #status { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); }
 
+    @media (max-width: 720px) {
+      main { padding: 20px; }
+      .espaco { display: none; }
+    }
+
     @media print {
       body { background: #ffffff; }
       main { padding: 0; }
@@ -114,17 +204,42 @@
 </head>
 <body>
   <header>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M6.5 7.5v9" />
+          <path d="M17.5 7.5v9" />
+          <path d="M3.5 9.5v5" />
+          <path d="M20.5 9.5v5" />
+          <path d="M6.5 12h11" />
+        </svg>
+      </span>
+      <span class="marca-texto">
+        <strong>Cotil</strong>
+        <small>Academia</small>
+      </span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
     <h1>Relatórios</h1>
   </header>
   <main>
     <section class="painel">
       <div class="filtros">
-        <select id="periodo">
-          <option value="mensal">Mensal</option>
-          <option value="anual">Anual</option>
-        </select>
-        <input id="mes" type="month">
-        <input id="ano" type="number" min="2000" max="2100" step="1" hidden>
+        <label class="campo">
+          <span>Período</span>
+          <select id="periodo">
+            <option value="mensal">Mensal</option>
+            <option value="anual">Anual</option>
+          </select>
+        </label>
+        <label class="campo" id="campo-mes">
+          <span>Mês</span>
+          <input id="mes" type="month">
+        </label>
+        <label class="campo" id="campo-ano" hidden>
+          <span>Ano</span>
+          <input id="ano" type="number" min="2000" max="2100" step="1">
+        </label>
         <span class="espaco"></span>
         <button id="exportar" type="button">Exportar PDF</button>
       </div>

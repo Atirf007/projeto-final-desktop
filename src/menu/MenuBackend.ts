@@ -12,7 +12,8 @@ export class MenuIpc {
     { id: 'aulas', titulo: 'Aulas', descricao: 'Agenda, inscrições e presenças', perfis: ['admin', 'instrutor', 'aluno'] },
     { id: 'planos', titulo: 'Planos e assinaturas', descricao: 'Planos contratados pelos alunos', perfis: ['admin'] },
     { id: 'pagamentos', titulo: 'Pagamentos', descricao: 'Mensalidades e cobranças', perfis: ['admin'] },
-    { id: 'visitantes', titulo: 'Visitantes', descricao: 'Aulas experimentais e visitas', perfis: ['admin', 'instrutor'] }
+    { id: 'visitantes', titulo: 'Visitantes', descricao: 'Aulas experimentais e visitas', perfis: ['admin', 'instrutor'] },
+    { id: 'usuarios', titulo: 'Usuários', descricao: 'Consulta de usuários cadastrados', perfis: ['admin'] }
   ]
 
   constructor(
