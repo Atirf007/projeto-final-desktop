@@ -148,8 +148,8 @@ class RelatoriosView {
 
   private alternarPeriodo = async (): Promise<void> => {
     const mensal = this.el<HTMLSelectElement>('periodo').value === 'mensal'
-    this.el('mes').hidden = !mensal
-    this.el('ano').hidden = mensal
+    this.el('campo-mes').hidden = !mensal
+    this.el('campo-ano').hidden = mensal
     await this.atualizar()
   }
 
