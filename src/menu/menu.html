@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Menu</title>
+  <style>
+    :root {
+      --primaria-900: #111827;
+      --primaria-800: #1f2937;
+      --primaria-700: #374151;
+      --primaria-600: #4b5563;
+      --primaria-500: #6b7280;
+
+      --secundaria: #10b981;
+      --secundaria-hover: #059669;
+      --secundaria-suave: #ecfdf5;
+      --secundaria-borda: #a7f3d0;
+
+      --bg-pagina: #f9fafb;
+      --bg-card: #ffffff;
+      --cinza-200: #e5e7eb;
+      --cinza-100: #f3f4f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: var(--bg-pagina);
+      color: var(--primaria-900);
+      line-height: 1.5;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: var(--primaria-800);
+      color: #ffffff;
+      padding: 20px 32px;
+      border-bottom: 4px solid var(--secundaria);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+
+    .conta { display: flex; align-items: center; gap: 16px; font-size: 14px; }
+
+    #sair {
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      background: transparent;
+      border: 1px solid var(--primaria-500);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    #sair:hover { background: var(--primaria-700); border-color: #ffffff; }
+
+    main { padding: 32px; max-width: 1280px; margin: 0 auto; }
+
+    h2 { margin: 0 0 20px; font-size: 18px; font-weight: 700; color: var(--primaria-800); }
+
+    #opcoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+
+    .opcao {
+      display: grid;
+      gap: 4px;
+      align-content: start;
+      min-height: 120px;
+      padding: 20px;
+      text-align: left;
+      font-family: inherit;
+      color: var(--primaria-900);
+      background: var(--bg-card);
+      border: 1px solid var(--cinza-200);
+      border-top: 4px solid var(--secundaria);
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .opcao:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08); }
+
+    .opcao strong { font-size: 17px; font-weight: 700; }
+    .opcao span { font-size: 13px; color: var(--primaria-500); }
+
+    .opcao em {
+      justify-self: start;
+      margin-top: 6px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primaria-600);
+      background: var(--cinza-100);
+      border-radius: 999px;
+    }
+
+    .opcao:disabled { cursor: default; border-top-color: var(--cinza-200); }
+    .opcao:disabled strong { color: var(--primaria-500); }
+
+    #status { margin: 20px 0 0; font-size: 13px; color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Menu</h1>
+    <div class="conta">
+      <span id="usuario"></span>
+      <button id="sair" type="button">Sair</button>
+    </div>
+  </header>
+  <main>
+    <h2>Selecione uma opção</h2>
+    <section id="opcoes"></section>
+    <p id="status" role="alert"></p>
+  </main>
+</body>
+</html>
