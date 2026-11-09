@@ -1,0 +1,19 @@
+{
+  "name": "projeto-final-dad",
+  "version": "1.0.0",
+  "description": "Projeto final DAD",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').cpSync('src','dist',{recursive:true,filter:(s)=>!s.endsWith('.ts')})\"",
+    "start": "npm run build && node ./scripts/start.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.0",
+    "electron": "39.8.10",
+    "typescript": "^5.9.3"
+  }
+}
