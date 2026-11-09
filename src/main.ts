@@ -1,7 +1,9 @@
-import { app } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { JanelaApp } from './JanelaApp'
 import { Sessao } from './Sessao'
+import { AlunoIpc } from './alunos/AlunoBackend'
 import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/AutenticacaoBackend'
+import { CepIpc } from './integracoes/CepBackend'
 import { MenuIpc } from './menu/MenuBackend'
 import { RelatorioIpc } from './relatorios/RelatorioBackend'
 import { UsuarioIpc } from './usuarios/UsuarioBackend'
@@ -23,6 +25,8 @@ class Aplicacao {
 
   private readonly usuarios = new JanelaApp({ pasta: 'usuarios', nome: 'usuarios', largura: 1000, altura: 700 })
 
+  private readonly alunos = new JanelaApp({ pasta: 'alunos', nome: 'alunos', largura: 1200, altura: 760 })
+
   private aoEntrar = (): void => {
     this.menu.abrir()
     this.login.fechar()
@@ -32,7 +36,13 @@ class Aplicacao {
     this.login.abrir()
     this.relatorios.fechar()
     this.usuarios.fechar()
+    this.alunos.fechar()
     this.menu.fechar()
+  }
+
+  private aoVoltar = (origem: BrowserWindow | null): void => {
+    this.menu.abrir()
+    origem?.close()
   }
 
   private abrirInicial = (): void => {
@@ -43,10 +53,13 @@ class Aplicacao {
   iniciar = (): void => {
     app.whenReady().then(() => {
       new AutenticacaoIpc(new AutenticacaoServico(), this.sessao, this.aoEntrar, this.aoSair).registrar()
+      new CepIpc(this.sessao).registrar()
+      new AlunoIpc(this.sessao).registrar()
       new MenuIpc(this.sessao, {
         relatorios: () => this.relatorios.abrir(),
-        usuarios: () => this.usuarios.abrir()
-      }).registrar()
+        usuarios: () => this.usuarios.abrir(),
+        alunos: () => this.alunos.abrir()
+      }, this.aoVoltar).registrar()
       new RelatorioIpc(this.sessao).registrar()
       new UsuarioIpc(this.sessao).registrar()
 

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import { Perfil, Sessao } from '../Sessao'
 
 type Opcao = { id: string; titulo: string; descricao: string; perfis: Perfil[] }
@@ -13,12 +13,13 @@ export class MenuIpc {
     { id: 'planos', titulo: 'Planos e assinaturas', descricao: 'Planos contratados pelos alunos', perfis: ['admin'] },
     { id: 'pagamentos', titulo: 'Pagamentos', descricao: 'Mensalidades e cobranças', perfis: ['admin'] },
     { id: 'visitantes', titulo: 'Visitantes', descricao: 'Aulas experimentais e visitas', perfis: ['admin', 'instrutor'] },
-    { id: 'usuarios', titulo: 'Usuários', descricao: 'Consulta de usuários cadastrados', perfis: ['admin'] }
+    { id: 'usuarios', titulo: 'Usuários', descricao: 'Cadastro e consulta de usuários', perfis: ['admin'] }
   ]
 
   constructor(
     private readonly sessao: Sessao,
-    private readonly telas: Record<string, () => void>
+    private readonly telas: Record<string, () => void>,
+    private readonly aoVoltar: (origem: BrowserWindow | null) => void
   ) {}
 
   registrar = (): void => {
@@ -44,6 +45,13 @@ export class MenuIpc {
 
       abrir()
       return true
+    })
+
+    ipcMain.handle('menu:voltar', (evento): void => {
+      this.sessao.exigir()
+
+      const origem = BrowserWindow.fromWebContents(evento.sender)
+      setImmediate(() => this.aoVoltar(origem))
     })
   }
 }

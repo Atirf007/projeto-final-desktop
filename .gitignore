@@ -1,4 +1,5 @@
 node_modules
 dist
 electron-dist
+electron-win32-x64.zip
 .env

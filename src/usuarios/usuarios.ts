@@ -10,6 +10,8 @@ type UsuarioLista = {
   criadoEm: string
 }
 
+type ResultadoCriacao = { ok: true; id: number } | { ok: false; mensagem: string }
+
 class UsuariosView {
   private readonly perfis: Record<string, string> = {
     admin: 'Administrador',
@@ -97,8 +99,74 @@ class UsuariosView {
     }, 300)
   }
 
+  private abrirFormulario = (): void => {
+    this.el<HTMLFormElement>('formulario').reset()
+    this.el('erro-formulario').textContent = ''
+    this.el<HTMLDialogElement>('dialogo').showModal()
+    this.el<HTMLInputElement>('nome').focus()
+  }
+
+  private fecharFormulario = (): void => {
+    this.el<HTMLFormElement>('formulario').reset()
+    this.el<HTMLDialogElement>('dialogo').close()
+  }
+
+  private salvar = async (evento: Event): Promise<void> => {
+    evento.preventDefault()
+
+    const erro = this.el('erro-formulario')
+    const botao = this.el<HTMLButtonElement>('salvar')
+    const nome = this.el<HTMLInputElement>('nome').value.trim()
+    const email = this.el<HTMLInputElement>('email').value.trim()
+    const perfil = this.el<HTMLSelectElement>('perfil').value
+    const senha = this.el<HTMLInputElement>('senha').value
+    const confirmacao = this.el<HTMLInputElement>('confirmacao').value
+
+    if (!nome || !email || !senha || !confirmacao) {
+      erro.textContent = 'Preencha todos os campos.'
+      return
+    }
+
+    if (senha !== confirmacao) {
+      erro.textContent = 'A confirmação da senha não confere.'
+      return
+    }
+
+    botao.disabled = true
+    erro.textContent = ''
+
+    try {
+      const resultado: ResultadoCriacao = await ipcRenderer.invoke('usuarios:criar', { nome, email, senha, perfil })
+
+      if (!resultado.ok) {
+        erro.textContent = resultado.mensagem
+        return
+      }
+
+      this.fecharFormulario()
+      await this.atualizar()
+      this.el('status').textContent = `Usuário ${nome} cadastrado com sucesso.`
+    } catch {
+      erro.textContent = 'Não foi possível cadastrar o usuário.'
+    } finally {
+      botao.disabled = false
+    }
+  }
+
+  private voltar = async (): Promise<void> => {
+    try {
+      await ipcRenderer.invoke('menu:voltar')
+    } catch {
+      this.el('status').textContent = 'Não foi possível voltar ao menu.'
+    }
+  }
+
   iniciar = (): void => {
     this.el<HTMLInputElement>('busca').addEventListener('input', this.agendarBusca)
+    this.el('novo').addEventListener('click', this.abrirFormulario)
+    this.el('voltar').addEventListener('click', this.voltar)
+    this.el('cancelar').addEventListener('click', this.fecharFormulario)
+    this.el('formulario').addEventListener('submit', this.salvar)
     void this.atualizar()
   }
 }

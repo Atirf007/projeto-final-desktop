@@ -9,6 +9,10 @@ export class Banco {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     dateStrings: true,
-    connectionLimit: 5
+    connectionLimit: 5,
+    connectTimeout: 10000,
+    waitForConnections: true,
+    queueLimit: 0,
+    enableKeepAlive: true
   })
 }

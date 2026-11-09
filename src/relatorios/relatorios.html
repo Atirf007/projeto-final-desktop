@@ -89,6 +89,35 @@
 
     header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
 
+    .voltar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #ffffff;
+      background: transparent;
+      border: 1px solid var(--primaria-500);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
+    .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+
+    .voltar svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
     main { padding: 28px 32px 40px; max-width: 1120px; margin: 0 auto; }
 
     .painel {
@@ -204,6 +233,11 @@
 </head>
 <body>
   <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
     <div class="marca">
       <span class="marca-logo" aria-hidden="true">
         <svg viewBox="0 0 24 24">

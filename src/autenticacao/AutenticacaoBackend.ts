@@ -68,15 +68,20 @@ export class LimitadorTentativas {
 
 export class UsuarioRepository {
   buscarPorEmail = async (email: string): Promise<UsuarioBanco | null> => {
-    const [linhas] = await Banco.pool.query<RowDataPacket[]>(
-      'SELECT id, nome, senha_hash, perfil FROM usuarios WHERE email = ? AND ativo = 1 LIMIT 1',
-      [email]
-    )
+    const [linhas] = await Banco.pool.query<RowDataPacket[]>({
+      sql: 'SELECT id, nome, senha_hash, perfil FROM usuarios WHERE email = ? AND ativo = 1 LIMIT 1',
+      values: [email],
+      timeout: 10000
+    })
     return linhas.length ? (linhas[0] as UsuarioBanco) : null
   }
 
   registrarLogin = async (id: number): Promise<void> => {
-    await Banco.pool.query('UPDATE usuarios SET ultimo_login = NOW() WHERE id = ?', [id])
+    await Banco.pool.query({
+      sql: 'UPDATE usuarios SET ultimo_login = NOW() WHERE id = ?',
+      values: [id],
+      timeout: 5000
+    })
   }
 }
 
@@ -111,7 +116,9 @@ export class AutenticacaoServico {
     }
 
     this.limitador.sucesso(chave)
-    await this.repositorio.registrarLogin(usuario.id)
+    this.repositorio.registrarLogin(usuario.id).catch((erro) => {
+      console.error('[login] não foi possível atualizar o ultimo_login:', erro)
+    })
     return { id: Number(usuario.id), nome: usuario.nome, perfil: usuario.perfil }
   }
 }
@@ -126,6 +133,40 @@ export class AutenticacaoIpc {
 
   private emailValido = (email: string): boolean => email.length <= 160 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
+  private comLimite = <T>(promessa: Promise<T>, milissegundos: number): Promise<T> =>
+    new Promise<T>((resolver, rejeitar) => {
+      const temporizador = setTimeout(() => {
+        rejeitar(new ErroAutenticacao('O banco de dados demorou demais para responder. Tente novamente.'))
+      }, milissegundos)
+
+      promessa.then(
+        (valor) => {
+          clearTimeout(temporizador)
+          resolver(valor)
+        },
+        (erro) => {
+          clearTimeout(temporizador)
+          rejeitar(erro)
+        }
+      )
+    })
+
+  private mensagemDeErro = (erro: unknown): string => {
+    if (erro instanceof ErroAutenticacao) return erro.message
+
+    const codigo = (erro as { code?: string }).code ?? ''
+    const semConexao = ['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'EHOSTUNREACH', 'ENETUNREACH', 'ECONNRESET', 'PROTOCOL_CONNECTION_LOST']
+
+    if (semConexao.includes(codigo)) return 'Não foi possível conectar ao banco de dados. Verifique a rede e o DB_HOST no arquivo .env.'
+    if (codigo === 'ER_ACCESS_DENIED_ERROR') return 'O MySQL recusou o DB_USER ou o DB_PASSWORD do arquivo .env.'
+    if (codigo === 'ER_DBACCESS_DENIED_ERROR') return 'O usuário do arquivo .env não tem acesso ao banco informado em DB_NAME.'
+    if (codigo === 'ER_BAD_DB_ERROR') return 'Banco de dados não encontrado. Verifique o DB_NAME no arquivo .env.'
+    if (codigo === 'ER_NO_SUCH_TABLE') return 'A tabela usuarios não existe no banco de dados.'
+    if (codigo === 'PROTOCOL_SEQUENCE_TIMEOUT') return 'O banco de dados demorou demais para responder. Tente novamente.'
+
+    return 'Não foi possível entrar. Verifique a conexão com o banco.'
+  }
+
   registrar = (): void => {
     ipcMain.handle('auth:login', async (_evento, email: unknown, senha: unknown): Promise<ResultadoLogin> => {
       if (typeof email !== 'string' || typeof senha !== 'string') return { ok: false, mensagem: 'Dados inválidos.' }
@@ -136,16 +177,17 @@ export class AutenticacaoIpc {
       }
 
       try {
-        const usuario = await this.servico.entrar(emailLimpo, senha)
+        const usuario = await this.comLimite(this.servico.entrar(emailLimpo, senha), 15000)
         this.sessao.iniciar(usuario)
         setImmediate(this.aoEntrar)
         return { ok: true }
       } catch (erro) {
-        const mensagem =
-          erro instanceof ErroAutenticacao ? erro.message : 'Não foi possível entrar. Verifique a conexão com o banco.'
-        return { ok: false, mensagem }
+        if (!(erro instanceof ErroAutenticacao)) console.error('[login] falha ao autenticar:', erro)
+        return { ok: false, mensagem: this.mensagemDeErro(erro) }
       }
     })
+
+    ipcMain.handle('auth:me', () => this.sessao.usuario())
 
     ipcMain.handle('auth:sair', () => {
       this.sessao.encerrar()

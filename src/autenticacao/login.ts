@@ -19,6 +19,7 @@ class LoginView {
     }
 
     botao.disabled = true
+    botao.textContent = 'Entrando...'
     status.textContent = ''
 
     try {
@@ -32,6 +33,7 @@ class LoginView {
       status.textContent = 'Não foi possível entrar.'
     } finally {
       botao.disabled = false
+      botao.textContent = 'Entrar'
     }
   }
 

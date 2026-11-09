@@ -163,6 +163,14 @@ class RelatoriosView {
     }
   }
 
+  private voltar = async (): Promise<void> => {
+    try {
+      await ipcRenderer.invoke('menu:voltar')
+    } catch {
+      this.el('status').textContent = 'Não foi possível voltar ao menu.'
+    }
+  }
+
   iniciar = async (): Promise<void> => {
     const hoje = new Date()
     this.el<HTMLInputElement>('mes').value = `${hoje.getFullYear()}-${this.dois(hoje.getMonth() + 1)}`
@@ -172,6 +180,7 @@ class RelatoriosView {
     this.el('mes').addEventListener('change', this.atualizar)
     this.el('ano').addEventListener('change', this.atualizar)
     this.el('exportar').addEventListener('click', this.exportar)
+    this.el('voltar').addEventListener('click', this.voltar)
 
     await this.alternarPeriodo()
   }

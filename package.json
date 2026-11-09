@@ -1,4 +1,3 @@
-
 {
   "name": "projeto-final-dad",
   "version": "1.0.0",
@@ -6,8 +5,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc && node -e \"require('fs').cpSync('src','dist',{recursive:true,filter:(s)=>!s.endsWith('.ts')})\"",
-    "verificar": "node -e \"if(!require('fs').existsSync(require('path').join('electron-dist','electron.exe'))){console.error('FALTA a pasta electron-dist com o electron.exe. Extraia o electron-win32-x64.zip dentro da pasta do projeto.');process.exit(1)}\"",
-    "start": "npm run build && electron ."
+    "start": "npm run build && node ./scripts/start.js"
   },
   "dependencies": {
     "dotenv": "^18.0.9",
