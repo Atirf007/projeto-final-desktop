@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Menu</title>
+  <style>
+    :root {
+      --primaria-900: #111827;
+      --primaria-800: #1f2937;
+      --primaria-700: #374151;
+      --primaria-600: #4b5563;
+      --primaria-500: #6b7280;
+
+      --secundaria: #10b981;
+      --secundaria-hover: #059669;
+      --secundaria-suave: #ecfdf5;
+      --secundaria-borda: #a7f3d0;
+
+      --bg-pagina: #f9fafb;
+      --bg-card: #ffffff;
+      --cinza-200: #e5e7eb;
+      --cinza-100: #f3f4f6;
+
+      --erro: #b91c1c;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--fonte);
+      background: var(--bg-pagina);
+      color: var(--primaria-900);
+      line-height: 1.5;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      background: var(--primaria-800);
+      color: #ffffff;
+      padding: 14px 28px;
+      border-bottom: 3px solid var(--secundaria);
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
+    }
+
+    .marca { display: flex; align-items: center; gap: 10px; }
+
+    .marca-logo {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      background: var(--secundaria);
+      border-radius: 8px;
+    }
+
+    .marca-logo svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cinza-200);
+    }
+
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+
+    .conta { display: flex; align-items: center; gap: 14px; margin-left: auto; font-size: 14px; }
+
+    .dados { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+    #nome {
+      font-weight: 600;
+      color: #ffffff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 240px;
+    }
+
+    .selo {
+      padding: 3px 10px;
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--secundaria-hover);
+      background: var(--secundaria-suave);
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    #sair {
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #ffffff;
+      background: transparent;
+      border: 1px solid var(--primaria-500);
+      border-radius: var(--raio-controle);
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    #sair:hover { background: var(--primaria-700); border-color: #ffffff; }
+    #sair:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+
+    main { padding: 28px 32px 40px; max-width: 1120px; margin: 0 auto; }
+
+    .titulo-pagina { margin-bottom: 20px; }
+
+    .titulo-pagina h2 {
+      position: relative;
+      margin: 0;
+      padding-left: 12px;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--primaria-800);
+      letter-spacing: -0.01em;
+    }
+
+    .titulo-pagina h2::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 18px;
+      border-radius: 2px;
+      background: var(--secundaria);
+    }
+
+    .titulo-pagina p { margin: 6px 0 0; padding-left: 12px; font-size: 14px; color: var(--primaria-500); }
+
+    #opcoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+
+    .opcao {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      min-height: 132px;
+      padding: 18px 20px;
+      text-align: left;
+      font-family: inherit;
+      color: var(--primaria-900);
+      background: var(--bg-card);
+      border: 1px solid var(--cinza-200);
+      border-radius: var(--raio-card);
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .opcao:hover:not(:disabled) {
+      transform: translateY(-2px);
+      border-color: var(--secundaria);
+      box-shadow: 0 6px 16px rgba(17, 24, 39, 0.08);
+    }
+
+    .opcao:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+
+    .opcao-icone {
+      width: 38px;
+      height: 38px;
+      padding: 8px;
+      border-radius: 10px;
+      background: var(--secundaria-suave);
+      fill: none;
+      stroke: var(--secundaria-hover);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .opcao strong { font-size: 16px; font-weight: 700; }
+    .opcao span { font-size: 13px; color: var(--primaria-500); }
+
+    .opcao em {
+      justify-self: start;
+      margin-top: auto;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primaria-600);
+      background: var(--cinza-100);
+      border: 1px solid var(--cinza-200);
+      border-radius: 999px;
+    }
+
+    .opcao:disabled { cursor: default; background: var(--cinza-100); }
+    .opcao:disabled strong { color: var(--primaria-500); }
+    .opcao:disabled .opcao-icone { background: var(--cinza-200); stroke: var(--primaria-500); }
+
+    #status { margin: 20px 0 0; font-size: 13px; color: var(--erro); }
+
+    @media (max-width: 720px) {
+      main { padding: 20px; }
+      .conta { margin-left: 0; width: 100%; justify-content: space-between; }
+      #nome { max-width: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <svg style="display: none;" aria-hidden="true">
+    <defs>
+      <symbol id="ico-relatorios" viewBox="0 0 24 24">
+        <line x1="3" y1="20" x2="21" y2="20" />
+        <line x1="6" y1="20" x2="6" y2="16" />
+        <line x1="12" y1="20" x2="12" y2="10" />
+        <line x1="18" y1="20" x2="18" y2="4" />
+      </symbol>
+      <symbol id="ico-mensagens" viewBox="0 0 24 24">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+      </symbol>
+      <symbol id="ico-funcionarios" viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </symbol>
+      <symbol id="ico-alunos" viewBox="0 0 24 24">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </symbol>
+      <symbol id="ico-aulas" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <line x1="16" y1="3" x2="16" y2="7" />
+        <line x1="8" y1="3" x2="8" y2="7" />
+        <line x1="3" y1="11" x2="21" y2="11" />
+      </symbol>
+      <symbol id="ico-planos" viewBox="0 0 24 24">
+        <line x1="9" y1="6" x2="20" y2="6" />
+        <line x1="9" y1="12" x2="20" y2="12" />
+        <line x1="9" y1="18" x2="20" y2="18" />
+        <line x1="4" y1="6" x2="4.01" y2="6" />
+        <line x1="4" y1="12" x2="4.01" y2="12" />
+        <line x1="4" y1="18" x2="4.01" y2="18" />
+      </symbol>
+      <symbol id="ico-pagamentos" viewBox="0 0 24 24">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <line x1="2" y1="10" x2="22" y2="10" />
+        <line x1="6" y1="15" x2="10" y2="15" />
+      </symbol>
+      <symbol id="ico-visitantes" viewBox="0 0 24 24">
+        <path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="8.5" cy="7" r="4" />
+        <line x1="19" y1="8" x2="19" y2="14" />
+        <line x1="22" y1="11" x2="16" y2="11" />
+      </symbol>
+      <symbol id="ico-usuarios" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <circle cx="9" cy="10" r="2.5" />
+        <path d="M5.5 17c.7-1.7 2-2.5 3.5-2.5s2.8.8 3.5 2.5" />
+        <line x1="15" y1="9" x2="18.5" y2="9" />
+        <line x1="15" y1="13" x2="18.5" y2="13" />
+      </symbol>
+    </defs>
+  </svg>
+  <header>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M6.5 7.5v9" />
+          <path d="M17.5 7.5v9" />
+          <path d="M3.5 9.5v5" />
+          <path d="M20.5 9.5v5" />
+          <path d="M6.5 12h11" />
+        </svg>
+      </span>
+      <span class="marca-texto">
+        <strong>Cotil</strong>
+        <small>Academia</small>
+      </span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Menu</h1>
+    <div class="conta">
+      <span class="dados">
+        <span id="nome"></span>
+        <em id="perfil" class="selo"></em>
+      </span>
+      <button id="sair" type="button">Sair</button>
+    </div>
+  </header>
+  <main>
+    <div class="titulo-pagina">
+      <h2>Selecione uma opção</h2>
+      <p>Escolha uma funcionalidade para continuar</p>
+    </div>
+    <section id="opcoes"></section>
+    <p id="status" role="alert"></p>
+  </main>
+</body>
+</html>
