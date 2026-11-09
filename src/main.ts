@@ -3,6 +3,7 @@ import { JanelaApp } from './JanelaApp'
 import { Sessao } from './Sessao'
 import { AlunoIpc } from './alunos/AlunoBackend'
 import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/AutenticacaoBackend'
+import { FuncionarioIpc, ModalidadeIpc } from './funcionarios/FuncionarioBackend'
 import { CepIpc } from './integracoes/CepBackend'
 import { MenuIpc } from './menu/MenuBackend'
 import { RelatorioIpc } from './relatorios/RelatorioBackend'
@@ -25,6 +26,8 @@ class Aplicacao {
 
   private readonly usuarios = new JanelaApp({ pasta: 'usuarios', nome: 'usuarios', largura: 1000, altura: 700 })
 
+  private readonly funcionarios = new JanelaApp({ pasta: 'funcionarios', nome: 'funcionarios', largura: 1200, altura: 760 })
+
   private readonly alunos = new JanelaApp({ pasta: 'alunos', nome: 'alunos', largura: 1200, altura: 760 })
 
   private aoEntrar = (): void => {
@@ -36,6 +39,7 @@ class Aplicacao {
     this.login.abrir()
     this.relatorios.fechar()
     this.usuarios.fechar()
+    this.funcionarios.fechar()
     this.alunos.fechar()
     this.menu.fechar()
   }
@@ -55,9 +59,12 @@ class Aplicacao {
       new AutenticacaoIpc(new AutenticacaoServico(), this.sessao, this.aoEntrar, this.aoSair).registrar()
       new CepIpc(this.sessao).registrar()
       new AlunoIpc(this.sessao).registrar()
+      new FuncionarioIpc(this.sessao).registrar()
+      new ModalidadeIpc(this.sessao).registrar()
       new MenuIpc(this.sessao, {
         relatorios: () => this.relatorios.abrir(),
         usuarios: () => this.usuarios.abrir(),
+        funcionarios: () => this.funcionarios.abrir(),
         alunos: () => this.alunos.abrir()
       }, this.aoVoltar).registrar()
       new RelatorioIpc(this.sessao).registrar()
