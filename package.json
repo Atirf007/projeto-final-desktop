@@ -4,15 +4,20 @@
   "description": "Projeto final DAD",
   "main": "dist/main.js",
   "scripts": {
+    "postinstall": "node scripts/garantir-electron.js",
+    "prestart": "node scripts/garantir-electron.js",
     "build": "tsc && node -e \"require('fs').cpSync('src','dist',{recursive:true,filter:(s)=>!s.endsWith('.ts')})\"",
-    "start": "npm run build && node ./scripts/start.js"
+    "start": "npm run build && electron .",
+    "testar-email": "npm run build && node scripts/testar-email.js"
   },
   "dependencies": {
     "dotenv": "^18.0.9",
-    "mysql2": "^3.24.6"
+    "mysql2": "^3.24.6",
+    "nodemailer": "^10.5.0"
   },
   "devDependencies": {
     "@types/node": "^24.9.0",
+    "@types/nodemailer": "^8.0.2",
     "electron": "39.8.10",
     "typescript": "^5.9.3"
   }

@@ -6,7 +6,7 @@ type Opcao = { id: string; titulo: string; descricao: string; perfis: Perfil[] }
 export class MenuIpc {
   private readonly opcoes: Opcao[] = [
     { id: 'relatorios', titulo: 'Relatórios', descricao: 'Receitas por categoria, mensal e anual', perfis: ['admin'] },
-    { id: 'mensagens', titulo: 'Mensagens', descricao: 'Avisos e notificações', perfis: ['admin', 'instrutor'] },
+    { id: 'bot', titulo: 'Gerenciar Bot', descricao: 'Automação de avisos por clima', perfis: ['admin', 'instrutor'] },
     { id: 'funcionarios', titulo: 'Funcionários', descricao: 'Instrutores e equipe', perfis: ['admin'] },
     { id: 'alunos', titulo: 'Alunos', descricao: 'Cadastro e consulta de alunos', perfis: ['admin', 'instrutor'] },
     { id: 'aulas', titulo: 'Aulas', descricao: 'Agenda, inscrições e presenças', perfis: ['admin', 'instrutor', 'aluno'] },

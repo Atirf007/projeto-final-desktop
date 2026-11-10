@@ -59,6 +59,14 @@ class AlunosView {
     return d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : cpf
   }
 
+  private cpfMask = (valor: string): string => {
+    const d = valor.replace(/\D/g, '').slice(0, 11)
+    if (d.length <= 3) return d
+    if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`
+    if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+    return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+  }
+
   private cepFmt = (cep?: string): string => {
     if (!cep) return '—'
     const d = cep.replace(/\D/g, '')
@@ -182,7 +190,7 @@ class AlunosView {
     this.el<HTMLInputElement>('aluno-id').value = String(aluno.id)
     this.el<HTMLInputElement>('nome').value = aluno.nome
     this.el<HTMLInputElement>('email').value = aluno.email
-    this.el<HTMLInputElement>('cpf').value = aluno.cpf
+    this.el<HTMLInputElement>('cpf').value = this.cpfMask(aluno.cpf)
     this.el<HTMLInputElement>('data-nascimento').value = aluno.dataNascimento
     this.el<HTMLInputElement>('telefone').value = aluno.telefone
     this.el<HTMLInputElement>('cep').value = aluno.endereco.cep ?? ''
@@ -394,6 +402,10 @@ class AlunosView {
     this.el('novo').addEventListener('click', this.abrirNovo)
     this.el<HTMLInputElement>('busca').addEventListener('input', this.agendarBusca)
     this.el('filtro-ativo').addEventListener('change', () => void this.carregar())
+    this.el<HTMLInputElement>('cpf').addEventListener('input', (evento) => {
+      const campo = evento.target as HTMLInputElement
+      campo.value = this.cpfMask(campo.value)
+    })
     this.el('formulario').addEventListener('submit', (e) => void this.salvar(e))
     this.el('cancelar-form').addEventListener('click', () => this.el<HTMLDialogElement>('dialogo-form').close())
     this.el('buscar-cep').addEventListener('click', () => void this.buscarCepForm())

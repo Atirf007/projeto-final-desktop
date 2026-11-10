@@ -13,6 +13,8 @@ export class BancoErros {
 
     if (codigo === 'ER_DUP_ENTRY') {
       if (/alunos\.cpf|\bcpf\b/i.test(detalhe)) return 'Já existe um aluno com este CPF.'
+      if (/instrutores\.cref/i.test(detalhe)) return 'Já existe um funcionário com este CREF.'
+      if (/modalidades\.nome/i.test(detalhe)) return 'Já existe uma modalidade com este nome.'
       if (/alunos\.usuario_id|usuario_id/i.test(detalhe)) return 'Este usuário já está vinculado a um aluno.'
       if (/usuarios\.email|\bemail\b/i.test(detalhe)) return 'Já existe um usuário com este e-mail.'
       return 'Já existe um registro com estes dados.'
