@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Gerenciar Bot</title>
+  <style>
+    :root {
+      --primaria-900: #111827;
+      --primaria-800: #1f2937;
+      --primaria-700: #374151;
+      --primaria-600: #4b5563;
+      --primaria-500: #6b7280;
+
+      --secundaria: #10b981;
+      --secundaria-hover: #059669;
+      --secundaria-suave: #ecfdf5;
+      --secundaria-borda: #a7f3d0;
+
+      --bg-pagina: #f9fafb;
+      --bg-card: #ffffff;
+      --cinza-200: #e5e7eb;
+      --cinza-100: #f3f4f6;
+
+      --erro: #b91c1c;
+      --erro-suave: #fef2f2;
+      --erro-borda: #fecaca;
+      --alerta: #92400e;
+      --alerta-suave: #fffbeb;
+      --alerta-borda: #fde68a;
+
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--fonte);
+      background: var(--bg-pagina);
+      color: var(--primaria-900);
+      line-height: 1.5;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      background: var(--primaria-800);
+      color: #ffffff;
+      padding: 14px 28px;
+      border-bottom: 3px solid var(--secundaria);
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
+    }
+
+    .marca { display: flex; align-items: center; gap: 10px; }
+
+    .marca-logo {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      background: var(--secundaria);
+      border-radius: 8px;
+    }
+
+    .marca-logo svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cinza-200);
+    }
+
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+
+    .voltar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #ffffff;
+      background: transparent;
+      border: 1px solid var(--primaria-500);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
+    .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+
+    .voltar svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    main {
+      display: grid;
+      gap: 20px;
+      padding: 28px 32px 40px;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .painel {
+      background: var(--bg-card);
+      border: 1px solid var(--cinza-200);
+      border-radius: var(--raio-card);
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05);
+    }
+
+    .painel-bot { border-top: 3px solid var(--secundaria); }
+
+    .cabecalho-painel {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      margin-bottom: 18px;
+    }
+
+    h2 {
+      position: relative;
+      margin: 0;
+      padding-left: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primaria-800);
+    }
+
+    h2::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 16px;
+      border-radius: 2px;
+      background: var(--secundaria);
+    }
+
+    .subtitulo { margin: 5px 0 0; padding-left: 12px; font-size: 13px; color: var(--primaria-500); }
+
+    button {
+      padding: 10px 16px;
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 600;
+      color: #ffffff;
+      background: var(--secundaria);
+      border: 1px solid var(--secundaria);
+      border-radius: var(--raio-controle);
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:hover:not(:disabled) { background: var(--secundaria-hover); border-color: var(--secundaria-hover); }
+    button:focus-visible { outline: 2px solid var(--secundaria-hover); outline-offset: 2px; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+
+    button.secundario { color: var(--primaria-700); background: var(--bg-card); border-color: var(--cinza-200); }
+    button.secundario:hover:not(:disabled) { background: var(--cinza-100); border-color: var(--primaria-500); }
+    button.perigo { background: var(--erro); border-color: var(--erro); }
+    button.perigo:hover:not(:disabled) { background: #991b1b; border-color: #991b1b; }
+
+    .controles-bot {
+      display: flex;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .campo-intervalo { display: flex; align-items: center; gap: 8px; }
+    .campo-intervalo > span {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primaria-600);
+    }
+
+    .campo-intervalo select {
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      color: var(--primaria-900);
+      background: var(--bg-card);
+      border: 1px solid var(--cinza-200);
+      border-radius: var(--raio-controle);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .campo-intervalo select:focus {
+      border-color: var(--secundaria);
+      box-shadow: 0 0 0 3px var(--secundaria-suave);
+    }
+
+    .info-bot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--primaria-500);
+    }
+
+    .info-bot .info-alerta { color: var(--alerta); font-weight: 600; }
+
+    .cartao-clima { display: grid; gap: 16px; }
+
+    .linha-clima {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+    }
+
+    .selo {
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .selo-chuva { color: var(--alerta); background: var(--alerta-suave); border: 1px solid var(--alerta-borda); }
+    .selo-seco { color: var(--secundaria-hover); background: var(--secundaria-suave); border: 1px solid var(--secundaria-borda); }
+    .selo-inativo { color: var(--primaria-600); background: var(--cinza-100); border: 1px solid var(--cinza-200); }
+
+    .titulo-clima { font-size: 16px; font-weight: 700; color: var(--primaria-800); }
+    .descricao-clima { font-size: 13px; color: var(--primaria-500); }
+
+    .metricas {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .metrica {
+      padding: 12px 14px;
+      background: var(--cinza-100);
+      border: 1px solid var(--cinza-200);
+      border-radius: 10px;
+    }
+
+    .metrica span {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primaria-600);
+    }
+
+    .metrica strong { display: block; margin-top: 4px; font-size: 20px; font-weight: 700; color: var(--primaria-800); }
+
+    .aviso {
+      display: grid;
+      gap: 10px;
+      padding: 16px 18px;
+      border-radius: 10px;
+      border: 1px solid var(--cinza-200);
+      background: var(--cinza-100);
+    }
+
+    .aviso-enviado { background: var(--secundaria-suave); border-color: var(--secundaria-borda); }
+    .aviso-falha { background: var(--erro-suave); border-color: var(--erro-borda); }
+
+    .aviso-topo { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .aviso-topo strong { font-size: 15px; font-weight: 700; color: var(--primaria-800); }
+    .aviso-texto { margin: 0; font-size: 14px; color: var(--primaria-700); }
+
+    .aviso-rodape { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--primaria-500); }
+    .aviso-erro { color: var(--erro); font-weight: 600; }
+    .aviso-nota { font-size: 12px; color: var(--primaria-500); font-style: italic; }
+
+    .selo-mini {
+      padding: 2px 9px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .selo-mini.ok { color: var(--secundaria-hover); background: var(--secundaria-suave); border: 1px solid var(--secundaria-borda); }
+    .selo-mini.falha { color: var(--erro); background: var(--erro-suave); border: 1px solid var(--erro-borda); }
+
+    .historico { display: grid; gap: 12px; }
+
+    .historico-item {
+      display: grid;
+      gap: 8px;
+      padding: 14px 16px;
+      border: 1px solid var(--cinza-200);
+      border-radius: 10px;
+      background: var(--bg-card);
+    }
+
+    .historico-topo { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    .historico-topo strong { font-size: 14px; font-weight: 700; color: var(--primaria-800); }
+    .historico-texto { margin: 0; font-size: 13px; color: var(--primaria-700); }
+    .historico-data { font-size: 12px; color: var(--primaria-500); }
+
+    .vazio {
+      padding: 18px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--primaria-500);
+      background: var(--cinza-100);
+      border: 1px dashed var(--cinza-200);
+      border-radius: 10px;
+    }
+
+    .status { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); }
+    .status.sucesso { color: var(--secundaria-hover); font-weight: 600; }
+    .status.erro { color: var(--erro); font-weight: 600; }
+    .status.neutro { color: var(--primaria-600); }
+
+    @media (max-width: 720px) {
+      main { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M6.5 7.5v9" />
+          <path d="M17.5 7.5v9" />
+          <path d="M3.5 9.5v5" />
+          <path d="M20.5 9.5v5" />
+          <path d="M6.5 12h11" />
+        </svg>
+      </span>
+      <span class="marca-texto">
+        <strong>Cotil</strong>
+        <small>Academia</small>
+      </span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Gerenciar Bot</h1>
+  </header>
+  <main>
+    <section class="painel painel-bot">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Status do bot</h2>
+          <p class="subtitulo" id="bot-descricao">Carregando configuração...</p>
+        </div>
+        <span id="bot-selo" class="selo selo-inativo">Inativo</span>
+      </div>
+      <div class="controles-bot">
+        <button id="alternar-bot" type="button">Ativar bot</button>
+        <label class="campo-intervalo">
+          <span>Verificar a cada</span>
+          <select id="intervalo">
+            <option value="5">5 minutos</option>
+            <option value="10">10 minutos</option>
+            <option value="15">15 minutos</option>
+            <option value="30">30 minutos</option>
+            <option value="60">1 hora</option>
+            <option value="120">2 horas</option>
+            <option value="360">6 horas</option>
+            <option value="720">12 horas</option>
+            <option value="1440">24 horas</option>
+          </select>
+        </label>
+        <button id="salvar-intervalo" type="button" class="secundario">Salvar intervalo</button>
+        <span style="flex: 1;"></span>
+        <button id="verificar" type="button" class="secundario">Verificar agora</button>
+      </div>
+      <div class="info-bot">
+        <span id="bot-ultima">Nenhuma verificação realizada.</span>
+        <span id="bot-proxima"></span>
+        <span id="bot-email">E-mail: verificando configuração...</span>
+      </div>
+      <p id="status-bot" class="status" role="alert"></p>
+    </section>
+
+    <section class="painel">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Previsão do tempo</h2>
+          <p class="subtitulo" id="local">Nenhuma verificação realizada ainda.</p>
+        </div>
+      </div>
+      <div id="previsao"></div>
+      <p id="status" class="status" role="alert"></p>
+    </section>
+
+    <section class="painel">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Aviso para a turma</h2>
+          <p class="subtitulo">Enviado por e-mail aos alunos ativos e exibido como notificação do sistema. Só é enviado quando há previsão de chuva.</p>
+        </div>
+      </div>
+      <div id="aviso"></div>
+    </section>
+
+    <section class="painel">
+      <div class="cabecalho-painel">
+        <div>
+          <h2>Histórico de mensagens</h2>
+          <p class="subtitulo">Avisos enviados pelo bot.</p>
+        </div>
+      </div>
+      <div id="historico" class="historico"></div>
+    </section>
+  </main>
+</body>
+</html>

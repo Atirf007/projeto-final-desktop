@@ -102,20 +102,30 @@ class AlunoValidador {
     return valor.length >= 8 && valor.length <= 128 && /[A-Za-z]/.test(valor) && /\d/.test(valor) ? valor : null
   }
 
-  cpf(valor: unknown): string | null {
-    if (typeof valor !== 'string') return null
+  cpf(valor: unknown): { ok: true; valor: string } | { ok: false; mensagem: string } {
+    if (typeof valor !== 'string' || !valor.trim()) {
+      return { ok: false, mensagem: 'Informe o CPF.' }
+    }
     const digitos = valor.replace(/\D/g, '')
-    if (!/^\d{11}$/.test(digitos)) return null
-    if (/^(\d)\1{10}$/.test(digitos)) return null
+    if (digitos.length !== 11) {
+      return { ok: false, mensagem: `O CPF deve ter 11 dígitos. Foram informados ${digitos.length}.` }
+    }
+    if (/^(\d)\1{10}$/.test(digitos)) {
+      return { ok: false, mensagem: 'CPF inválido: todos os dígitos são iguais.' }
+    }
     const calc = (base: string, fator: number): number => {
       let soma = 0
       for (const c of base) soma += Number(c) * fator--
       const resto = (soma * 10) % 11
       return resto === 10 ? 0 : resto
     }
-    if (calc(digitos.slice(0, 9), 10) !== Number(digitos[9])) return null
-    if (calc(digitos.slice(0, 10), 11) !== Number(digitos[10])) return null
-    return digitos
+    if (
+      calc(digitos.slice(0, 9), 10) !== Number(digitos[9]) ||
+      calc(digitos.slice(0, 10), 11) !== Number(digitos[10])
+    ) {
+      return { ok: false, mensagem: 'CPF inválido: o dígito verificador não confere. Confira os números digitados.' }
+    }
+    return { ok: true, valor: digitos }
   }
 
   data(valor: unknown): string | null {
@@ -193,7 +203,7 @@ class AlunoValidador {
     const senha = this.senha(e.senha)
     if (!senha) return { ok: false, mensagem: 'A senha deve ter de 8 a 128 caracteres, com letras e números.' }
     const cpf = this.cpf(e.cpf)
-    if (!cpf) return { ok: false, mensagem: 'Informe um CPF válido (11 dígitos).' }
+    if (!cpf.ok) return { ok: false, mensagem: cpf.mensagem }
     const dataNascimento = this.data(e.dataNascimento)
     if (!dataNascimento) return { ok: false, mensagem: 'Informe uma data de nascimento válida (AAAA-MM-DD).' }
     const telefone = this.telefone(e.telefone)
@@ -206,7 +216,7 @@ class AlunoValidador {
     if (observacoesSaude === null) return { ok: false, mensagem: 'Observações de saúde inválidas.' }
     return {
       ok: true,
-      dados: { nome, email, senha, cpf, dataNascimento, telefone, endereco, contatoEmergencia, observacoesSaude }
+      dados: { nome, email, senha, cpf: cpf.valor, dataNascimento, telefone, endereco, contatoEmergencia, observacoesSaude }
     }
   }
 
@@ -233,8 +243,8 @@ class AlunoValidador {
     }
     if (e.cpf !== undefined) {
       const cpf = this.cpf(e.cpf)
-      if (!cpf) return { ok: false, mensagem: 'CPF inválido.' }
-      dados.cpf = cpf
+      if (!cpf.ok) return { ok: false, mensagem: cpf.mensagem }
+      dados.cpf = cpf.valor
     }
     if (e.dataNascimento !== undefined) {
       const dataNascimento = this.data(e.dataNascimento)

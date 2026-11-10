@@ -5,6 +5,8 @@ import { AlunoIpc } from './alunos/AlunoBackend'
 import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/AutenticacaoBackend'
 import { FuncionarioIpc, ModalidadeIpc } from './funcionarios/FuncionarioBackend'
 import { CepIpc } from './integracoes/CepBackend'
+import { ClimaIpc } from './integracoes/ClimaBackend'
+import { BotClimaIpc, BotClimaServico } from './mensagens/BotClima'
 import { MenuIpc } from './menu/MenuBackend'
 import { RelatorioIpc } from './relatorios/RelatorioBackend'
 import { UsuarioIpc } from './usuarios/UsuarioBackend'
@@ -30,6 +32,8 @@ class Aplicacao {
 
   private readonly alunos = new JanelaApp({ pasta: 'alunos', nome: 'alunos', largura: 1200, altura: 760 })
 
+  private readonly bot = new JanelaApp({ pasta: 'mensagens', nome: 'mensagens', largura: 1000, altura: 820 })
+
   private aoEntrar = (): void => {
     this.menu.abrir()
     this.login.fechar()
@@ -41,6 +45,7 @@ class Aplicacao {
     this.usuarios.fechar()
     this.funcionarios.fechar()
     this.alunos.fechar()
+    this.bot.fechar()
     this.menu.fechar()
   }
 
@@ -56,8 +61,14 @@ class Aplicacao {
 
   iniciar = (): void => {
     app.whenReady().then(() => {
+      if (process.platform === 'win32') app.setAppUserModelId('com.cotil.academia')
+
+      const botClima = new BotClimaServico()
+
       new AutenticacaoIpc(new AutenticacaoServico(), this.sessao, this.aoEntrar, this.aoSair).registrar()
       new CepIpc(this.sessao).registrar()
+      new ClimaIpc(this.sessao).registrar()
+      new BotClimaIpc(this.sessao, botClima).registrar()
       new AlunoIpc(this.sessao).registrar()
       new FuncionarioIpc(this.sessao).registrar()
       new ModalidadeIpc(this.sessao).registrar()
@@ -65,13 +76,16 @@ class Aplicacao {
         relatorios: () => this.relatorios.abrir(),
         usuarios: () => this.usuarios.abrir(),
         funcionarios: () => this.funcionarios.abrir(),
-        alunos: () => this.alunos.abrir()
+        alunos: () => this.alunos.abrir(),
+        bot: () => this.bot.abrir()
       }, this.aoVoltar).registrar()
       new RelatorioIpc(this.sessao).registrar()
       new UsuarioIpc(this.sessao).registrar()
 
       this.abrirInicial()
+      botClima.iniciar()
 
+      app.on('before-quit', () => botClima.encerrar())
       app.on('activate', this.abrirInicial)
     })
 
