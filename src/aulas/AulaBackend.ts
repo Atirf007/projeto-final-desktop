@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
+import { FeriadoCliente } from '../integracoes/FeriadosBackend'
 import { Sessao, UsuarioSessao } from '../Sessao'
 
 export type StatusAula = 'agendada' | 'confirmada' | 'cancelada' | 'remarcada' | 'concluida'
@@ -803,8 +804,20 @@ export class AulaIpc {
 
   constructor(
     private readonly sessao: Sessao,
-    private readonly repositorio: AulaRepository = new AulaRepository()
+    private readonly repositorio: AulaRepository = new AulaRepository(),
+    private readonly feriado: FeriadoCliente = new FeriadoCliente()
   ) {}
+
+  private validarFeriado = async (dataHora: string): Promise<void> => {
+    const resultado = await this.feriado.verificar(dataHora.slice(0, 10))
+    if (!resultado.ok) {
+      console.error('[aulas:feriado]', resultado.mensagem)
+      return
+    }
+    if (resultado.feriado) {
+      throw new ErroAula(`Não é possível agendar aula em feriado nacional: ${resultado.feriado.nome}. Escolha outra data.`)
+    }
+  }
 
   private idValido(valor: unknown): number | null {
     const id = typeof valor === 'number' ? valor : typeof valor === 'string' ? Number(valor) : NaN
@@ -860,6 +873,7 @@ export class AulaIpc {
           if (meuInstrutorId === null) return { ok: false, mensagem: 'Seu usuário não possui cadastro de instrutor.' }
           v.dados.instrutorId = meuInstrutorId
         }
+        await this.validarFeriado(v.dados.dataHoraInicio)
         const id = await this.repositorio.criar(v.dados)
         return { ok: true, id }
       } catch (erro) {
@@ -877,6 +891,7 @@ export class AulaIpc {
         const meuInstrutorId = usuario.perfil === 'instrutor' ? await this.meuInstrutorId(usuario) : null
         this.gerenciar(usuario, aula.instrutorId, meuInstrutorId)
         if (usuario.perfil === 'instrutor') v.dados.instrutorId = meuInstrutorId ?? undefined
+        if (v.dados.dataHoraInicio !== undefined) await this.validarFeriado(v.dados.dataHoraInicio)
         const ok = await this.repositorio.atualizar(v.dados)
         if (!ok) return { ok: false, mensagem: 'Aula não encontrada.' }
         return { ok: true, id: v.dados.id }
@@ -894,6 +909,7 @@ export class AulaIpc {
         if (!aula) return { ok: false, mensagem: 'Aula não encontrada.' }
         const meuInstrutorId = usuario.perfil === 'instrutor' ? await this.meuInstrutorId(usuario) : null
         this.gerenciar(usuario, aula.instrutorId, meuInstrutorId)
+        await this.validarFeriado(v.dados.novaDataHora)
         const ok = await this.repositorio.remarcar(v.dados)
         if (!ok) return { ok: false, mensagem: 'Aula não encontrada.' }
         return { ok: true, id: v.dados.id }

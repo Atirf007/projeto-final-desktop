@@ -7,6 +7,8 @@ import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/Autenticaca
 import { FuncionarioIpc, ModalidadeIpc } from './funcionarios/FuncionarioBackend'
 import { CepIpc } from './integracoes/CepBackend'
 import { ClimaIpc } from './integracoes/ClimaBackend'
+import { FeriadosIpc } from './integracoes/FeriadosBackend'
+import { WgerIpc } from './integracoes/WgerBackend'
 import { BotClimaIpc, BotClimaServico } from './mensagens/BotClima'
 import { MenuIpc } from './menu/MenuBackend'
 import { PagamentoIpc } from './pagamentos/PagamentoBackend'
@@ -80,6 +82,8 @@ class Aplicacao {
       new AutenticacaoIpc(new AutenticacaoServico(), this.sessao, this.aoEntrar, this.aoSair).registrar()
       new CepIpc(this.sessao).registrar()
       new ClimaIpc(this.sessao).registrar()
+      new FeriadosIpc(this.sessao).registrar()
+      new WgerIpc(this.sessao).registrar()
       new BotClimaIpc(this.sessao, botClima).registrar()
       new AlunoIpc(this.sessao).registrar()
       new AulaIpc(this.sessao).registrar()
