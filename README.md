@@ -77,3 +77,25 @@ CLIMA_LIMIAR_CHUVA=50
 ```
 
 O estado do bot (ativo, intervalo e última data avisada) é salvo em `bot-clima.json` na pasta de dados do usuário do Electron.
+
+## Lembretes de vencimento
+
+A tela **Notificações** é exclusiva do administrador e mostra o histórico dos lembretes enviados aos alunos.
+
+- O envio é **somente automático**: o bot executa ao iniciar a aplicação e a cada 24 horas.
+- São consideradas mensalidades pendentes ou atrasadas com vencimento nos próximos 7 dias (ou vencidas há até 30 dias).
+- Cada pagamento não recebe um novo lembrete enquanto houver um envio bem-sucedido nos últimos 7 dias.
+- Falhas ficam registradas com o motivo e são tentadas novamente no ciclo seguinte; não existe botão de envio ou reenvio manual.
+- Sem SMTP configurado, nenhuma notificação é registrada e a tela informa que o envio está desativado.
+
+## Portal do aluno
+
+O perfil **aluno** vê a opção **Meu painel**, somente para consulta, com:
+
+- plano contratado e situação da assinatura;
+- frequência dos últimos 90 dias;
+- última avaliação física, gráfico de evolução do peso e histórico de medidas;
+- presenças recentes;
+- avisos recebidos, incluindo os lembretes de vencimento.
+
+O portal não permite editar dados cadastrais, medidas ou avisos.

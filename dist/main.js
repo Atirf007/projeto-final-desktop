@@ -5,14 +5,18 @@ const JanelaApp_1 = require("./JanelaApp");
 const Sessao_1 = require("./Sessao");
 const AlunoBackend_1 = require("./alunos/AlunoBackend");
 const AulaBackend_1 = require("./aulas/AulaBackend");
+const AvaliacaoBackend_1 = require("./avaliacoes/AvaliacaoBackend");
 const AutenticacaoBackend_1 = require("./autenticacao/AutenticacaoBackend");
 const FuncionarioBackend_1 = require("./funcionarios/FuncionarioBackend");
 const CepBackend_1 = require("./integracoes/CepBackend");
 const ClimaBackend_1 = require("./integracoes/ClimaBackend");
 const BotClima_1 = require("./mensagens/BotClima");
 const MenuBackend_1 = require("./menu/MenuBackend");
+const BotVencimento_1 = require("./notificacoes/BotVencimento");
+const NotificacaoBackend_1 = require("./notificacoes/NotificacaoBackend");
 const PagamentoBackend_1 = require("./pagamentos/PagamentoBackend");
 const PlanosBackend_1 = require("./planos/PlanosBackend");
+const PresencaBackend_1 = require("./presencas/PresencaBackend");
 const RelatorioBackend_1 = require("./relatorios/RelatorioBackend");
 const UsuarioBackend_1 = require("./usuarios/UsuarioBackend");
 const VisitanteBackend_1 = require("./visitantes/VisitanteBackend");
@@ -35,6 +39,9 @@ class Aplicacao {
         this.planos = new JanelaApp_1.JanelaApp({ pasta: 'planos', nome: 'planos', largura: 1280, altura: 800 });
         this.pagamentos = new JanelaApp_1.JanelaApp({ pasta: 'pagamentos', nome: 'pagamentos', largura: 1280, altura: 820 });
         this.visitantes = new JanelaApp_1.JanelaApp({ pasta: 'visitantes', nome: 'visitantes', largura: 1280, altura: 800 });
+        this.avaliacoes = new JanelaApp_1.JanelaApp({ pasta: 'avaliacoes', nome: 'avaliacoes', largura: 1280, altura: 820 });
+        this.notificacoes = new JanelaApp_1.JanelaApp({ pasta: 'notificacoes', nome: 'notificacoes', largura: 1280, altura: 820 });
+        this.portal = new JanelaApp_1.JanelaApp({ pasta: 'portal', nome: 'portal', largura: 1280, altura: 900 });
         this.bot = new JanelaApp_1.JanelaApp({ pasta: 'mensagens', nome: 'mensagens', largura: 1000, altura: 820 });
         this.aoEntrar = () => {
             this.menu.abrir();
@@ -50,6 +57,9 @@ class Aplicacao {
             this.planos.fechar();
             this.pagamentos.fechar();
             this.visitantes.fechar();
+            this.avaliacoes.fechar();
+            this.notificacoes.fechar();
+            this.portal.fechar();
             this.bot.fechar();
             this.menu.fechar();
         };
@@ -68,16 +78,21 @@ class Aplicacao {
                 if (process.platform === 'win32')
                     electron_1.app.setAppUserModelId('com.cotil.academia');
                 const botClima = new BotClima_1.BotClimaServico();
+                const notificacaoServico = new NotificacaoBackend_1.NotificacaoServico();
+                const botVencimento = new BotVencimento_1.BotVencimentoServico(notificacaoServico);
                 new AutenticacaoBackend_1.AutenticacaoIpc(new AutenticacaoBackend_1.AutenticacaoServico(), this.sessao, this.aoEntrar, this.aoSair).registrar();
                 new CepBackend_1.CepIpc(this.sessao).registrar();
                 new ClimaBackend_1.ClimaIpc(this.sessao).registrar();
                 new BotClima_1.BotClimaIpc(this.sessao, botClima).registrar();
                 new AlunoBackend_1.AlunoIpc(this.sessao).registrar();
                 new AulaBackend_1.AulaIpc(this.sessao).registrar();
+                new AvaliacaoBackend_1.AvaliacaoIpc(this.sessao).registrar();
+                new PresencaBackend_1.PresencaResumoIpc(this.sessao).registrar();
                 new PlanosBackend_1.PlanoIpc(this.sessao).registrar();
                 new PlanosBackend_1.AssinaturaIpc(this.sessao).registrar();
                 new PagamentoBackend_1.PagamentoIpc(this.sessao).registrar();
                 new VisitanteBackend_1.VisitanteIpc(this.sessao).registrar();
+                new NotificacaoBackend_1.NotificacaoIpc(this.sessao, botVencimento, notificacaoServico).registrar();
                 new FuncionarioBackend_1.FuncionarioIpc(this.sessao).registrar();
                 new FuncionarioBackend_1.ModalidadeIpc(this.sessao).registrar();
                 new MenuBackend_1.MenuIpc(this.sessao, {
@@ -86,16 +101,23 @@ class Aplicacao {
                     funcionarios: () => this.funcionarios.abrir(),
                     alunos: () => this.alunos.abrir(),
                     aulas: () => this.aulas.abrir(),
+                    avaliacoes: () => this.avaliacoes.abrir(),
                     planos: () => this.planos.abrir(),
                     pagamentos: () => this.pagamentos.abrir(),
                     visitantes: () => this.visitantes.abrir(),
+                    notificacoes: () => this.notificacoes.abrir(),
+                    portal: () => this.portal.abrir(),
                     bot: () => this.bot.abrir()
                 }, this.aoVoltar).registrar();
                 new RelatorioBackend_1.RelatorioIpc(this.sessao).registrar();
                 new UsuarioBackend_1.UsuarioIpc(this.sessao).registrar();
                 this.abrirInicial();
                 botClima.iniciar();
-                electron_1.app.on('before-quit', () => botClima.encerrar());
+                botVencimento.iniciar();
+                electron_1.app.on('before-quit', () => {
+                    botClima.encerrar();
+                    botVencimento.encerrar();
+                });
                 electron_1.app.on('activate', this.abrirInicial);
             });
             electron_1.app.on('window-all-closed', () => {

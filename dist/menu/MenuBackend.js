@@ -13,9 +13,12 @@ class MenuIpc {
             { id: 'funcionarios', titulo: 'Funcionários', descricao: 'Instrutores e equipe', perfis: ['admin'] },
             { id: 'alunos', titulo: 'Alunos', descricao: 'Cadastro e consulta de alunos', perfis: ['admin', 'instrutor'] },
             { id: 'aulas', titulo: 'Aulas', descricao: 'Agenda, inscrições e presenças', perfis: ['admin', 'instrutor', 'aluno'] },
+            { id: 'avaliacoes', titulo: 'Avaliações físicas', descricao: 'Medidas, histórico e evolução dos alunos', perfis: ['admin', 'instrutor'] },
             { id: 'planos', titulo: 'Planos e assinaturas', descricao: 'Planos contratados pelos alunos', perfis: ['admin'] },
             { id: 'pagamentos', titulo: 'Pagamentos', descricao: 'Mensalidades e cobranças', perfis: ['admin'] },
             { id: 'visitantes', titulo: 'Visitantes', descricao: 'Aulas experimentais e visitas', perfis: ['admin', 'instrutor'] },
+            { id: 'notificacoes', titulo: 'Notificações', descricao: 'Histórico dos lembretes de vencimento', perfis: ['admin'] },
+            { id: 'portal', titulo: 'Meu painel', descricao: 'Minhas medidas, frequência e avisos', perfis: ['aluno'] },
             { id: 'usuarios', titulo: 'Usuários', descricao: 'Cadastro e consulta de usuários', perfis: ['admin'] }
         ];
         this.registrar = () => {

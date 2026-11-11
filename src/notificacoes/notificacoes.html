@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Notificações</title>
+  <style>
+    :root {
+      --primaria-900: #111827;
+      --primaria-800: #1f2937;
+      --primaria-700: #374151;
+      --primaria-600: #4b5563;
+      --primaria-500: #6b7280;
+      --secundaria: #10b981;
+      --secundaria-hover: #059669;
+      --secundaria-suave: #ecfdf5;
+      --secundaria-borda: #a7f3d0;
+      --bg-pagina: #f9fafb;
+      --bg-card: #ffffff;
+      --cinza-200: #e5e7eb;
+      --cinza-100: #f3f4f6;
+      --erro: #b91c1c;
+      --aviso: #92400e;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--fonte); background: var(--bg-pagina); color: var(--primaria-900); line-height: 1.5; }
+    header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; background: var(--primaria-800); color: #ffffff; padding: 14px 28px; border-bottom: 3px solid var(--secundaria); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12); }
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .marca-logo { width: 34px; height: 34px; flex: none; display: grid; place-items: center; background: var(--secundaria); border-radius: 8px; }
+    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cinza-200); }
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .voltar { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit; color: #ffffff; background: transparent; border: 1px solid var(--primaria-500); border-radius: 8px; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
+    .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+    .voltar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    main { padding: 28px 32px 40px; max-width: 1280px; margin: 0 auto; display: grid; gap: 20px; }
+    .painel { background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-card); padding: 24px; box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05); }
+    .situacao { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+    .situacao-item { padding: 14px 16px; background: var(--bg-pagina); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); }
+    .situacao-item span { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-500); }
+    .situacao-item strong { display: block; margin-top: 4px; font-size: 15px; color: var(--primaria-800); }
+    .situacao-item small { display: block; margin-top: 2px; font-size: 12px; color: var(--primaria-500); }
+    .situacao-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .situacao-topo h2 { margin: 0; }
+    .aviso-smtp { margin-top: 16px; padding: 12px 16px; font-size: 13px; color: var(--aviso); background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--raio-controle); }
+    .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--cinza-200); }
+    .campo { display: grid; gap: 6px; }
+    .campo span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); }
+    input, select { padding: 10px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
+    input:focus, select:focus { border-color: var(--secundaria); box-shadow: 0 0 0 3px var(--secundaria-suave); }
+    h2 { position: relative; margin: 0 0 16px; padding-left: 12px; font-size: 16px; font-weight: 700; color: var(--primaria-800); }
+    h2::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 16px; border-radius: 2px; background: var(--secundaria); }
+    .tabela { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; color: var(--primaria-600); background: var(--cinza-100); border-bottom: 1px solid var(--cinza-200); white-space: nowrap; }
+    tbody td { padding: 12px 14px; color: var(--primaria-700); border-bottom: 1px solid var(--cinza-200); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg-pagina); }
+    thead th:first-child, tbody td:first-child { padding-left: 0; }
+    thead th:last-child, tbody td:last-child { padding-right: 0; }
+    .col-data { white-space: nowrap; }
+    .col-dest strong { display: block; font-weight: 600; color: var(--primaria-800); }
+    .col-dest small { display: block; font-size: 12px; color: var(--primaria-500); }
+    .col-assunto { max-width: 320px; }
+    .col-assunto span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .col-erro { max-width: 220px; font-size: 12px; color: var(--erro); }
+    .col-erro span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .selo { display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid transparent; border-radius: 999px; white-space: nowrap; }
+    .selo.enviado { color: var(--secundaria-hover); background: var(--secundaria-suave); border-color: var(--secundaria-borda); }
+    .selo.falhou { color: var(--erro); background: #fef2f2; }
+    .selo.pendente { color: #1e40af; background: #eff6ff; }
+    .tipo { display: inline-block; padding: 3px 9px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--primaria-600); background: var(--cinza-100); border: 1px solid var(--cinza-200); border-radius: 999px; white-space: nowrap; }
+    .tipo.vencimento { color: var(--secundaria-hover); background: var(--secundaria-suave); border-color: var(--secundaria-borda); }
+    #status { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); min-height: 20px; }
+    #status.erro { color: var(--erro); }
+    .botao { padding: 10px 18px; font-size: 14px; font-family: inherit; font-weight: 600; color: #ffffff; background: var(--primaria-800); border: 1px solid var(--primaria-800); border-radius: var(--raio-controle); cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .botao:hover:not(:disabled) { background: var(--primaria-700); border-color: var(--primaria-700); }
+    .botao:disabled { opacity: 0.6; cursor: default; }
+    .botao.secundario { color: var(--primaria-700); background: var(--bg-card); border-color: var(--cinza-200); }
+    .botao.secundario:hover:not(:disabled) { background: var(--cinza-100); border-color: var(--cinza-200); }
+    .botao.perigo { background: #991b1b; border-color: #991b1b; }
+    .botao.perigo:hover:not(:disabled) { background: #7f1d1d; border-color: #7f1d1d; }
+    .botao.pequeno { padding: 6px 10px; font-size: 12px; }
+    .acoes-linha { display: flex; gap: 8px; flex-wrap: wrap; }
+    dialog { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 0; color: var(--primaria-900); background: var(--bg-card); border: 1px solid var(--cinza-200); border-top: 4px solid var(--secundaria); border-radius: var(--raio-card); box-shadow: 0 10px 25px rgba(17, 24, 39, 0.2); }
+    dialog.menor { width: min(520px, calc(100vw - 32px)); }
+    dialog::backdrop { background: rgba(17, 24, 39, 0.45); }
+    dialog h2 { margin: 24px 24px 0; }
+    .dialogo-conteudo { padding: 20px 24px 24px; }
+    .acoes { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .msg-erro { min-height: 20px; margin: 0; font-size: 13px; color: var(--erro); }
+    .detalhes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+    .detalhes dt { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-500); }
+    .detalhes dd { margin: 2px 0 0; color: var(--primaria-800); word-break: break-word; }
+    .detalhes .span2 { grid-column: 1 / -1; }
+    .mensagem { margin: 0; padding: 14px 16px; font-family: inherit; font-size: 13px; color: var(--primaria-700); background: var(--bg-pagina); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); white-space: pre-wrap; word-break: break-word; }
+    .oculto { display: none !important; }
+    @media (max-width: 900px) { .situacao { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 640px) { main { padding: 20px; } .situacao, .detalhes { grid-template-columns: 1fr; } .detalhes .span2 { grid-column: auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6.5 7.5v9" /><path d="M17.5 7.5v9" /><path d="M3.5 9.5v5" /><path d="M20.5 9.5v5" /><path d="M6.5 12h11" /></svg>
+      </span>
+      <span class="marca-texto"><strong>Cotil</strong><small>Academia</small></span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Notificações de vencimento</h1>
+  </header>
+  <main>
+    <section class="painel">
+      <div class="situacao-topo">
+        <h2>Envio automático de lembretes</h2>
+        <button id="atualizar" type="button" class="botao secundario">Atualizar situação</button>
+      </div>
+      <div class="situacao">
+        <div class="situacao-item"><span>Servidor de e-mail</span><strong id="situacao-smtp">Verificando...</strong><small id="situacao-remetente"></small></div>
+        <div class="situacao-item"><span>Última execução</span><strong id="situacao-ultima">—</strong><small id="situacao-proxima"></small></div>
+        <div class="situacao-item"><span>Antecedência</span><strong id="situacao-dias">—</strong><small>Antes do vencimento</small></div>
+        <div class="situacao-item"><span>Hoje</span><strong id="situacao-hoje">—</strong><small id="situacao-falhas"></small></div>
+      </div>
+      <div id="aviso-smtp" class="aviso-smtp oculto">
+        O envio está desativado até que SMTP_HOST, SMTP_USER, SMTP_PASS e SMTP_FROM sejam configurados no arquivo .env.
+        Enquanto isso, nenhuma notificação é registrada.
+      </div>
+    </section>
+
+    <section class="painel">
+      <div class="filtros">
+        <label class="campo">
+          <span>Tipo</span>
+          <select id="filtro-tipo">
+            <option value="">Todos</option>
+            <option value="vencimento">Vencimento</option>
+            <option value="chuva">Chuva</option>
+            <option value="experimental">Experimental</option>
+            <option value="geral">Geral</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Status</span>
+          <select id="filtro-status">
+            <option value="">Todos</option>
+            <option value="enviado">Enviado</option>
+            <option value="falhou">Falhou</option>
+            <option value="pendente">Pendente</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Buscar</span>
+          <input id="filtro-busca" type="search" maxlength="120" placeholder="Nome, e-mail ou assunto">
+        </label>
+        <button id="limpar-filtros" type="button" class="botao secundario">Limpar</button>
+      </div>
+      <h2>Histórico de notificações</h2>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Destinatário</th>
+              <th>Tipo</th>
+              <th>Assunto</th>
+              <th>Status</th>
+              <th>Erro</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+        </table>
+      </div>
+      <p id="status" role="status"></p>
+    </section>
+  </main>
+
+  <dialog id="dialogo-detalhe" aria-labelledby="titulo-detalhe">
+    <h2 id="titulo-detalhe">Notificação</h2>
+    <div class="dialogo-conteudo">
+      <dl id="detalhes" class="detalhes"></dl>
+      <h3 style="margin:20px 0 8px;font-size:14px;color:var(--primaria-800)">Mensagem</h3>
+      <pre id="mensagem" class="mensagem"></pre>
+      <div class="acoes">
+        <button id="fechar-detalhe" type="button" class="botao secundario">Fechar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-excluir" class="menor" aria-labelledby="titulo-excluir">
+    <h2 id="titulo-excluir">Excluir notificação</h2>
+    <div class="dialogo-conteudo">
+      <p id="texto-excluir" style="margin:0;color:var(--primaria-700)"></p>
+      <p id="erro-excluir" class="msg-erro" role="alert" style="margin-top:10px"></p>
+      <div class="acoes">
+        <button id="cancelar-excluir" type="button" class="botao secundario">Cancelar</button>
+        <button id="confirmar-excluir" type="button" class="botao perigo">Excluir</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
