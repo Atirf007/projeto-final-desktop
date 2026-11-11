@@ -2,6 +2,7 @@ import { ipcMain } from 'electron'
 import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
+import { gerarMensalidades } from '../pagamentos/Mensalidades'
 import { Sessao } from '../Sessao'
 
 export type TipoPlano = 'mensal' | 'trimestral' | 'semestral' | 'anual'
@@ -582,8 +583,15 @@ class AssinaturaRepository {
         values: [dados.alunoId, dados.planoId, dados.dataInicio, dataFim, valor],
         timeout: TIMEOUT
       })
+      const assinaturaId = Number(resultado.insertId)
+      await gerarMensalidades(conexao, {
+        assinaturaId,
+        dataInicio: dados.dataInicio,
+        valorContratado: valor,
+        duracaoMeses: plano.duracaoMeses
+      })
       await conexao.commit()
-      return Number(resultado.insertId)
+      return assinaturaId
     } catch (erro) {
       await conexao.rollback().catch(() => undefined)
       throw erro
@@ -637,6 +645,15 @@ class AssinaturaRepository {
         values: [...valores, dados.id],
         timeout: TIMEOUT
       })
+      if (dados.status === 'cancelada') {
+        await conexao.query({
+          sql: `UPDATE pagamentos SET status = 'cancelado', atualizado_em = NOW()
+                WHERE assinatura_id = ? AND status IN ('pendente', 'atrasado')`,
+          values: [dados.id],
+          timeout: TIMEOUT
+        })
+      }
+
       await conexao.commit()
       return true
     } catch (erro) {
@@ -670,6 +687,12 @@ class AssinaturaRepository {
       if (Number(pagamentos[0].total) > 0) {
         await conexao.query({
           sql: "UPDATE assinaturas SET status = 'cancelada', atualizado_em = NOW() WHERE id = ?",
+          values: [id],
+          timeout: TIMEOUT
+        })
+        await conexao.query({
+          sql: `UPDATE pagamentos SET status = 'cancelado', atualizado_em = NOW()
+                WHERE assinatura_id = ? AND status IN ('pendente', 'atrasado')`,
           values: [id],
           timeout: TIMEOUT
         })
@@ -735,8 +758,15 @@ class AssinaturaRepository {
         values: [alunoId, planoId, dataInicio, dataFim, plano.valor],
         timeout: TIMEOUT
       })
+      const assinaturaId = Number(resultado.insertId)
+      await gerarMensalidades(conexao, {
+        assinaturaId,
+        dataInicio,
+        valorContratado: plano.valor,
+        duracaoMeses: plano.duracaoMeses
+      })
       await conexao.commit()
-      return Number(resultado.insertId)
+      return assinaturaId
     } catch (erro) {
       await conexao.rollback().catch(() => undefined)
       throw erro
