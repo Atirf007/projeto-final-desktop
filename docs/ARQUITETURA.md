@@ -342,7 +342,7 @@ Serve para evitar reenvio duplicado, mostrar ao gestor o que foi enviado e regis
 | `presencas` | check-in | histórico | corrigir origem/data | excluir (admin) | Tela Presenças |
 | `avaliacoes` | instrutor/admin | histórico/ficha | editar | excluir | Tela Avaliações |
 | `visitantes` | admin/instrutor | lista | editar status | excluir | Tela Visitantes |
-| `notificacoes` | sistema/admin | lista | reenviar/status | excluir (admin) | Tela Notificações |
+| `notificacoes` | sistema/admin | lista | status automático | excluir (admin) | Tela Notificações |
 
 **Delete lógico x físico:** entidades com histórico financeiro (`usuarios`, `alunos`, `instrutores`, `planos`, `modalidades`) usam `ativo = 0` como “excluir” padrão para não apagar histórico. Entidades sem histórico crítico (`aulas`, `inscricoes_aula`, `presencas`, `avaliacoes`, `visitantes`, `notificacoes`) podem ter DELETE físico. A UI sempre oferece a ação “Excluir”; o service decide o comportamento e registra a ação.
 
@@ -432,7 +432,7 @@ Orquestra repositórios, valida entradas, aplica permissões de domínio e chama
 | `PresencaService` | Check-in, trava de 1 aula/dia, lista de presença, assiduidade |
 | `AvaliacaoService` | CRUD de avaliações, cálculo de IMC e série de evolução |
 | `VisitanteService` | CRUD de visitantes e conversão em aluno (extra) |
-| `NotificacaoService` | Criar/logar notificações, enviar aviso de vencimento e de chuva, reenviar |
+| `NotificacaoService` | Criar/logar notificações, enviar aviso de vencimento e de chuva automaticamente |
 | `DashboardService` | Agregar KPIs do gestor |
 | `ClimaService` | Consultar Open-Meteo, calcular risco de chuva, cache |
 | `CepService` | Consultar ViaCEP, validar CEP, normalizar endereço |

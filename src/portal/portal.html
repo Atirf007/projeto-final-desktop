@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Meu painel</title>
+  <style>
+    :root {
+      --primaria-900: #111827;
+      --primaria-800: #1f2937;
+      --primaria-700: #374151;
+      --primaria-600: #4b5563;
+      --primaria-500: #6b7280;
+      --secundaria: #10b981;
+      --secundaria-hover: #059669;
+      --secundaria-suave: #ecfdf5;
+      --secundaria-borda: #a7f3d0;
+      --bg-pagina: #f9fafb;
+      --bg-card: #ffffff;
+      --cinza-200: #e5e7eb;
+      --cinza-100: #f3f4f6;
+      --erro: #b91c1c;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--fonte); background: var(--bg-pagina); color: var(--primaria-900); line-height: 1.5; }
+    header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; background: var(--primaria-800); color: #ffffff; padding: 14px 28px; border-bottom: 3px solid var(--secundaria); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12); }
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .marca-logo { width: 34px; height: 34px; flex: none; display: grid; place-items: center; background: var(--secundaria); border-radius: 8px; }
+    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cinza-200); }
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .voltar { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit; color: #ffffff; background: transparent; border: 1px solid var(--primaria-500); border-radius: 8px; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
+    .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+    .voltar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    main { padding: 28px 32px 40px; max-width: 1280px; margin: 0 auto; display: grid; gap: 20px; }
+    .boas-vindas { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .boas-vindas h2 { margin: 0; font-size: 24px; letter-spacing: -0.02em; color: var(--primaria-800); }
+    .boas-vindas p { margin: 4px 0 0; font-size: 13px; color: var(--primaria-500); }
+    .cartoes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .cartao { padding: 20px; background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-card); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05); }
+    .cartao > span { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-500); }
+    .cartao strong.valor { display: block; margin-top: 6px; font-size: 22px; letter-spacing: -0.02em; color: var(--primaria-900); }
+    .cartao small { display: block; margin-top: 4px; font-size: 12px; color: var(--primaria-500); }
+    .barra { height: 8px; margin-top: 12px; overflow: hidden; background: var(--cinza-100); border-radius: 999px; }
+    .barra div { height: 100%; background: var(--secundaria); border-radius: 999px; transition: width 0.3s ease; }
+    .selo { display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid transparent; border-radius: 999px; white-space: nowrap; }
+    .selo.ativa, .selo.enviado { color: var(--secundaria-hover); background: var(--secundaria-suave); border-color: var(--secundaria-borda); }
+    .selo.vencida, .selo.cancelada, .selo.falhou { color: var(--erro); background: #fef2f2; }
+    .selo.suspensa, .selo.pendente { color: #92400e; background: #fffbeb; }
+    .grade { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    .painel { background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-card); padding: 24px; box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05); }
+    h3 { position: relative; margin: 0 0 16px; padding-left: 12px; font-size: 16px; font-weight: 700; color: var(--primaria-800); }
+    h3::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 16px; border-radius: 2px; background: var(--secundaria); }
+    .tabela { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; color: var(--primaria-600); background: var(--cinza-100); border-bottom: 1px solid var(--cinza-200); white-space: nowrap; }
+    tbody td { padding: 12px 14px; color: var(--primaria-700); border-bottom: 1px solid var(--cinza-200); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg-pagina); }
+    thead th:first-child, tbody td:first-child { padding-left: 0; }
+    thead th:last-child, tbody td:last-child { padding-right: 0; }
+    .destaque { font-weight: 700; color: var(--primaria-800); }
+    .grafico { width: 100%; margin-bottom: 20px; overflow-x: auto; }
+    .grafico svg { display: block; width: 100%; height: 220px; }
+    .vazio { display: grid; place-items: center; min-height: 120px; padding: 20px; font-size: 13px; color: var(--primaria-500); background: var(--bg-pagina); border: 1px dashed var(--cinza-200); border-radius: var(--raio-controle); }
+    .avisos { display: grid; gap: 10px; }
+    .aviso { padding: 12px 14px; background: var(--bg-pagina); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); }
+    .aviso-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .aviso-topo strong { font-size: 13px; color: var(--primaria-800); }
+    .aviso small { display: block; margin-top: 3px; font-size: 12px; color: var(--primaria-500); }
+    .aviso p { margin: 8px 0 0; font-size: 12px; color: var(--primaria-600); white-space: pre-wrap; }
+    .aviso details summary { margin-top: 8px; font-size: 12px; font-weight: 600; color: var(--secundaria-hover); cursor: pointer; }
+    .dados { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 20px; }
+    .dados dt { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-500); }
+    .dados dd { margin: 2px 0 0; color: var(--primaria-800); word-break: break-word; }
+    .dados .span3 { grid-column: 1 / -1; }
+    #status { margin: 0; font-size: 13px; color: var(--primaria-500); min-height: 20px; }
+    #status.erro { color: var(--erro); }
+    .oculto { display: none !important; }
+    @media (max-width: 1000px) { .cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grade { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { main { padding: 20px; } .cartoes { grid-template-columns: 1fr; } .dados { grid-template-columns: 1fr; } .dados .span3 { grid-column: auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6.5 7.5v9" /><path d="M17.5 7.5v9" /><path d="M3.5 9.5v5" /><path d="M20.5 9.5v5" /><path d="M6.5 12h11" /></svg>
+      </span>
+      <span class="marca-texto"><strong>Cotil</strong><small>Academia</small></span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Meu painel</h1>
+  </header>
+  <main>
+    <div class="boas-vindas">
+      <div>
+        <h2 id="nome-aluno">Olá!</h2>
+        <p id="email-aluno"></p>
+      </div>
+      <p id="status" role="status"></p>
+    </div>
+
+    <section class="cartoes">
+      <article class="cartao">
+        <span>Meu plano</span>
+        <strong class="valor" id="plano-nome">—</strong>
+        <div style="margin-top:8px"><span id="plano-status" class="selo">—</span></div>
+        <small id="plano-periodo"></small>
+      </article>
+      <article class="cartao">
+        <span>Frequência nos últimos 90 dias</span>
+        <strong class="valor" id="freq-percentual">0%</strong>
+        <div class="barra"><div id="freq-barra" style="width:0%"></div></div>
+        <small id="freq-total"></small>
+      </article>
+      <article class="cartao">
+        <span>Última avaliação</span>
+        <strong class="valor" id="ultima-peso">—</strong>
+        <small id="ultima-detalhe"></small>
+        <small id="ultima-data"></small>
+      </article>
+    </section>
+
+    <div class="grade">
+      <section class="painel">
+        <h3>Minhas medidas</h3>
+        <div id="grafico" class="grafico oculto"></div>
+        <div id="grafico-vazio" class="vazio">Você ainda não tem avaliações físicas registradas.</div>
+        <div class="tabela">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Peso</th>
+                <th>IMC</th>
+                <th>% Gordura</th>
+                <th>Cintura</th>
+              </tr>
+            </thead>
+            <tbody id="corpo-medidas"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="painel">
+        <h3>Meus avisos</h3>
+        <div id="lista-avisos" class="avisos"></div>
+        <div id="avisos-vazio" class="vazio">Nenhum aviso recebido até agora.</div>
+      </section>
+    </div>
+
+    <section class="painel">
+      <h3>Minhas presenças recentes</h3>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Aula</th>
+              <th>Origem</th>
+            </tr>
+          </thead>
+          <tbody id="corpo-presencas"></tbody>
+        </table>
+      </div>
+      <div id="presencas-vazio" class="vazio">Nenhuma presença registrada nos últimos 90 dias.</div>
+    </section>
+
+    <section class="painel">
+      <h3>Meus dados</h3>
+      <dl id="dados-aluno" class="dados"></dl>
+    </section>
+  </main>
+</body>
+</html>
