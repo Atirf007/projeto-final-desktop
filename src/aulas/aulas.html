@@ -168,6 +168,7 @@
         </label>
         <button id="limpar-filtros" type="button" class="botao secundario">Limpar</button>
         <span class="espaco"></span>
+        <button id="abrir-exercicios" type="button" class="botao secundario oculto">Biblioteca de exercícios</button>
         <button id="nova-aula" type="button" class="botao oculto">Nova aula</button>
       </div>
       <h2>Agenda de aulas</h2>
@@ -219,6 +220,7 @@
           </select>
         </label>
       </div>
+      <p id="msg-feriado" class="msg-info" role="status"></p>
       <p id="erro-formulario" class="msg-erro" role="alert"></p>
       <div class="acoes">
         <button id="cancelar-form" type="button" class="botao secundario">Cancelar</button>
@@ -286,6 +288,21 @@
       <div class="acoes">
         <button id="cancelar-excluir" type="button" class="botao secundario">Cancelar</button>
         <button id="confirmar-excluir" type="button" class="botao perigo">Excluir</button>
+      </div>
+    </div>
+  </dialog>
+  <dialog id="dialogo-exercicios" aria-labelledby="titulo-exercicios">
+    <h2 id="titulo-exercicios">Biblioteca de exercícios (Wger)</h2>
+    <div class="dialogo-conteudo">
+      <p style="margin:0 0 12px;font-size:13px;color:var(--primaria-600)">Consulte o catálogo público para apoiar o planejamento das aulas.</p>
+      <div class="linha-inscrever" style="margin-top:0">
+        <input id="busca-exercicios" type="search" maxlength="80" autocomplete="off" placeholder="Ex.: supino, agachamento, tríceps" aria-label="Buscar exercício">
+        <button id="pesquisar-exercicios" type="button" class="botao">Pesquisar</button>
+      </div>
+      <p id="msg-exercicios" class="msg-info" role="status"></p>
+      <div id="lista-exercicios" class="lista-inscritos"></div>
+      <div class="acoes">
+        <button id="fechar-exercicios" type="button" class="botao secundario">Fechar</button>
       </div>
     </div>
   </dialog>

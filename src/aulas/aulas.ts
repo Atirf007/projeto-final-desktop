@@ -76,6 +76,25 @@ type ResultadoClima =
     }
   | { ok: false; mensagem: string }
 
+type Feriado = { data: string; nome: string; tipo?: string }
+
+type ResultadoFeriado =
+  | { ok: true; data: string; feriado: Feriado | null }
+  | { ok: false; mensagem: string }
+
+type ExercicioExterno = {
+  id: number
+  nome: string
+  descricao: string
+  musculos: string[]
+  equipamento: string[]
+  imagemUrl?: string
+}
+
+type ResultadoExercicios =
+  | { ok: true; exercicios: ExercicioExterno[] }
+  | { ok: false; mensagem: string }
+
 class AulasView {
   private usuario: UsuarioSessao | null = null
   private aulas: Aula[] = []
@@ -85,6 +104,7 @@ class AulasView {
   private instrutorId: number | null = null
   private alunosCarregados = false
   private climaConsulta = 0
+  private feriadoConsulta = 0
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -326,6 +346,9 @@ class AulasView {
     this.el<HTMLFormElement>('formulario').reset()
     this.el<HTMLInputElement>('aula-id').value = ''
     this.el('erro-formulario').textContent = ''
+    this.el('msg-feriado').textContent = ''
+    this.el('msg-feriado').className = 'msg-info'
+    this.feriadoConsulta += 1
     this.el<HTMLSelectElement>('modalidade').value = ''
     this.el<HTMLSelectElement>('instrutor').value = ''
     this.el<HTMLSelectElement>('local').value = 'interna'
@@ -343,6 +366,7 @@ class AulasView {
     this.aplicarInstrutorFixo()
     this.el<HTMLDialogElement>('dialogo-form').showModal()
     this.el<HTMLInputElement>('titulo').focus()
+    void this.verificarFeriado()
   }
 
   private abrirEdicao = async (id: number): Promise<void> => {
@@ -368,6 +392,7 @@ class AulasView {
       this.el('campo-status').classList.remove('oculto')
       this.aplicarInstrutorFixo()
       this.el<HTMLDialogElement>('dialogo-form').showModal()
+      void this.verificarFeriado()
     } catch (erro) {
       console.error(erro)
       this.statusPagina('Não foi possível carregar a aula.', true)
@@ -414,6 +439,12 @@ class AulasView {
     }
     if (!Number.isInteger(dados.capacidadeMax) || dados.capacidadeMax < 1 || dados.capacidadeMax > 500) {
       erro.textContent = 'Informe uma capacidade entre 1 e 500 alunos.'
+      return
+    }
+
+    const feriado = await this.verificarFeriado()
+    if (feriado) {
+      erro.textContent = `Não é possível agendar aula em feriado nacional: ${feriado.nome}. Escolha outra data.`
       return
     }
 
@@ -635,6 +666,109 @@ class AulasView {
       msg.className = 'msg-info erro'
       msg.textContent = 'Não foi possível consultar a previsão do tempo.'
     }
+  }
+
+  private verificarFeriado = async (): Promise<Feriado | null> => {
+    const msg = this.el('msg-feriado')
+    const data = this.el<HTMLInputElement>('data-hora').value.slice(0, 10)
+    msg.className = 'msg-info'
+    if (!data) {
+      msg.textContent = ''
+      return null
+    }
+
+    const token = ++this.feriadoConsulta
+    msg.textContent = 'Consultando feriados nacionais...'
+    try {
+      const resultado = (await ipcRenderer.invoke('feriados:verificar', { data })) as ResultadoFeriado
+      if (token !== this.feriadoConsulta) return null
+      if (!resultado.ok) {
+        msg.className = 'msg-info erro'
+        msg.textContent = resultado.mensagem
+        return null
+      }
+      if (resultado.feriado) {
+        msg.className = 'msg-info aviso'
+        msg.textContent = `Atenção: ${this.dataBr(resultado.data)} é feriado nacional (${resultado.feriado.nome}). Escolha outra data.`
+        return resultado.feriado
+      }
+      msg.className = 'msg-info sucesso'
+      msg.textContent = `${this.dataBr(resultado.data)} não é feriado nacional.`
+      return null
+    } catch (erro) {
+      if (token !== this.feriadoConsulta) return null
+      console.error(erro)
+      msg.className = 'msg-info erro'
+      msg.textContent = 'Não foi possível consultar os feriados nacionais.'
+      return null
+    }
+  }
+
+  private renderExercicios = (exercicios: ExercicioExterno[]): void => {
+    const lista = this.el('lista-exercicios')
+    lista.replaceChildren()
+
+    for (const exercicio of exercicios) {
+      const linha = this.criar('div', 'inscrito')
+      const info = this.criar('div', 'inscrito-nome')
+      const texto = document.createElement('div')
+      const nome = document.createElement('strong')
+      nome.textContent = exercicio.nome
+
+      const detalhe = document.createElement('small')
+      const complemento = [
+        exercicio.musculos.length ? `Músculos: ${exercicio.musculos.join(', ')}` : '',
+        exercicio.equipamento.length ? `Equipamento: ${exercicio.equipamento.join(', ')}` : ''
+      ].filter(Boolean).join(' · ')
+      detalhe.textContent = complemento || exercicio.descricao || 'Sem descrição disponível.'
+      detalhe.style.display = 'block'
+      detalhe.style.fontWeight = '400'
+      detalhe.style.color = 'var(--primaria-600)'
+      detalhe.style.whiteSpace = 'normal'
+
+      texto.append(nome, detalhe)
+      info.append(texto)
+      linha.append(info)
+      lista.append(linha)
+    }
+  }
+
+  private buscarExercicios = async (): Promise<void> => {
+    const msg = this.el('msg-exercicios')
+    const termo = this.el<HTMLInputElement>('busca-exercicios').value.trim()
+    msg.className = 'msg-info'
+    msg.textContent = 'Consultando catálogo Wger...'
+
+    try {
+      const resultado = (await ipcRenderer.invoke('exercicios:buscar', {
+        termo,
+        limite: 30
+      })) as ResultadoExercicios
+      if (!resultado.ok) {
+        msg.className = 'msg-info erro'
+        msg.textContent = resultado.mensagem
+        return
+      }
+
+      this.renderExercicios(resultado.exercicios)
+      if (!resultado.exercicios.length) {
+        msg.textContent = 'Nenhum exercício encontrado. Tente outro termo.'
+        return
+      }
+      msg.className = 'msg-info sucesso'
+      msg.textContent = `${resultado.exercicios.length} exercício(s) encontrado(s).`
+    } catch (erro) {
+      console.error(erro)
+      msg.className = 'msg-info erro'
+      msg.textContent = 'Não foi possível consultar o catálogo de exercícios.'
+    }
+  }
+
+  private abrirExercicios = (): void => {
+    const dialogo = this.el<HTMLDialogElement>('dialogo-exercicios')
+    if (!dialogo.open) dialogo.showModal()
+    this.el<HTMLInputElement>('busca-exercicios').focus()
+    void this.buscarExercicios()
   }
 
   private marcarPresenca = async (inscricaoId: number, presente: boolean): Promise<void> => {
@@ -880,11 +1014,21 @@ class AulasView {
 
     const gestor = this.gestor()
     this.el('nova-aula').classList.toggle('oculto', !gestor)
+    this.el('abrir-exercicios').classList.toggle('oculto', !gestor)
     if (!gestor) this.el('campo-filtro-instrutor').classList.add('oculto')
     if (this.admin()) this.el('campo-filtro-instrutor').classList.remove('oculto')
 
     this.el('voltar').addEventListener('click', () => void this.voltar())
     this.el('nova-aula').addEventListener('click', this.abrirNovo)
+    this.el('abrir-exercicios').addEventListener('click', this.abrirExercicios)
+    this.el('pesquisar-exercicios').addEventListener('click', () => void this.buscarExercicios())
+    this.el('fechar-exercicios').addEventListener('click', () => this.el<HTMLDialogElement>('dialogo-exercicios').close())
+    this.el<HTMLInputElement>('busca-exercicios').addEventListener('keydown', (evento) => {
+      if (evento.key !== 'Enter') return
+      evento.preventDefault()
+      void this.buscarExercicios()
+    })
+    this.el('data-hora').addEventListener('change', () => void this.verificarFeriado())
     this.el('limpar-filtros').addEventListener('click', this.limparFiltros)
     this.el('filtro-data').addEventListener('change', () => void this.carregar())
     this.el('filtro-modalidade').addEventListener('change', () => void this.carregar())
