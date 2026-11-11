@@ -4,9 +4,11 @@ const electron_1 = require("electron");
 class BotView {
     constructor() {
         this.el = (id) => document.getElementById(id);
+        this.usuario = null;
         this.acaoEmAndamento = false;
         this.atualizando = false;
         this.timerAtualizacao = null;
+        this.admin = () => this.usuario?.perfil === 'admin';
         this.criar = (tag, classe, texto) => {
             const elemento = document.createElement(tag);
             if (classe)
@@ -18,6 +20,12 @@ class BotView {
         this.dataBr = (iso) => {
             const [ano, mes, dia] = iso.split('-');
             return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso;
+        };
+        this.diaSemana = (iso) => {
+            const [ano, mes, dia] = iso.split('-').map(Number);
+            if (!ano || !mes || !dia)
+                return '';
+            return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR', { weekday: 'long' });
         };
         this.dataHora = (iso) => {
             const data = new Date(iso);
@@ -43,6 +51,7 @@ class BotView {
             const ocupado = this.acaoEmAndamento || verificando;
             this.el('alternar-bot').disabled = ocupado;
             this.el('salvar-intervalo').disabled = ocupado;
+            this.el('salvar-limiar').disabled = ocupado;
             this.el('verificar').disabled = ocupado;
         };
         this.renderBot = (estado) => {
@@ -51,8 +60,12 @@ class BotView {
             selo.className = `selo ${estado.ativo ? 'selo-seco' : 'selo-inativo'}`;
             const descricao = this.el('bot-descricao');
             descricao.textContent = estado.ativo
-                ? `Verificando a previsão a cada ${estado.intervaloMinutos} ${estado.intervaloMinutos === 1 ? 'minuto' : 'minutos'}.`
-                : 'O bot está desativado. Nenhum aviso será enviado automaticamente.';
+                ? `Verificando a previsão a cada ${estado.intervaloMinutos} ${estado.intervaloMinutos === 1 ? 'minuto' : 'minutos'}. ` +
+                    `Avisos apenas com chance de chuva a partir de ${estado.limiarChuva}%.`
+                : `O bot está desativado. Nenhum aviso será enviado automaticamente. Limite atual: ${estado.limiarChuva}% de chance de chuva.`;
+            const limiar = this.el('limiar-chuva');
+            if (document.activeElement !== limiar)
+                limiar.value = String(estado.limiarChuva);
             const alternar = this.el('alternar-bot');
             alternar.textContent = estado.ativo ? 'Desativar bot' : 'Ativar bot';
             alternar.className = estado.ativo ? 'perigo' : '';
@@ -76,17 +89,32 @@ class BotView {
             email.className = estado.emailConfigurado ? '' : 'info-alerta';
             this.atualizarBotoes();
         };
-        this.renderPrevisao = (local, previsao) => {
-            this.el('local').textContent = `Previsão para amanhã em ${local}`;
+        this.renderPrevisao = (local, previsao, hoje) => {
+            this.el('local').textContent = `Previsão de amanhã em ${local}`;
             const selo = this.criar('span', previsao.vaiChover ? 'selo selo-chuva' : 'selo selo-seco', previsao.vaiChover ? 'Chuva prevista' : 'Sem chuva prevista');
-            const titulo = this.criar('strong', 'titulo-clima', `Previsão para ${this.dataBr(previsao.data)}`);
+            const titulo = this.criar('strong', 'titulo-clima', `Amanhã, ${this.dataBr(previsao.data)} (${this.diaSemana(previsao.data)})`);
             const descricao = this.criar('span', 'descricao-clima', previsao.descricao);
             const linha = this.criar('div', 'linha-clima');
             linha.append(selo, titulo, descricao);
             const metricas = this.criar('div', 'metricas');
-            metricas.append(this.metrica('Temperatura mínima', this.temperatura(previsao.temperaturaMinC)), this.metrica('Temperatura máxima', this.temperatura(previsao.temperaturaMaxC)), this.metrica('Probabilidade de chuva', `${Math.round(previsao.probabilidadeChuva)}%`), this.metrica('Precipitação prevista', `${previsao.precipitacaoMm.toFixed(1)} mm`));
+            const rotuloChuva = previsao.janela ? 'Chance de chuva na aula' : 'Probabilidade de chuva';
+            metricas.append(this.metrica('Temperatura mínima', this.temperatura(previsao.temperaturaMinC)), this.metrica('Temperatura máxima', this.temperatura(previsao.temperaturaMaxC)), this.metrica(rotuloChuva, `${Math.round(previsao.probabilidadeChuva)}%`), this.metrica('Precipitação prevista', `${previsao.precipitacaoMm.toFixed(1)} mm`));
+            const probabilidadeDia = previsao.probabilidadeDia ?? previsao.probabilidadeChuva;
+            if (previsao.janela && probabilidadeDia !== previsao.probabilidadeChuva) {
+                const pico = previsao.horarioPico ? ` às ${previsao.horarioPico}` : '';
+                metricas.append(this.metrica('Pico do dia', `${Math.round(probabilidadeDia)}%${pico}`));
+            }
             const cartao = this.criar('div', 'cartao-clima');
             cartao.append(linha, metricas);
+            if (previsao.janela) {
+                cartao.append(this.criar('span', 'nota-previsao', `Horário considerado na decisão: ${previsao.janela} (aula de amanhã).`));
+            }
+            if (hoje) {
+                const comparacao = this.criar('div', 'comparacao-dias');
+                comparacao.append(this.criar('span', undefined, `Hoje (${this.dataBr(hoje.data)}): ${Math.round(hoje.probabilidadeDia ?? hoje.probabilidadeChuva)}% de chance de chuva`), this.criar('span', undefined, `Amanhã (${this.dataBr(previsao.data)}): ${Math.round(probabilidadeDia)}% de chance de chuva`));
+                cartao.append(comparacao);
+            }
+            cartao.append(this.criar('span', 'nota-previsao', 'O bot avisa com 1 dia de antecedência, por isso a decisão de enviar usa a previsão de amanhã.'));
             this.el('previsao').replaceChildren(cartao);
         };
         this.renderAviso = (resultado) => {
@@ -141,7 +169,7 @@ class BotView {
                 status.className = 'status erro';
                 return;
             }
-            this.renderPrevisao(resultado.local, resultado.previsao);
+            this.renderPrevisao(resultado.local, resultado.previsao, resultado.hoje);
             this.renderAviso(resultado);
             const falhou = resultado.mensagem?.status === 'falhou';
             status.textContent = resultado.motivo;
@@ -230,6 +258,14 @@ class BotView {
             }
             await this.executarAcao(() => electron_1.ipcRenderer.invoke('bot:definir-intervalo', valor), 'Salvando intervalo...', 'Intervalo atualizado.');
         };
+        this.salvarLimiar = async () => {
+            const valor = Number(this.el('limiar-chuva').value);
+            if (!Number.isInteger(valor) || valor < 0 || valor > 100) {
+                this.mostrarStatusBot('Informe uma porcentagem inteira entre 0 e 100.', 'erro');
+                return;
+            }
+            await this.executarAcao(() => electron_1.ipcRenderer.invoke('bot:definir-limiar', valor), 'Salvando limite de chuva...', `Limite atualizado: o bot enviará avisos quando a chance de chuva for de ${valor}% ou mais.`);
+        };
         this.verificarAgora = async () => {
             await this.executarAcao(() => electron_1.ipcRenderer.invoke('bot:verificar'), 'Consultando a previsão do tempo...', '');
         };
@@ -248,8 +284,16 @@ class BotView {
             }
         };
         this.iniciar = async () => {
+            try {
+                this.usuario = (await electron_1.ipcRenderer.invoke('auth:me'));
+            }
+            catch {
+                this.usuario = null;
+            }
+            this.el('controle-limiar').hidden = !this.admin();
             this.el('alternar-bot').addEventListener('click', this.alternarBot);
             this.el('salvar-intervalo').addEventListener('click', this.salvarIntervalo);
+            this.el('salvar-limiar').addEventListener('click', this.salvarLimiar);
             this.el('verificar').addEventListener('click', this.verificarAgora);
             this.el('voltar').addEventListener('click', this.voltar);
             await this.carregarEstado();

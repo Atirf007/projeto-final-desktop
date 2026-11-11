@@ -4,6 +4,7 @@ exports.BotClimaIpc = exports.BotClimaServico = exports.ConfiguracaoBotArquivo =
 const electron_1 = require("electron");
 const fs_1 = require("fs");
 const path_1 = require("path");
+require("dotenv/config");
 const MensagemBackend_1 = require("./MensagemBackend");
 class ConfiguracaoBotArquivo {
     constructor(caminho = (0, path_1.join)(electron_1.app.getPath('userData'), 'bot-clima.json')) {
@@ -12,17 +13,26 @@ class ConfiguracaoBotArquivo {
             const numero = Number(valor);
             return Number.isFinite(numero) ? numero : 30;
         };
+        this.limiarPadrao = () => {
+            const numero = Number(process.env.CLIMA_LIMIAR_CHUVA ?? 50);
+            return Number.isFinite(numero) ? Math.min(100, Math.max(0, Math.round(numero))) : 50;
+        };
+        this.limiar = (valor) => {
+            const numero = Number(valor);
+            return Number.isFinite(numero) ? Math.min(100, Math.max(0, Math.round(numero))) : this.limiarPadrao();
+        };
         this.carregar = () => {
             try {
                 const dados = JSON.parse((0, fs_1.readFileSync)(this.caminho, 'utf8'));
                 return {
                     ativo: dados.ativo === true,
                     intervaloMinutos: this.numero(dados.intervaloMinutos),
+                    limiarChuva: this.limiar(dados.limiarChuva),
                     ultimaDataAviso: typeof dados.ultimaDataAviso === 'string' ? dados.ultimaDataAviso : undefined
                 };
             }
             catch {
-                return { ativo: false, intervaloMinutos: 30 };
+                return { ativo: false, intervaloMinutos: 30, limiarChuva: this.limiarPadrao() };
             }
         };
         this.salvar = (configuracao) => {
@@ -48,10 +58,17 @@ class BotClimaServico {
                 return 30;
             return Math.min(1440, Math.max(1, Math.round(numero)));
         };
+        this.normalizarLimiar = (valor) => {
+            const numero = Number(valor);
+            if (!Number.isFinite(numero))
+                return 50;
+            return Math.min(100, Math.max(0, Math.round(numero)));
+        };
         this.salvar = () => {
             this.configuracao.salvar({
                 ativo: this.ativo,
                 intervaloMinutos: this.intervaloMinutos,
+                limiarChuva: this.limiarChuva,
                 ultimaDataAviso: this.ultimaDataAviso
             });
         };
@@ -83,6 +100,7 @@ class BotClimaServico {
         this.estado = () => ({
             ativo: this.ativo,
             intervaloMinutos: this.intervaloMinutos,
+            limiarChuva: this.limiarChuva,
             verificando: this.verificando,
             emailConfigurado: this.mensagens.emailConfigurado(),
             emailRemetente: this.mensagens.emailRemetente() || undefined,
@@ -107,12 +125,17 @@ class BotClimaServico {
             this.agendar();
             return this.estado();
         };
+        this.definirLimiar = (valor) => {
+            this.limiarChuva = this.normalizarLimiar(valor);
+            this.salvar();
+            return this.estado();
+        };
         this.verificar = async () => {
             if (this.verificando)
                 return this.estado();
             this.verificando = true;
             try {
-                const resultado = await this.mensagens.verificar();
+                const resultado = await this.mensagens.verificar(this.limiarChuva);
                 this.ultimoResultado = resultado;
                 this.ultimaVerificacaoEm = new Date().toISOString();
                 if (resultado.ok && resultado.consolidar) {
@@ -140,6 +163,7 @@ class BotClimaServico {
         const salva = this.configuracao.carregar();
         this.ativo = salva.ativo;
         this.intervaloMinutos = this.normalizarIntervalo(salva.intervaloMinutos);
+        this.limiarChuva = this.normalizarLimiar(salva.limiarChuva);
         this.ultimaDataAviso = salva.ultimaDataAviso;
         if (this.ultimaDataAviso)
             this.mensagens.marcarAvisoAnterior(this.ultimaDataAviso);
@@ -168,6 +192,10 @@ class BotClimaIpc {
             electron_1.ipcMain.handle('bot:definir-intervalo', (_evento, intervalo) => {
                 this.sessao.exigir(['admin', 'instrutor']);
                 return this.bot.definirIntervalo(intervalo);
+            });
+            electron_1.ipcMain.handle('bot:definir-limiar', (_evento, limiar) => {
+                this.sessao.exigir(['admin']);
+                return this.bot.definirLimiar(limiar);
             });
         };
     }

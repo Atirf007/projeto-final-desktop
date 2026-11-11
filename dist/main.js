@@ -4,12 +4,15 @@ const electron_1 = require("electron");
 const JanelaApp_1 = require("./JanelaApp");
 const Sessao_1 = require("./Sessao");
 const AlunoBackend_1 = require("./alunos/AlunoBackend");
+const AulaBackend_1 = require("./aulas/AulaBackend");
 const AutenticacaoBackend_1 = require("./autenticacao/AutenticacaoBackend");
 const FuncionarioBackend_1 = require("./funcionarios/FuncionarioBackend");
 const CepBackend_1 = require("./integracoes/CepBackend");
 const ClimaBackend_1 = require("./integracoes/ClimaBackend");
 const BotClima_1 = require("./mensagens/BotClima");
 const MenuBackend_1 = require("./menu/MenuBackend");
+const PagamentoBackend_1 = require("./pagamentos/PagamentoBackend");
+const PlanosBackend_1 = require("./planos/PlanosBackend");
 const RelatorioBackend_1 = require("./relatorios/RelatorioBackend");
 const UsuarioBackend_1 = require("./usuarios/UsuarioBackend");
 class Aplicacao {
@@ -27,6 +30,9 @@ class Aplicacao {
         this.usuarios = new JanelaApp_1.JanelaApp({ pasta: 'usuarios', nome: 'usuarios', largura: 1000, altura: 700 });
         this.funcionarios = new JanelaApp_1.JanelaApp({ pasta: 'funcionarios', nome: 'funcionarios', largura: 1200, altura: 760 });
         this.alunos = new JanelaApp_1.JanelaApp({ pasta: 'alunos', nome: 'alunos', largura: 1200, altura: 760 });
+        this.aulas = new JanelaApp_1.JanelaApp({ pasta: 'aulas', nome: 'aulas', largura: 1280, altura: 800 });
+        this.planos = new JanelaApp_1.JanelaApp({ pasta: 'planos', nome: 'planos', largura: 1280, altura: 800 });
+        this.pagamentos = new JanelaApp_1.JanelaApp({ pasta: 'pagamentos', nome: 'pagamentos', largura: 1280, altura: 820 });
         this.bot = new JanelaApp_1.JanelaApp({ pasta: 'mensagens', nome: 'mensagens', largura: 1000, altura: 820 });
         this.aoEntrar = () => {
             this.menu.abrir();
@@ -38,6 +44,9 @@ class Aplicacao {
             this.usuarios.fechar();
             this.funcionarios.fechar();
             this.alunos.fechar();
+            this.aulas.fechar();
+            this.planos.fechar();
+            this.pagamentos.fechar();
             this.bot.fechar();
             this.menu.fechar();
         };
@@ -61,6 +70,10 @@ class Aplicacao {
                 new ClimaBackend_1.ClimaIpc(this.sessao).registrar();
                 new BotClima_1.BotClimaIpc(this.sessao, botClima).registrar();
                 new AlunoBackend_1.AlunoIpc(this.sessao).registrar();
+                new AulaBackend_1.AulaIpc(this.sessao).registrar();
+                new PlanosBackend_1.PlanoIpc(this.sessao).registrar();
+                new PlanosBackend_1.AssinaturaIpc(this.sessao).registrar();
+                new PagamentoBackend_1.PagamentoIpc(this.sessao).registrar();
                 new FuncionarioBackend_1.FuncionarioIpc(this.sessao).registrar();
                 new FuncionarioBackend_1.ModalidadeIpc(this.sessao).registrar();
                 new MenuBackend_1.MenuIpc(this.sessao, {
@@ -68,6 +81,9 @@ class Aplicacao {
                     usuarios: () => this.usuarios.abrir(),
                     funcionarios: () => this.funcionarios.abrir(),
                     alunos: () => this.alunos.abrir(),
+                    aulas: () => this.aulas.abrir(),
+                    planos: () => this.planos.abrir(),
+                    pagamentos: () => this.pagamentos.abrir(),
                     bot: () => this.bot.abrir()
                 }, this.aoVoltar).registrar();
                 new RelatorioBackend_1.RelatorioIpc(this.sessao).registrar();

@@ -2,12 +2,15 @@ import { app, BrowserWindow } from 'electron'
 import { JanelaApp } from './JanelaApp'
 import { Sessao } from './Sessao'
 import { AlunoIpc } from './alunos/AlunoBackend'
+import { AulaIpc } from './aulas/AulaBackend'
 import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/AutenticacaoBackend'
 import { FuncionarioIpc, ModalidadeIpc } from './funcionarios/FuncionarioBackend'
 import { CepIpc } from './integracoes/CepBackend'
 import { ClimaIpc } from './integracoes/ClimaBackend'
 import { BotClimaIpc, BotClimaServico } from './mensagens/BotClima'
 import { MenuIpc } from './menu/MenuBackend'
+import { PagamentoIpc } from './pagamentos/PagamentoBackend'
+import { AssinaturaIpc, PlanoIpc } from './planos/PlanosBackend'
 import { RelatorioIpc } from './relatorios/RelatorioBackend'
 import { UsuarioIpc } from './usuarios/UsuarioBackend'
 
@@ -32,6 +35,12 @@ class Aplicacao {
 
   private readonly alunos = new JanelaApp({ pasta: 'alunos', nome: 'alunos', largura: 1200, altura: 760 })
 
+  private readonly aulas = new JanelaApp({ pasta: 'aulas', nome: 'aulas', largura: 1280, altura: 800 })
+
+  private readonly planos = new JanelaApp({ pasta: 'planos', nome: 'planos', largura: 1280, altura: 800 })
+
+  private readonly pagamentos = new JanelaApp({ pasta: 'pagamentos', nome: 'pagamentos', largura: 1280, altura: 820 })
+
   private readonly bot = new JanelaApp({ pasta: 'mensagens', nome: 'mensagens', largura: 1000, altura: 820 })
 
   private aoEntrar = (): void => {
@@ -45,6 +54,9 @@ class Aplicacao {
     this.usuarios.fechar()
     this.funcionarios.fechar()
     this.alunos.fechar()
+    this.aulas.fechar()
+    this.planos.fechar()
+    this.pagamentos.fechar()
     this.bot.fechar()
     this.menu.fechar()
   }
@@ -70,6 +82,10 @@ class Aplicacao {
       new ClimaIpc(this.sessao).registrar()
       new BotClimaIpc(this.sessao, botClima).registrar()
       new AlunoIpc(this.sessao).registrar()
+      new AulaIpc(this.sessao).registrar()
+      new PlanoIpc(this.sessao).registrar()
+      new AssinaturaIpc(this.sessao).registrar()
+      new PagamentoIpc(this.sessao).registrar()
       new FuncionarioIpc(this.sessao).registrar()
       new ModalidadeIpc(this.sessao).registrar()
       new MenuIpc(this.sessao, {
@@ -77,6 +93,9 @@ class Aplicacao {
         usuarios: () => this.usuarios.abrir(),
         funcionarios: () => this.funcionarios.abrir(),
         alunos: () => this.alunos.abrir(),
+        aulas: () => this.aulas.abrir(),
+        planos: () => this.planos.abrir(),
+        pagamentos: () => this.pagamentos.abrir(),
         bot: () => this.bot.abrir()
       }, this.aoVoltar).registrar()
       new RelatorioIpc(this.sessao).registrar()
