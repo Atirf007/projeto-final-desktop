@@ -18,6 +18,8 @@ class BancoErros {
                 return 'Já existe um funcionário com este CREF.';
             if (/modalidades\.nome/i.test(detalhe))
                 return 'Já existe uma modalidade com este nome.';
+            if (/planos\.nome/i.test(detalhe))
+                return 'Já existe um plano com este nome.';
             if (/alunos\.usuario_id|usuario_id/i.test(detalhe))
                 return 'Este usuário já está vinculado a um aluno.';
             if (/usuarios\.email|\bemail\b/i.test(detalhe))
