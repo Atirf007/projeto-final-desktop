@@ -7,7 +7,7 @@ import { Sessao } from '../Sessao'
 export type Periodo = { tipo: 'mensal'; ano: number; mes: number } | { tipo: 'anual'; ano: number }
 
 export type Receitas = {
-  mensalidades: number
+  planos: number
   aulas: number
   aluguel: number
   outros: number
@@ -18,8 +18,21 @@ export class RelatorioRepository {
 
   private readonly sqlReceitas = `
     SELECT
-      (SELECT COALESCE(SUM(valor), 0) FROM pagamentos
-        WHERE status = 'pago' AND data_pagamento >= ? AND data_pagamento < ?) AS mensalidades,
+      GREATEST(
+        (SELECT COALESCE(SUM(p.valor), 0)
+          FROM assinaturas a
+          INNER JOIN planos p ON p.id = a.plano_id
+          WHERE a.status <> 'cancelada'
+            AND a.data_inicio >= ? AND a.data_inicio < ?)
+        -
+        (SELECT COALESCE(SUM(pg.valor), 0)
+          FROM pagamentos pg
+          INNER JOIN assinaturas a ON a.id = pg.assinatura_id
+          WHERE pg.status = 'cancelado'
+            AND a.status <> 'cancelada'
+            AND a.data_inicio >= ? AND a.data_inicio < ?),
+        0
+      ) AS planos,
       COALESCE(SUM(CASE WHEN categoria = 'aula' THEN valor END), 0) AS aulas,
       COALESCE(SUM(CASE WHEN categoria = 'aluguel' THEN valor END), 0) AS aluguel,
       COALESCE(SUM(CASE WHEN categoria = 'outros' THEN valor END), 0) AS outros
@@ -49,11 +62,18 @@ export class RelatorioRepository {
 
   receitas = async (periodo: Periodo): Promise<Receitas> => {
     const [inicio, fim] = this.intervalo(periodo)
-    const [linhas] = await this.pool.query<RowDataPacket[]>(this.sqlReceitas, [inicio, fim, inicio, fim])
+    const [linhas] = await this.pool.query<RowDataPacket[]>(this.sqlReceitas, [
+      inicio,
+      fim,
+      inicio,
+      fim,
+      inicio,
+      fim
+    ])
     const linha = linhas[0]
 
     return {
-      mensalidades: Number(linha.mensalidades),
+      planos: Number(linha.planos),
       aulas: Number(linha.aulas),
       aluguel: Number(linha.aluguel),
       outros: Number(linha.outros)

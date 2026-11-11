@@ -3,7 +3,7 @@ import { ipcRenderer } from 'electron'
 type Periodo = { tipo: 'mensal'; ano: number; mes: number } | { tipo: 'anual'; ano: number }
 
 type Receitas = {
-  mensalidades: number
+  planos: number
   aulas: number
   aluguel: number
   outros: number
@@ -65,13 +65,18 @@ class RelatoriosView {
   }
 
   private desenhar = (receitas: Receitas): void => {
-    const total = receitas.mensalidades + receitas.aulas + receitas.aluguel + receitas.outros
+    const planos = Number(receitas.planos) || 0
+    const aulas = Number(receitas.aulas) || 0
+    const aluguel = Number(receitas.aluguel) || 0
+    const outros = Number(receitas.outros) || 0
+
+    const total = planos + aulas + aluguel + outros
 
     const barras: Barra[] = [
-      { rotulo: 'Mensalidades', valor: receitas.mensalidades, destaque: false },
-      { rotulo: 'Aulas', valor: receitas.aulas, destaque: false },
-      { rotulo: 'Aluguel', valor: receitas.aluguel, destaque: false },
-      { rotulo: 'Outros', valor: receitas.outros, destaque: false },
+      { rotulo: 'Planos', valor: planos, destaque: false },
+      { rotulo: 'Aulas', valor: aulas, destaque: false },
+      { rotulo: 'Aluguel', valor: aluguel, destaque: false },
+      { rotulo: 'Outros', valor: outros, destaque: false },
       { rotulo: 'Total', valor: total, destaque: true }
     ]
 

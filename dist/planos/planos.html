@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Planos e assinaturas</title>
+  <style>
+    :root {
+      --primaria-900: #111827;
+      --primaria-800: #1f2937;
+      --primaria-700: #374151;
+      --primaria-600: #4b5563;
+      --primaria-500: #6b7280;
+      --secundaria: #10b981;
+      --secundaria-hover: #059669;
+      --secundaria-suave: #ecfdf5;
+      --secundaria-borda: #a7f3d0;
+      --bg-pagina: #f9fafb;
+      --bg-card: #ffffff;
+      --cinza-200: #e5e7eb;
+      --cinza-100: #f3f4f6;
+      --erro: #b91c1c;
+      --aviso: #92400e;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--fonte); background: var(--bg-pagina); color: var(--primaria-900); line-height: 1.5; }
+    header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; background: var(--primaria-800); color: #ffffff; padding: 14px 28px; border-bottom: 3px solid var(--secundaria); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12); }
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .marca-logo { width: 34px; height: 34px; flex: none; display: grid; place-items: center; background: var(--secundaria); border-radius: 8px; }
+    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cinza-200); }
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .voltar { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit; color: #ffffff; background: transparent; border: 1px solid var(--primaria-500); border-radius: 8px; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
+    .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+    .voltar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    main { padding: 28px 32px 40px; max-width: 1280px; margin: 0 auto; }
+    .painel { background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-card); padding: 24px; box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05); }
+    .painel + .painel { margin-top: 24px; }
+    .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--cinza-200); }
+    .campo { display: grid; gap: 6px; }
+    .campo span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); }
+    input, select, textarea { padding: 10px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
+    input:focus, select:focus, textarea:focus { border-color: var(--secundaria); box-shadow: 0 0 0 3px var(--secundaria-suave); }
+    input:disabled, select:disabled { background: var(--cinza-100); color: var(--primaria-500); cursor: not-allowed; }
+    textarea { resize: vertical; min-height: 72px; }
+    .espaco { flex: 1; }
+    h2 { position: relative; margin: 0 0 16px; padding-left: 12px; font-size: 16px; font-weight: 700; color: var(--primaria-800); }
+    h2::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 16px; border-radius: 2px; background: var(--secundaria); }
+    .tabela { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; color: var(--primaria-600); background: var(--cinza-100); border-bottom: 1px solid var(--cinza-200); white-space: nowrap; }
+    tbody td { padding: 12px 14px; color: var(--primaria-700); border-bottom: 1px solid var(--cinza-200); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg-pagina); }
+    thead th:first-child, tbody td:first-child { padding-left: 0; }
+    thead th:last-child, tbody td:last-child { padding-right: 0; }
+    .col-titulo strong { display: block; font-weight: 600; color: var(--primaria-800); }
+    .col-titulo small { display: block; font-size: 12px; color: var(--primaria-500); }
+    .col-data { white-space: nowrap; }
+    .col-data small { display: block; font-size: 11px; font-weight: 600; color: var(--aviso); }
+    .col-valor { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .linha-cancelada td { opacity: 0.65; }
+    .selo { display: inline-block; padding: 3px 10px; font-size: 11px; font-style: normal; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid transparent; border-radius: 999px; white-space: nowrap; }
+    .selo.ativa, .selo.ativo { color: var(--secundaria-hover); background: var(--secundaria-suave); }
+    .selo.inativo { color: var(--primaria-600); background: var(--cinza-100); border-color: var(--cinza-200); }
+    .selo.vencida { color: var(--erro); background: #fef2f2; }
+    .selo.cancelada { color: var(--primaria-600); background: var(--cinza-100); border-color: var(--cinza-200); }
+    .selo.suspensa { color: var(--aviso); background: #fffbeb; }
+    .tipo-plano { display: inline-block; padding: 3px 9px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #1e40af; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 999px; white-space: nowrap; }
+    #status-planos, #status-assinaturas { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); min-height: 20px; }
+    #status-planos.erro, #status-assinaturas.erro { color: var(--erro); }
+    .botao { padding: 10px 18px; font-size: 14px; font-family: inherit; font-weight: 600; color: #ffffff; background: var(--primaria-800); border: 1px solid var(--primaria-800); border-radius: var(--raio-controle); cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .botao:hover:not(:disabled) { background: var(--primaria-700); border-color: var(--primaria-700); }
+    .botao:disabled { opacity: 0.6; cursor: default; }
+    .botao.secundario { color: var(--primaria-700); background: var(--bg-card); border-color: var(--cinza-200); }
+    .botao.secundario:hover:not(:disabled) { background: var(--cinza-100); border-color: var(--cinza-200); }
+    .botao.verde { background: var(--secundaria-hover); border-color: var(--secundaria-hover); }
+    .botao.verde:hover:not(:disabled) { background: #047857; border-color: #047857; }
+    .botao.perigo { background: #991b1b; border-color: #991b1b; }
+    .botao.perigo:hover:not(:disabled) { background: #7f1d1d; border-color: #7f1d1d; }
+    .botao.pequeno { padding: 6px 10px; font-size: 12px; }
+    .acoes-linha { display: flex; gap: 8px; flex-wrap: wrap; }
+    dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 0; color: var(--primaria-900); background: var(--bg-card); border: 1px solid var(--cinza-200); border-top: 4px solid var(--secundaria); border-radius: var(--raio-card); box-shadow: 0 10px 25px rgba(17, 24, 39, 0.2); }
+    dialog.menor { width: min(560px, calc(100vw - 32px)); }
+    dialog::backdrop { background: rgba(17, 24, 39, 0.45); }
+    dialog h2 { margin: 24px 24px 0; }
+    .dialogo-conteudo { padding: 20px 24px 24px; }
+    .grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grade .span2 { grid-column: 1 / -1; }
+    .acoes { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .msg-erro { min-height: 20px; margin: 0; font-size: 13px; color: var(--erro); }
+    .msg-info { min-height: 20px; margin: 8px 0 0; font-size: 13px; color: var(--primaria-600); }
+    .msg-info.erro { color: var(--erro); }
+    .msg-info.sucesso { color: var(--secundaria-hover); }
+    .msg-info.aviso { color: var(--aviso); }
+    .texto-confirmar { margin: 0; color: var(--primaria-700); }
+    .oculto { display: none !important; }
+    @media (max-width: 760px) { main { padding: 20px; } .grade { grid-template-columns: 1fr; } .grade .span2 { grid-column: auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6.5 7.5v9" /><path d="M17.5 7.5v9" /><path d="M3.5 9.5v5" /><path d="M20.5 9.5v5" /><path d="M6.5 12h11" /></svg>
+      </span>
+      <span class="marca-texto"><strong>Cotil</strong><small>Academia</small></span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Planos e assinaturas</h1>
+  </header>
+
+  <main id="conteudo">
+    <section id="painel-planos" class="painel">
+      <div class="filtros">
+        <label class="campo">
+          <span>Buscar</span>
+          <input id="busca-planos" type="search" placeholder="Nome ou descrição" maxlength="120">
+        </label>
+        <label class="campo">
+          <span>Status</span>
+          <select id="filtro-plano-ativo">
+            <option value="">Todos</option>
+            <option value="true">Ativos</option>
+            <option value="false">Inativos</option>
+          </select>
+        </label>
+        <button id="limpar-planos" type="button" class="botao secundario">Limpar</button>
+        <span class="espaco"></span>
+        <button id="novo-plano" type="button" class="botao">Novo plano</button>
+      </div>
+      <h2 id="titulo-planos">Planos cadastrados</h2>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Plano</th>
+              <th>Tipo</th>
+              <th>Duração</th>
+              <th>Valor</th>
+              <th>Assinaturas ativas</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo-planos"></tbody>
+        </table>
+      </div>
+      <p id="status-planos" role="status"></p>
+    </section>
+
+    <section id="painel-assinaturas" class="painel">
+      <div class="filtros">
+        <label class="campo">
+          <span>Buscar</span>
+          <input id="busca-assinaturas" type="search" placeholder="Aluno ou plano" maxlength="120">
+        </label>
+        <label class="campo">
+          <span>Status</span>
+          <select id="filtro-assinatura-status">
+            <option value="">Todos</option>
+            <option value="ativa">Ativa</option>
+            <option value="vencida">Vencida</option>
+            <option value="suspensa">Suspensa</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </label>
+        <button id="vencendo" type="button" class="botao secundario">A vencer (30 dias)</button>
+        <button id="limpar-assinaturas" type="button" class="botao secundario">Limpar</button>
+        <span class="espaco"></span>
+        <button id="nova-assinatura" type="button" class="botao verde">Nova assinatura</button>
+      </div>
+      <h2 id="titulo-assinaturas">Assinaturas</h2>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Aluno / Plano</th>
+              <th>Início</th>
+              <th>Fim</th>
+              <th>Valor contratado</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo-assinaturas"></tbody>
+        </table>
+      </div>
+      <p id="status-assinaturas" role="status"></p>
+    </section>
+
+    <section id="acesso-negado" class="painel oculto">
+      <h2>Acesso restrito</h2>
+      <p class="msg-info">Esta tela é exclusiva do administrador.</p>
+    </section>
+  </main>
+
+  <dialog id="dialogo-plano" aria-labelledby="titulo-plano">
+    <h2 id="titulo-plano">Novo plano</h2>
+    <form id="formulario-plano" class="dialogo-conteudo" novalidate>
+      <input id="plano-id" type="hidden">
+      <div class="grade">
+        <label class="campo span2"><span>Nome</span><input id="plano-nome" type="text" maxlength="80" autocomplete="off" placeholder="Ex.: Plano anual musculação"></label>
+        <label class="campo"><span>Tipo</span>
+          <select id="plano-tipo">
+            <option value="mensal">Mensal</option>
+            <option value="trimestral">Trimestral</option>
+            <option value="semestral">Semestral</option>
+            <option value="anual">Anual</option>
+          </select>
+        </label>
+        <label class="campo"><span>Duração (meses)</span><input id="plano-duracao" type="number" min="1" max="120" step="1" value="1"></label>
+        <label class="campo"><span>Valor (R$)</span><input id="plano-valor" type="number" min="0" max="99999999.99" step="0.01" placeholder="0,00"></label>
+        <label class="campo oculto" id="campo-plano-ativo"><span>Status</span>
+          <select id="plano-ativo">
+            <option value="true">Ativo</option>
+            <option value="false">Inativo</option>
+          </select>
+        </label>
+        <label class="campo span2"><span>Descrição</span><textarea id="plano-descricao" maxlength="255" placeholder="Benefícios e observações do plano"></textarea></label>
+      </div>
+      <p id="erro-plano" class="msg-erro" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-plano" type="button" class="botao secundario">Cancelar</button>
+        <button id="salvar-plano" type="submit" class="botao">Cadastrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-assinatura" aria-labelledby="titulo-assinatura">
+    <h2 id="titulo-assinatura">Nova assinatura</h2>
+    <form id="formulario-assinatura" class="dialogo-conteudo" novalidate>
+      <div class="grade">
+        <label class="campo span2"><span>Aluno</span><select id="assinatura-aluno"></select></label>
+        <label class="campo"><span>Plano</span><select id="assinatura-plano"></select></label>
+        <label class="campo"><span>Data de início</span><input id="assinatura-inicio" type="date"></label>
+        <label class="campo"><span>Valor contratado (R$)</span><input id="assinatura-valor" type="number" min="0" max="99999999.99" step="0.01" placeholder="0,00"></label>
+        <p id="msg-assinatura" class="msg-info span2"></p>
+      </div>
+      <p id="erro-assinatura" class="msg-erro" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-assinatura" type="button" class="botao secundario">Cancelar</button>
+        <button id="salvar-assinatura" type="submit" class="botao verde">Criar assinatura</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-editar-assinatura" class="menor" aria-labelledby="titulo-editar-assinatura">
+    <h2 id="titulo-editar-assinatura">Editar assinatura</h2>
+    <form id="formulario-editar-assinatura" class="dialogo-conteudo" novalidate>
+      <p id="resumo-editar" class="msg-info"></p>
+      <div class="grade">
+        <label class="campo"><span>Status</span>
+          <select id="editar-status">
+            <option value="ativa">Ativa</option>
+            <option value="vencida">Vencida</option>
+            <option value="suspensa">Suspensa</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </label>
+        <label class="campo"><span>Data de fim</span><input id="editar-fim" type="date"></label>
+        <label class="campo"><span>Valor contratado (R$)</span><input id="editar-valor" type="number" min="0" max="99999999.99" step="0.01"></label>
+      </div>
+      <p id="erro-editar" class="msg-erro" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-editar" type="button" class="botao secundario">Cancelar</button>
+        <button id="salvar-editar" type="submit" class="botao">Salvar alterações</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-renovar" class="menor" aria-labelledby="titulo-renovar">
+    <h2 id="titulo-renovar">Renovar assinatura</h2>
+    <form id="formulario-renovar" class="dialogo-conteudo" novalidate>
+      <p id="resumo-renovar" class="msg-info"></p>
+      <div class="grade">
+        <label class="campo"><span>Novo plano</span><select id="renovar-plano"></select></label>
+        <label class="campo"><span>Nova data de início</span><input id="renovar-inicio" type="date"></label>
+        <p id="msg-renovar" class="msg-info span2"></p>
+      </div>
+      <p id="erro-renovar" class="msg-erro" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-renovar" type="button" class="botao secundario">Cancelar</button>
+        <button id="salvar-renovar" type="submit" class="botao verde">Renovar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-confirmar" class="menor" aria-labelledby="titulo-confirmar">
+    <h2 id="titulo-confirmar">Confirmar</h2>
+    <div class="dialogo-conteudo">
+      <p id="texto-confirmar" class="texto-confirmar"></p>
+      <p id="erro-confirmar" class="msg-erro" role="alert" style="margin-top:10px"></p>
+      <div class="acoes">
+        <button id="cancelar-confirmar" type="button" class="botao secundario">Cancelar</button>
+        <button id="confirmar-acao" type="button" class="botao perigo">Confirmar</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
