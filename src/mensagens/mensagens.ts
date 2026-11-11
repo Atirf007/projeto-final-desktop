@@ -5,6 +5,9 @@ type PrevisaoClima = {
   temperaturaMinC: number
   temperaturaMaxC: number
   probabilidadeChuva: number
+  probabilidadeDia: number
+  horarioPico?: string
+  janela?: string
   precipitacaoMm: number
   codigoClima: number
   descricao: string
@@ -45,6 +48,7 @@ type ResultadoVerificacao =
       ok: true
       local: string
       previsao: PrevisaoClima
+      hoje?: PrevisaoClima
       enviada: boolean
       consolidar: boolean
       emails: ResultadoEnvioEmail
@@ -57,6 +61,7 @@ type ResultadoVerificacao =
 type EstadoBot = {
   ativo: boolean
   intervaloMinutos: number
+  limiarChuva: number
   verificando: boolean
   emailConfigurado: boolean
   emailRemetente?: string
@@ -66,13 +71,18 @@ type EstadoBot = {
   mensagens: Mensagem[]
 }
 
+type UsuarioSessao = { id: number; nome: string; perfil: 'admin' | 'instrutor' | 'aluno' }
+
 class BotView {
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
   private estadoAtual?: EstadoBot
+  private usuario: UsuarioSessao | null = null
   private acaoEmAndamento = false
   private atualizando = false
   private timerAtualizacao: number | null = null
+
+  private admin = (): boolean => this.usuario?.perfil === 'admin'
 
   private criar = (tag: string, classe?: string, texto?: string): HTMLElement => {
     const elemento = document.createElement(tag)
@@ -84,6 +94,12 @@ class BotView {
   private dataBr = (iso: string): string => {
     const [ano, mes, dia] = iso.split('-')
     return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso
+  }
+
+  private diaSemana = (iso: string): string => {
+    const [ano, mes, dia] = iso.split('-').map(Number)
+    if (!ano || !mes || !dia) return ''
+    return new Date(ano, mes - 1, dia).toLocaleDateString('pt-BR', { weekday: 'long' })
   }
 
   private dataHora = (iso: string): string => {
@@ -115,6 +131,7 @@ class BotView {
 
     this.el<HTMLButtonElement>('alternar-bot').disabled = ocupado
     this.el<HTMLButtonElement>('salvar-intervalo').disabled = ocupado
+    this.el<HTMLButtonElement>('salvar-limiar').disabled = ocupado
     this.el<HTMLButtonElement>('verificar').disabled = ocupado
   }
 
@@ -125,8 +142,12 @@ class BotView {
 
     const descricao = this.el('bot-descricao')
     descricao.textContent = estado.ativo
-      ? `Verificando a previsão a cada ${estado.intervaloMinutos} ${estado.intervaloMinutos === 1 ? 'minuto' : 'minutos'}.`
-      : 'O bot está desativado. Nenhum aviso será enviado automaticamente.'
+      ? `Verificando a previsão a cada ${estado.intervaloMinutos} ${estado.intervaloMinutos === 1 ? 'minuto' : 'minutos'}. ` +
+        `Avisos apenas com chance de chuva a partir de ${estado.limiarChuva}%.`
+      : `O bot está desativado. Nenhum aviso será enviado automaticamente. Limite atual: ${estado.limiarChuva}% de chance de chuva.`
+
+    const limiar = this.el<HTMLInputElement>('limiar-chuva')
+    if (document.activeElement !== limiar) limiar.value = String(estado.limiarChuva)
 
     const alternar = this.el<HTMLButtonElement>('alternar-bot')
     alternar.textContent = estado.ativo ? 'Desativar bot' : 'Ativar bot'
@@ -157,30 +178,73 @@ class BotView {
     this.atualizarBotoes()
   }
 
-  private renderPrevisao = (local: string, previsao: PrevisaoClima): void => {
-    this.el('local').textContent = `Previsão para amanhã em ${local}`
+  private renderPrevisao = (local: string, previsao: PrevisaoClima, hoje?: PrevisaoClima): void => {
+    this.el('local').textContent = `Previsão de amanhã em ${local}`
 
     const selo = this.criar(
       'span',
       previsao.vaiChover ? 'selo selo-chuva' : 'selo selo-seco',
       previsao.vaiChover ? 'Chuva prevista' : 'Sem chuva prevista'
     )
-    const titulo = this.criar('strong', 'titulo-clima', `Previsão para ${this.dataBr(previsao.data)}`)
+    const titulo = this.criar(
+      'strong',
+      'titulo-clima',
+      `Amanhã, ${this.dataBr(previsao.data)} (${this.diaSemana(previsao.data)})`
+    )
     const descricao = this.criar('span', 'descricao-clima', previsao.descricao)
 
     const linha = this.criar('div', 'linha-clima')
     linha.append(selo, titulo, descricao)
 
     const metricas = this.criar('div', 'metricas')
+    const rotuloChuva = previsao.janela ? 'Chance de chuva na aula' : 'Probabilidade de chuva'
     metricas.append(
       this.metrica('Temperatura mínima', this.temperatura(previsao.temperaturaMinC)),
       this.metrica('Temperatura máxima', this.temperatura(previsao.temperaturaMaxC)),
-      this.metrica('Probabilidade de chuva', `${Math.round(previsao.probabilidadeChuva)}%`),
+      this.metrica(rotuloChuva, `${Math.round(previsao.probabilidadeChuva)}%`),
       this.metrica('Precipitação prevista', `${previsao.precipitacaoMm.toFixed(1)} mm`)
     )
 
+    const probabilidadeDia = previsao.probabilidadeDia ?? previsao.probabilidadeChuva
+    if (previsao.janela && probabilidadeDia !== previsao.probabilidadeChuva) {
+      const pico = previsao.horarioPico ? ` às ${previsao.horarioPico}` : ''
+      metricas.append(this.metrica('Pico do dia', `${Math.round(probabilidadeDia)}%${pico}`))
+    }
+
     const cartao = this.criar('div', 'cartao-clima')
     cartao.append(linha, metricas)
+
+    if (previsao.janela) {
+      cartao.append(
+        this.criar('span', 'nota-previsao', `Horário considerado na decisão: ${previsao.janela} (aula de amanhã).`)
+      )
+    }
+
+    if (hoje) {
+      const comparacao = this.criar('div', 'comparacao-dias')
+      comparacao.append(
+        this.criar(
+          'span',
+          undefined,
+          `Hoje (${this.dataBr(hoje.data)}): ${Math.round(hoje.probabilidadeDia ?? hoje.probabilidadeChuva)}% de chance de chuva`
+        ),
+        this.criar(
+          'span',
+          undefined,
+          `Amanhã (${this.dataBr(previsao.data)}): ${Math.round(probabilidadeDia)}% de chance de chuva`
+        )
+      )
+      cartao.append(comparacao)
+    }
+
+    cartao.append(
+      this.criar(
+        'span',
+        'nota-previsao',
+        'O bot avisa com 1 dia de antecedência, por isso a decisão de enviar usa a previsão de amanhã.'
+      )
+    )
+
     this.el('previsao').replaceChildren(cartao)
   }
 
@@ -261,7 +325,7 @@ class BotView {
       return
     }
 
-    this.renderPrevisao(resultado.local, resultado.previsao)
+    this.renderPrevisao(resultado.local, resultado.previsao, resultado.hoje)
     this.renderAviso(resultado)
 
     const falhou = resultado.mensagem?.status === 'falhou'
@@ -395,6 +459,21 @@ class BotView {
     )
   }
 
+  private salvarLimiar = async (): Promise<void> => {
+    const valor = Number(this.el<HTMLInputElement>('limiar-chuva').value)
+
+    if (!Number.isInteger(valor) || valor < 0 || valor > 100) {
+      this.mostrarStatusBot('Informe uma porcentagem inteira entre 0 e 100.', 'erro')
+      return
+    }
+
+    await this.executarAcao(
+      () => ipcRenderer.invoke('bot:definir-limiar', valor),
+      'Salvando limite de chuva...',
+      `Limite atualizado: o bot enviará avisos quando a chance de chuva for de ${valor}% ou mais.`
+    )
+  }
+
   private verificarAgora = async (): Promise<void> => {
     await this.executarAcao(
       () => ipcRenderer.invoke('bot:verificar'),
@@ -419,8 +498,17 @@ class BotView {
   }
 
   iniciar = async (): Promise<void> => {
+    try {
+      this.usuario = (await ipcRenderer.invoke('auth:me')) as UsuarioSessao | null
+    } catch {
+      this.usuario = null
+    }
+
+    this.el('controle-limiar').hidden = !this.admin()
+
     this.el('alternar-bot').addEventListener('click', this.alternarBot)
     this.el('salvar-intervalo').addEventListener('click', this.salvarIntervalo)
+    this.el('salvar-limiar').addEventListener('click', this.salvarLimiar)
     this.el('verificar').addEventListener('click', this.verificarAgora)
     this.el('voltar').addEventListener('click', this.voltar)
 

@@ -1,7 +1,8 @@
 import { Notification } from 'electron'
-import { OpenMeteoClient, PrevisaoClima } from '../integracoes/ClimaBackend'
+import { HorarioAula, OpenMeteoClient, PrevisaoClima } from '../integracoes/ClimaBackend'
 import { EmailServico, FalhaEmail, ResultadoEnvioEmail } from '../integracoes/EmailBackend'
 import { AlunoDestinatarios, ResultadoDestinatarios } from './DestinatariosAlunos'
+import { AulasAmanha } from './AulasAmanha'
 
 export type Mensagem = {
   id: number
@@ -24,6 +25,7 @@ export type ResultadoVerificacao =
       ok: true
       local: string
       previsao: PrevisaoClima
+      hoje?: PrevisaoClima
       enviada: boolean
       consolidar: boolean
       emails: ResultadoEnvioEmail
@@ -42,7 +44,8 @@ export class MensagemServico {
   constructor(
     private readonly clima: OpenMeteoClient = new OpenMeteoClient(),
     private readonly emails: EmailServico = new EmailServico(),
-    private readonly destinatarios: AlunoDestinatarios = new AlunoDestinatarios()
+    private readonly destinatarios: AlunoDestinatarios = new AlunoDestinatarios(),
+    private readonly aulas: AulasAmanha = new AulasAmanha()
   ) {}
 
   marcarAvisoAnterior = (data: string): void => {
@@ -58,10 +61,23 @@ export class MensagemServico {
     return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso
   }
 
-  private textoDoAviso = (previsao: PrevisaoClima): string =>
-    `Atenção alunos: a previsão para amanhã (${this.dataBr(previsao.data)}) indica chuva. ` +
-    'Por isso, a aula será realizada dentro da academia, no espaço coberto. ' +
-    'Compareça no horário habitual.'
+  private textoDoAviso = (previsao: PrevisaoClima): string => {
+    const janela = previsao.janela ? ` no horário das aulas (${previsao.janela})` : ''
+    return (
+      `Atenção alunos: a previsão para amanhã (${this.dataBr(previsao.data)}) indica chuva${janela}. ` +
+      'Por isso, a aula será realizada dentro da academia, no espaço coberto. ' +
+      'Compareça no horário habitual.'
+    )
+  }
+
+  private horariosDasAulas = async (): Promise<HorarioAula[] | undefined> => {
+    try {
+      const horarios = await this.aulas.listar()
+      return horarios.length > 0 ? horarios : undefined
+    } catch {
+      return undefined
+    }
+  }
 
   private enviarNotificacao = (assunto: string, texto: string): { status: 'enviado' | 'falhou'; erro?: string } => {
     if (!Notification.isSupported()) {
@@ -95,51 +111,58 @@ export class MensagemServico {
     return this.emails.enviar(lista.emails, assunto, texto)
   }
 
-  private montarMotivo = (emails: ResultadoEnvioEmail): string => {
+  private montarMotivo = (emails: ResultadoEnvioEmail, previsao: PrevisaoClima): string => {
+    const quando = `para amanhã (${this.dataBr(previsao.data)})`
+
     if (!emails.configurado) {
       return (
-        'Previsão de chuva: aviso exibido como notificação do sistema. ' +
+        `Previsão de chuva ${quando}: aviso exibido como notificação do sistema. ` +
         'O envio por e-mail não está configurado (defina SMTP_HOST, SMTP_USER e SMTP_PASS no .env).'
       )
     }
 
     if (emails.total === 0) {
-      return 'Previsão de chuva, mas nenhum aluno ativo possui e-mail cadastrado.'
+      return `Previsão de chuva ${quando}, mas nenhum aluno ativo possui e-mail cadastrado.`
     }
 
     const alunos = emails.total === 1 ? 'aluno' : 'alunos'
     if (emails.enviados === emails.total) {
-      return `Previsão de chuva: aviso enviado por e-mail para ${emails.enviados} ${alunos}.`
+      return `Previsão de chuva ${quando}: aviso enviado por e-mail para ${emails.enviados} ${alunos}.`
     }
 
     if (emails.enviados > 0) {
       return (
-        `Previsão de chuva: aviso enviado para ${emails.enviados} de ${emails.total} ${alunos}. ` +
+        `Previsão de chuva ${quando}: aviso enviado para ${emails.enviados} de ${emails.total} ${alunos}. ` +
         `${emails.falhas.length} envio(s) falharam.`
       )
     }
 
     return (
-      'Previsão de chuva, mas nenhum e-mail pôde ser enviado. ' +
+      `Previsão de chuva ${quando}, mas nenhum e-mail pôde ser enviado. ` +
       (emails.erroGeral ?? 'Verifique as configurações de SMTP.')
     )
   }
 
   listar = (): Mensagem[] => [...this.historico].sort((a, b) => b.id - a.id)
 
-  verificar = async (): Promise<ResultadoVerificacao> => {
-    const resultado = await this.clima.buscar()
+  verificar = async (limiarChuva = 50): Promise<ResultadoVerificacao> => {
+    const numeroLimiar = Number(limiarChuva)
+    const limiar = Number.isFinite(numeroLimiar)
+      ? Math.min(100, Math.max(0, Math.round(numeroLimiar)))
+      : 50
+    const resultado = await this.clima.buscar(limiar, await this.horariosDasAulas())
     if (!resultado.ok) {
       return { ok: false, mensagem: resultado.mensagem, historico: this.listar() }
     }
 
-    const { previsao, local } = resultado
+    const { previsao, local, hoje } = resultado
 
     if (!previsao.vaiChover) {
       return {
         ok: true,
         local,
         previsao,
+        hoje,
         enviada: false,
         consolidar: false,
         emails: {
@@ -148,7 +171,11 @@ export class MensagemServico {
           enviados: 0,
           falhas: []
         },
-        motivo: 'Sem previsão de chuva para amanhã. Nenhuma mensagem foi enviada.',
+        motivo:
+          `Chance de chuva de ${Math.round(previsao.probabilidadeChuva)}%` +
+          (previsao.janela ? ` no horário das aulas (${previsao.janela})` : '') +
+          ` para amanhã (${this.dataBr(previsao.data)}) abaixo do mínimo configurado (${limiar}%). ` +
+          'Nenhuma mensagem foi enviada.',
         historico: this.listar()
       }
     }
@@ -159,6 +186,7 @@ export class MensagemServico {
         ok: true,
         local,
         previsao,
+        hoje,
         enviada: false,
         consolidar: true,
         emails: {
@@ -178,6 +206,7 @@ export class MensagemServico {
         ok: true,
         local,
         previsao,
+        hoje,
         enviada: false,
         consolidar: true,
         emails: {
@@ -225,10 +254,11 @@ export class MensagemServico {
       ok: true,
       local,
       previsao,
+      hoje,
       enviada: status === 'enviado',
       consolidar,
       emails,
-      motivo: this.montarMotivo(emails),
+      motivo: this.montarMotivo(emails, previsao),
       mensagem,
       historico: this.listar()
     }
