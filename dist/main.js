@@ -15,6 +15,7 @@ const PagamentoBackend_1 = require("./pagamentos/PagamentoBackend");
 const PlanosBackend_1 = require("./planos/PlanosBackend");
 const RelatorioBackend_1 = require("./relatorios/RelatorioBackend");
 const UsuarioBackend_1 = require("./usuarios/UsuarioBackend");
+const VisitanteBackend_1 = require("./visitantes/VisitanteBackend");
 class Aplicacao {
     constructor() {
         this.sessao = new Sessao_1.Sessao();
@@ -33,6 +34,7 @@ class Aplicacao {
         this.aulas = new JanelaApp_1.JanelaApp({ pasta: 'aulas', nome: 'aulas', largura: 1280, altura: 800 });
         this.planos = new JanelaApp_1.JanelaApp({ pasta: 'planos', nome: 'planos', largura: 1280, altura: 800 });
         this.pagamentos = new JanelaApp_1.JanelaApp({ pasta: 'pagamentos', nome: 'pagamentos', largura: 1280, altura: 820 });
+        this.visitantes = new JanelaApp_1.JanelaApp({ pasta: 'visitantes', nome: 'visitantes', largura: 1280, altura: 800 });
         this.bot = new JanelaApp_1.JanelaApp({ pasta: 'mensagens', nome: 'mensagens', largura: 1000, altura: 820 });
         this.aoEntrar = () => {
             this.menu.abrir();
@@ -47,6 +49,7 @@ class Aplicacao {
             this.aulas.fechar();
             this.planos.fechar();
             this.pagamentos.fechar();
+            this.visitantes.fechar();
             this.bot.fechar();
             this.menu.fechar();
         };
@@ -74,6 +77,7 @@ class Aplicacao {
                 new PlanosBackend_1.PlanoIpc(this.sessao).registrar();
                 new PlanosBackend_1.AssinaturaIpc(this.sessao).registrar();
                 new PagamentoBackend_1.PagamentoIpc(this.sessao).registrar();
+                new VisitanteBackend_1.VisitanteIpc(this.sessao).registrar();
                 new FuncionarioBackend_1.FuncionarioIpc(this.sessao).registrar();
                 new FuncionarioBackend_1.ModalidadeIpc(this.sessao).registrar();
                 new MenuBackend_1.MenuIpc(this.sessao, {
@@ -84,6 +88,7 @@ class Aplicacao {
                     aulas: () => this.aulas.abrir(),
                     planos: () => this.planos.abrir(),
                     pagamentos: () => this.pagamentos.abrir(),
+                    visitantes: () => this.visitantes.abrir(),
                     bot: () => this.bot.abrir()
                 }, this.aoVoltar).registrar();
                 new RelatorioBackend_1.RelatorioIpc(this.sessao).registrar();

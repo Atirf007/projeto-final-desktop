@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Visitantes</title>
+  <style>
+    :root {
+      --primaria-900: #111827;
+      --primaria-800: #1f2937;
+      --primaria-700: #374151;
+      --primaria-600: #4b5563;
+      --primaria-500: #6b7280;
+      --secundaria: #10b981;
+      --secundaria-hover: #059669;
+      --secundaria-suave: #ecfdf5;
+      --secundaria-borda: #a7f3d0;
+      --bg-pagina: #f9fafb;
+      --bg-card: #ffffff;
+      --cinza-200: #e5e7eb;
+      --cinza-100: #f3f4f6;
+      --erro: #b91c1c;
+      --aviso: #92400e;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--fonte); background: var(--bg-pagina); color: var(--primaria-900); line-height: 1.5; }
+    header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; background: var(--primaria-800); color: #ffffff; padding: 14px 28px; border-bottom: 3px solid var(--secundaria); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12); }
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .marca-logo { width: 34px; height: 34px; flex: none; display: grid; place-items: center; background: var(--secundaria); border-radius: 8px; }
+    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cinza-200); }
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .voltar { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit; color: #ffffff; background: transparent; border: 1px solid var(--primaria-500); border-radius: 8px; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
+    .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+    .voltar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    main { padding: 28px 32px 40px; max-width: 1280px; margin: 0 auto; }
+    .painel { background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-card); padding: 24px; box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05); }
+    .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--cinza-200); }
+    .campo { display: grid; gap: 6px; }
+    .campo span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); }
+    input, select, textarea { padding: 10px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
+    input:focus, select:focus, textarea:focus { border-color: var(--secundaria); box-shadow: 0 0 0 3px var(--secundaria-suave); }
+    textarea { resize: vertical; min-height: 72px; }
+    .espaco { flex: 1; }
+    h2 { position: relative; margin: 0 0 16px; padding-left: 12px; font-size: 16px; font-weight: 700; color: var(--primaria-800); }
+    h2::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 16px; border-radius: 2px; background: var(--secundaria); }
+    h3 { margin: 0 0 8px; font-size: 14px; color: var(--primaria-800); }
+    .tabela { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; color: var(--primaria-600); background: var(--cinza-100); border-bottom: 1px solid var(--cinza-200); white-space: nowrap; }
+    tbody td { padding: 12px 14px; color: var(--primaria-700); border-bottom: 1px solid var(--cinza-200); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg-pagina); }
+    thead th:first-child, tbody td:first-child { padding-left: 0; }
+    thead th:last-child, tbody td:last-child { padding-right: 0; }
+    .col-nome strong { display: block; font-weight: 600; color: var(--primaria-800); }
+    .col-nome small { display: block; font-size: 12px; color: var(--primaria-500); }
+    .col-aula strong { display: block; font-weight: 600; color: var(--primaria-800); }
+    .col-aula small { display: block; font-size: 12px; color: var(--primaria-500); }
+    .col-data { white-space: nowrap; }
+    .selo { display: inline-block; padding: 3px 10px; font-size: 11px; font-style: normal; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid transparent; border-radius: 999px; white-space: nowrap; }
+    .selo.agendado { color: #1e40af; background: #eff6ff; }
+    .selo.compareceu { color: var(--secundaria-hover); background: var(--secundaria-suave); border-color: var(--secundaria-borda); }
+    .selo.faltou { color: #9a3412; background: #fff7ed; }
+    .selo.convertido { color: #6d28d9; background: #f5f3ff; }
+    .tipo { display: inline-block; padding: 3px 9px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--primaria-600); background: var(--cinza-100); border: 1px solid var(--cinza-200); border-radius: 999px; white-space: nowrap; }
+    .tipo.experimental { color: var(--secundaria-hover); background: var(--secundaria-suave); border-color: var(--secundaria-borda); }
+    #status { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); min-height: 20px; }
+    #status.erro { color: var(--erro); }
+    .botao { padding: 10px 18px; font-size: 14px; font-family: inherit; font-weight: 600; color: #ffffff; background: var(--primaria-800); border: 1px solid var(--primaria-800); border-radius: var(--raio-controle); cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .botao:hover:not(:disabled) { background: var(--primaria-700); border-color: var(--primaria-700); }
+    .botao:disabled { opacity: 0.6; cursor: default; }
+    .botao.secundario { color: var(--primaria-700); background: var(--bg-card); border-color: var(--cinza-200); }
+    .botao.secundario:hover:not(:disabled) { background: var(--cinza-100); border-color: var(--cinza-200); }
+    .botao.verde { background: var(--secundaria-hover); border-color: var(--secundaria-hover); }
+    .botao.verde:hover:not(:disabled) { background: #047857; border-color: #047857; }
+    .botao.perigo { background: #991b1b; border-color: #991b1b; }
+    .botao.perigo:hover:not(:disabled) { background: #7f1d1d; border-color: #7f1d1d; }
+    .botao.pequeno { padding: 6px 10px; font-size: 12px; }
+    .acoes-linha { display: flex; gap: 8px; flex-wrap: wrap; }
+    dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 0; color: var(--primaria-900); background: var(--bg-card); border: 1px solid var(--cinza-200); border-top: 4px solid var(--secundaria); border-radius: var(--raio-card); box-shadow: 0 10px 25px rgba(17, 24, 39, 0.2); }
+    dialog.menor { width: min(540px, calc(100vw - 32px)); }
+    dialog::backdrop { background: rgba(17, 24, 39, 0.45); }
+    dialog h2 { margin: 24px 24px 0; }
+    .dialogo-conteudo { padding: 20px 24px 24px; }
+    .grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grade .span2 { grid-column: 1 / -1; }
+    .acoes { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .msg-erro { min-height: 20px; margin: 0; font-size: 13px; color: var(--erro); }
+    .msg-info { min-height: 20px; margin: 8px 0 0; font-size: 13px; color: var(--primaria-600); }
+    .msg-info.erro { color: var(--erro); }
+    .msg-info.sucesso { color: var(--secundaria-hover); }
+    .detalhes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+    .detalhes dt { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-500); }
+    .detalhes dd { margin: 2px 0 0; color: var(--primaria-800); word-break: break-word; }
+    .detalhes .span2 { grid-column: 1 / -1; }
+    .bloco-presenca { margin-top: 20px; padding: 16px; background: var(--cinza-100); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); }
+    .bloco-presenca p { margin: 0 0 10px; font-size: 13px; color: var(--primaria-600); }
+    .acoes-presenca { display: flex; gap: 8px; flex-wrap: wrap; }
+    .oculto { display: none !important; }
+    @media (max-width: 760px) { main { padding: 20px; } .grade, .detalhes { grid-template-columns: 1fr; } .grade .span2, .detalhes .span2 { grid-column: auto; } }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6.5 7.5v9" /><path d="M17.5 7.5v9" /><path d="M3.5 9.5v5" /><path d="M20.5 9.5v5" /><path d="M6.5 12h11" /></svg>
+      </span>
+      <span class="marca-texto"><strong>Cotil</strong><small>Academia</small></span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Visitantes</h1>
+  </header>
+  <main>
+    <section class="painel">
+      <div class="filtros">
+        <label class="campo">
+          <span>Data da visita</span>
+          <input id="filtro-data" type="date">
+        </label>
+        <label class="campo">
+          <span>Tipo</span>
+          <select id="filtro-tipo">
+            <option value="">Todos</option>
+            <option value="experimental">Aula experimental</option>
+            <option value="visitante">Visitante</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Status</span>
+          <select id="filtro-status">
+            <option value="">Todos</option>
+            <option value="agendado">Agendado</option>
+            <option value="compareceu">Compareceu</option>
+            <option value="faltou">Faltou</option>
+            <option value="convertido">Convertido</option>
+          </select>
+        </label>
+        <button id="limpar-filtros" type="button" class="botao secundario">Limpar</button>
+        <span class="espaco"></span>
+        <button id="novo" type="button" class="botao oculto">Novo visitante</button>
+      </div>
+      <h2>Lista de visitantes e aulas experimentais</h2>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Visitante</th>
+              <th>Telefone</th>
+              <th>Data da visita</th>
+              <th>Aula</th>
+              <th>Tipo</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+        </table>
+      </div>
+      <p id="status" role="status"></p>
+    </section>
+  </main>
+
+  <dialog id="dialogo-form" aria-labelledby="titulo-form">
+    <h2 id="titulo-form">Novo visitante</h2>
+    <form id="formulario" class="dialogo-conteudo" novalidate>
+      <input id="visitante-id" type="hidden">
+      <div class="grade">
+        <label class="campo span2"><span>Nome</span><input id="nome" type="text" maxlength="120" autocomplete="off"></label>
+        <label class="campo"><span>Telefone</span><input id="telefone" type="text" maxlength="20" autocomplete="off"></label>
+        <label class="campo"><span>E-mail (opcional)</span><input id="email" type="email" maxlength="160" autocomplete="off"></label>
+        <label class="campo"><span>Data da visita</span><input id="data-visita" type="date"></label>
+        <label class="campo"><span>Tipo</span>
+          <select id="tipo">
+            <option value="experimental">Aula experimental</option>
+            <option value="visitante">Visitante</option>
+          </select>
+        </label>
+        <label class="campo span2"><span>Aula vinculada (opcional)</span><select id="aula"></select></label>
+        <label class="campo span2"><span>Observações</span><textarea id="observacoes" maxlength="255"></textarea></label>
+        <label class="campo oculto" id="campo-status"><span>Status</span>
+          <select id="visitante-status">
+            <option value="agendado">Agendado</option>
+            <option value="compareceu">Compareceu</option>
+            <option value="faltou">Faltou</option>
+            <option value="convertido">Convertido</option>
+          </select>
+        </label>
+      </div>
+      <p id="erro-formulario" class="msg-erro" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-form" type="button" class="botao secundario">Cancelar</button>
+        <button id="salvar" type="submit" class="botao">Cadastrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-detalhe" class="menor" aria-labelledby="titulo-detalhe">
+    <h2 id="titulo-detalhe">Visitante</h2>
+    <div class="dialogo-conteudo">
+      <dl id="detalhes" class="detalhes"></dl>
+      <div id="bloco-presenca" class="bloco-presenca">
+        <h3>Lista de presença</h3>
+        <p>Atualize a presença do visitante nesta visita.</p>
+        <div class="acoes-presenca">
+          <button id="marcar-compareceu" type="button" class="botao verde pequeno">Compareceu</button>
+          <button id="marcar-faltou" type="button" class="botao secundario pequeno">Faltou</button>
+          <button id="marcar-agendado" type="button" class="botao secundario pequeno">Reabrir como agendado</button>
+        </div>
+        <p id="msg-presenca" class="msg-info"></p>
+      </div>
+      <div class="acoes">
+        <button id="fechar-detalhe" type="button" class="botao secundario">Fechar</button>
+        <button id="editar-detalhe" type="button" class="botao">Editar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-excluir" class="menor" aria-labelledby="titulo-excluir">
+    <h2 id="titulo-excluir">Excluir visitante</h2>
+    <div class="dialogo-conteudo">
+      <p id="texto-excluir" style="margin:0;color:var(--primaria-700)"></p>
+      <p id="erro-excluir" class="msg-erro" role="alert" style="margin-top:10px"></p>
+      <div class="acoes">
+        <button id="cancelar-excluir" type="button" class="botao secundario">Cancelar</button>
+        <button id="confirmar-excluir" type="button" class="botao perigo">Excluir</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
