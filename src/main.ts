@@ -13,6 +13,7 @@ import { PagamentoIpc } from './pagamentos/PagamentoBackend'
 import { AssinaturaIpc, PlanoIpc } from './planos/PlanosBackend'
 import { RelatorioIpc } from './relatorios/RelatorioBackend'
 import { UsuarioIpc } from './usuarios/UsuarioBackend'
+import { VisitanteIpc } from './visitantes/VisitanteBackend'
 
 class Aplicacao {
   private readonly sessao = new Sessao()
@@ -41,6 +42,8 @@ class Aplicacao {
 
   private readonly pagamentos = new JanelaApp({ pasta: 'pagamentos', nome: 'pagamentos', largura: 1280, altura: 820 })
 
+  private readonly visitantes = new JanelaApp({ pasta: 'visitantes', nome: 'visitantes', largura: 1280, altura: 800 })
+
   private readonly bot = new JanelaApp({ pasta: 'mensagens', nome: 'mensagens', largura: 1000, altura: 820 })
 
   private aoEntrar = (): void => {
@@ -57,6 +60,7 @@ class Aplicacao {
     this.aulas.fechar()
     this.planos.fechar()
     this.pagamentos.fechar()
+    this.visitantes.fechar()
     this.bot.fechar()
     this.menu.fechar()
   }
@@ -86,6 +90,7 @@ class Aplicacao {
       new PlanoIpc(this.sessao).registrar()
       new AssinaturaIpc(this.sessao).registrar()
       new PagamentoIpc(this.sessao).registrar()
+      new VisitanteIpc(this.sessao).registrar()
       new FuncionarioIpc(this.sessao).registrar()
       new ModalidadeIpc(this.sessao).registrar()
       new MenuIpc(this.sessao, {
@@ -96,6 +101,7 @@ class Aplicacao {
         aulas: () => this.aulas.abrir(),
         planos: () => this.planos.abrir(),
         pagamentos: () => this.pagamentos.abrir(),
+        visitantes: () => this.visitantes.abrir(),
         bot: () => this.bot.abrir()
       }, this.aoVoltar).registrar()
       new RelatorioIpc(this.sessao).registrar()
