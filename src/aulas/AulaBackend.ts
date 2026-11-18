@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -833,12 +833,12 @@ export class AulaIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('aulas:listar', async (_evento, entrada: unknown): Promise<Aula[]> => {
+    registrarCanal('aulas:listar', async (_evento, entrada: unknown): Promise<Aula[]> => {
       this.sessao.exigir()
       return this.repositorio.listar(this.validador.filtro(entrada))
     })
 
-    ipcMain.handle('aulas:obter', async (_evento, entrada: unknown): Promise<AulaDetalhe | null> => {
+    registrarCanal('aulas:obter', async (_evento, entrada: unknown): Promise<AulaDetalhe | null> => {
       const usuario = this.sessao.exigir()
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Aula inválida.')
@@ -850,7 +850,7 @@ export class AulaIpc {
       return this.repositorio.obter(id, null)
     })
 
-    ipcMain.handle('aulas:criar', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
+    registrarCanal('aulas:criar', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const v = this.validador.validarCriacao(entrada)
       if (!v.ok) return v
@@ -867,7 +867,7 @@ export class AulaIpc {
       }
     })
 
-    ipcMain.handle('aulas:atualizar', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
+    registrarCanal('aulas:atualizar', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const v = this.validador.validarAtualizacao(entrada)
       if (!v.ok) return v
@@ -885,7 +885,7 @@ export class AulaIpc {
       }
     })
 
-    ipcMain.handle('aulas:remarcar', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
+    registrarCanal('aulas:remarcar', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const v = this.validador.validarRemarcacao(entrada)
       if (!v.ok) return v
@@ -902,7 +902,7 @@ export class AulaIpc {
       }
     })
 
-    ipcMain.handle('aulas:excluir', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
+    registrarCanal('aulas:excluir', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Aula inválida.' }
@@ -919,7 +919,7 @@ export class AulaIpc {
       }
     })
 
-    ipcMain.handle('aulas:inscrever', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
+    registrarCanal('aulas:inscrever', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
       const e = entrada as Record<string, unknown>
@@ -938,7 +938,7 @@ export class AulaIpc {
       }
     })
 
-    ipcMain.handle('aulas:inscreverMe', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
+    registrarCanal('aulas:inscreverMe', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir(['aluno'])
       if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
       const aulaId = this.idValido((entrada as Record<string, unknown>).aulaId)
@@ -953,7 +953,7 @@ export class AulaIpc {
       }
     })
 
-    ipcMain.handle('aulas:cancelarInscricao', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
+    registrarCanal('aulas:cancelarInscricao', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir()
       const inscricaoId = this.idValido(entrada)
       if (inscricaoId === null) return { ok: false, mensagem: 'Inscrição inválida.' }
@@ -975,14 +975,14 @@ export class AulaIpc {
       }
     })
 
-    ipcMain.handle('aulas:minhas', async (): Promise<Aula[]> => {
+    registrarCanal('aulas:minhas', async (): Promise<Aula[]> => {
       const usuario = this.sessao.exigir(['aluno'])
       const alunoId = await this.meuAlunoId(usuario)
       if (alunoId === null) return []
       return this.repositorio.minhas(alunoId)
     })
 
-    ipcMain.handle('aulas:listaPresenca', async (_evento, entrada: unknown): Promise<InscricaoAula[]> => {
+    registrarCanal('aulas:listaPresenca', async (_evento, entrada: unknown): Promise<InscricaoAula[]> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const aulaId = this.idValido(entrada)
       if (aulaId === null) throw new Error('Aula inválida.')
@@ -993,7 +993,7 @@ export class AulaIpc {
       return this.repositorio.listarInscricoes(aulaId)
     })
 
-    ipcMain.handle('aulas:marcarPresenca', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
+    registrarCanal('aulas:marcarPresenca', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
       const e = entrada as Record<string, unknown>
@@ -1014,7 +1014,7 @@ export class AulaIpc {
       }
     })
 
-    ipcMain.handle('aulas:vagas', async (_evento, entrada: unknown): Promise<{ capacidadeMax: number; ocupadas: number; disponiveis: number } | null> => {
+    registrarCanal('aulas:vagas', async (_evento, entrada: unknown): Promise<{ capacidadeMax: number; ocupadas: number; disponiveis: number } | null> => {
       this.sessao.exigir()
       const aulaId = this.idValido(entrada)
       if (aulaId === null) throw new Error('Aula inválida.')

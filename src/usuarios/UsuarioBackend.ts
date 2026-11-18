@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -99,7 +99,7 @@ export class UsuarioIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('usuarios:listar', async (_evento, busca: unknown): Promise<UsuarioLista[]> => {
+    registrarCanal('usuarios:listar', async (_evento, busca: unknown): Promise<UsuarioLista[]> => {
       this.sessao.exigir(['admin'])
 
       if (busca !== undefined && typeof busca !== 'string') throw new Error('Consulta inválida')
@@ -108,7 +108,7 @@ export class UsuarioIpc {
       return this.repositorio.listar(typeof busca === 'string' ? busca.trim() : '')
     })
 
-    ipcMain.handle('usuarios:criar', async (_evento, entrada: unknown): Promise<ResultadoCriacao> => {
+    registrarCanal('usuarios:criar', async (_evento, entrada: unknown): Promise<ResultadoCriacao> => {
       this.sessao.exigir(['admin'])
 
       const validacao = this.validar(entrada)

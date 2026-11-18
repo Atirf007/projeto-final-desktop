@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { Sessao } from '../Sessao'
 
 export type HorarioAula = {
@@ -313,7 +313,7 @@ export class ClimaIpc {
   ) {}
 
   registrar = (): void => {
-    ipcMain.handle('clima:previsao', async (): Promise<ResultadoClima> => {
+    registrarCanal('clima:previsao', async (): Promise<ResultadoClima> => {
       this.sessao.exigir(['admin', 'instrutor'])
       return this.cliente.buscar()
     })

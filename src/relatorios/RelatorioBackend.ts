@@ -1,4 +1,5 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, dialog } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { writeFile } from 'fs/promises'
 import { RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
@@ -106,13 +107,13 @@ export class RelatorioIpc {
   ) {}
 
   registrar = (): void => {
-    ipcMain.handle('relatorios:receitas', (_evento, periodo: unknown) => {
+    registrarCanal('relatorios:receitas', (_evento, periodo: unknown) => {
       this.sessao.exigir(['admin'])
       if (!this.repositorio.periodoValido(periodo)) throw new Error('Período inválido')
       return this.repositorio.receitas(periodo)
     })
 
-    ipcMain.handle('relatorios:exportar-pdf', (evento, nome: unknown) => {
+    registrarCanal('relatorios:exportar-pdf', (evento, nome: unknown) => {
       this.sessao.exigir(['admin'])
       const janela = BrowserWindow.fromWebContents(evento.sender)
       if (!janela) throw new Error('Janela não encontrada')

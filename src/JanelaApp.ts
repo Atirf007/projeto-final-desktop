@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, shell } from 'electron'
 import * as path from 'path'
 
 type OpcoesJanela = {
@@ -30,8 +30,29 @@ export class JanelaApp {
       webPreferences: {
         preload: path.join(__dirname, pasta, `${nome}.js`),
         contextIsolation: true,
-        nodeIntegration: false
+        nodeIntegration: false,
+        sandbox: true,
+        webSecurity: true
       }
+    })
+
+    const abrirLinkExterno = (url: string): void => {
+      try {
+        const alvo = new URL(url)
+        if (alvo.protocol === 'https:') void shell.openExternal(alvo.toString())
+      } catch {
+        return
+      }
+    }
+
+    janela.webContents.setWindowOpenHandler(({ url }) => {
+      abrirLinkExterno(url)
+      return { action: 'deny' }
+    })
+
+    janela.webContents.on('will-navigate', (evento, url) => {
+      evento.preventDefault()
+      abrirLinkExterno(url)
     })
 
     janela.on('closed', () => {

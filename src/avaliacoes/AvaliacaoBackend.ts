@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -512,7 +512,7 @@ export class AvaliacaoIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('avaliacoes:listar', async (_evento, entrada: unknown): Promise<Avaliacao[]> => {
+    registrarCanal('avaliacoes:listar', async (_evento, entrada: unknown): Promise<Avaliacao[]> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const lista = await this.repositorio.listar(this.validador.filtro(entrada))
       if (usuario.perfil === 'admin') return lista.map((avaliacao) => ({ ...avaliacao, podeEditar: true }))
@@ -523,7 +523,7 @@ export class AvaliacaoIpc {
       }))
     })
 
-    ipcMain.handle('avaliacoes:obter', async (_evento, entrada: unknown): Promise<Avaliacao | null> => {
+    registrarCanal('avaliacoes:obter', async (_evento, entrada: unknown): Promise<Avaliacao | null> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Avaliação inválida.')
@@ -533,7 +533,7 @@ export class AvaliacaoIpc {
       return { ...avaliacao, podeEditar: this.podeEditar(usuario, avaliacao.instrutorId, meu) }
     })
 
-    ipcMain.handle('avaliacoes:criar', async (_evento, entrada: unknown): Promise<ResultadoAvaliacao> => {
+    registrarCanal('avaliacoes:criar', async (_evento, entrada: unknown): Promise<ResultadoAvaliacao> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const v = this.validador.validarCriacao(entrada)
       if (!v.ok) return v
@@ -549,7 +549,7 @@ export class AvaliacaoIpc {
       }
     })
 
-    ipcMain.handle('avaliacoes:atualizar', async (_evento, entrada: unknown): Promise<ResultadoAvaliacao> => {
+    registrarCanal('avaliacoes:atualizar', async (_evento, entrada: unknown): Promise<ResultadoAvaliacao> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const v = this.validador.validarAtualizacao(entrada)
       if (!v.ok) return v
@@ -563,7 +563,7 @@ export class AvaliacaoIpc {
       }
     })
 
-    ipcMain.handle('avaliacoes:excluir', async (_evento, entrada: unknown): Promise<ResultadoAvaliacao> => {
+    registrarCanal('avaliacoes:excluir', async (_evento, entrada: unknown): Promise<ResultadoAvaliacao> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Avaliação inválida.' }
@@ -577,7 +577,7 @@ export class AvaliacaoIpc {
       }
     })
 
-    ipcMain.handle('avaliacoes:evolucao', async (_evento, entrada: unknown): Promise<SerieEvolucao | null> => {
+    registrarCanal('avaliacoes:evolucao', async (_evento, entrada: unknown): Promise<SerieEvolucao | null> => {
       this.sessao.exigir(['admin', 'instrutor'])
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Aluno inválido.')
@@ -596,7 +596,7 @@ export class AvaliacaoIpc {
       return { alunoId: id, alunoNome, pontos }
     })
 
-    ipcMain.handle('avaliacoes:minhas', async (): Promise<Avaliacao[]> => {
+    registrarCanal('avaliacoes:minhas', async (): Promise<Avaliacao[]> => {
       const usuario = this.sessao.exigir(['aluno'])
       const alunoId = await this.repositorio.alunoIdPorUsuario(usuario.id)
       if (alunoId === null) return []

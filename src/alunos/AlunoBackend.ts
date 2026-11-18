@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -531,19 +531,19 @@ export class AlunoIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('alunos:listar', async (_evento, entrada: unknown): Promise<AlunoResumo[]> => {
+    registrarCanal('alunos:listar', async (_evento, entrada: unknown): Promise<AlunoResumo[]> => {
       this.sessao.exigir(['admin', 'instrutor'])
       return this.repositorio.listar(this.filtroValido(entrada))
     })
 
-    ipcMain.handle('alunos:obter', async (_evento, entrada: unknown): Promise<Aluno | null> => {
+    registrarCanal('alunos:obter', async (_evento, entrada: unknown): Promise<Aluno | null> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Aluno inválido.')
       return this.repositorio.obter(id, this.podeVerSaude(usuario))
     })
 
-    ipcMain.handle('alunos:criar', async (_evento, entrada: unknown): Promise<ResultadoAluno> => {
+    registrarCanal('alunos:criar', async (_evento, entrada: unknown): Promise<ResultadoAluno> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarCriacao(entrada)
       if (!v.ok) return v
@@ -557,7 +557,7 @@ export class AlunoIpc {
       }
     })
 
-    ipcMain.handle('alunos:atualizar', async (_evento, entrada: unknown): Promise<ResultadoAluno> => {
+    registrarCanal('alunos:atualizar', async (_evento, entrada: unknown): Promise<ResultadoAluno> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarAtualizacao(entrada)
       if (!v.ok) return v
@@ -572,7 +572,7 @@ export class AlunoIpc {
       }
     })
 
-    ipcMain.handle('alunos:excluir', async (_evento, entrada: unknown): Promise<ResultadoAluno> => {
+    registrarCanal('alunos:excluir', async (_evento, entrada: unknown): Promise<ResultadoAluno> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Aluno inválido.' }
@@ -586,12 +586,12 @@ export class AlunoIpc {
       }
     })
 
-    ipcMain.handle('alunos:meuPerfil', async (): Promise<Aluno | null> => {
+    registrarCanal('alunos:meuPerfil', async (): Promise<Aluno | null> => {
       const usuario = this.sessao.exigir(['aluno'])
       return this.repositorio.obterPorUsuario(usuario.id, true)
     })
 
-    ipcMain.handle('alunos:atualizarMeuPerfil', async (): Promise<ResultadoAluno> => {
+    registrarCanal('alunos:atualizarMeuPerfil', async (): Promise<ResultadoAluno> => {
       this.sessao.exigir(['aluno'])
       return { ok: false, mensagem: 'Atualização do próprio perfil ainda não está disponível nesta tela.' }
     })

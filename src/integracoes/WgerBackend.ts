@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { Sessao } from '../Sessao'
 
 export type ExercicioExterno = {
@@ -163,7 +163,7 @@ export class WgerIpc {
   ) {}
 
   registrar = (): void => {
-    ipcMain.handle('exercicios:buscar', async (_evento, entrada: unknown): Promise<ResultadoExercicios> => {
+    registrarCanal('exercicios:buscar', async (_evento, entrada: unknown): Promise<ResultadoExercicios> => {
       this.sessao.exigir(['admin', 'instrutor'])
 
       const dados = typeof entrada === 'object' && entrada !== null ? (entrada as Record<string, unknown>) : {}
@@ -173,7 +173,7 @@ export class WgerIpc {
       return this.cliente.buscar(termo, Number.isInteger(limite) ? limite : 20)
     })
 
-    ipcMain.handle('exercicios:obter', async (_evento, entrada: unknown): Promise<ResultadoExercicio> => {
+    registrarCanal('exercicios:obter', async (_evento, entrada: unknown): Promise<ResultadoExercicio> => {
       this.sessao.exigir(['admin', 'instrutor'])
 
       const dados = typeof entrada === 'object' && entrada !== null ? (entrada as Record<string, unknown>) : {}

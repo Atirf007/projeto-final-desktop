@@ -116,7 +116,7 @@
       stroke-linejoin: round;
     }
 
-    main { padding: 28px 32px 40px; max-width: 1120px; margin: 0 auto; }
+    main { padding: 28px 32px 40px; max-width: 1440px; margin: 0 auto; }
 
     .painel {
       background: var(--bg-card);
@@ -147,7 +147,7 @@
     }
 
     input {
-      padding: 10px 14px;
+      padding: 12px 14px;
       font-size: 14px;
       font-family: inherit;
       font-weight: 500;
@@ -192,7 +192,7 @@
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
     thead th {
-      padding: 10px 14px;
+      padding: 12px 14px;
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
@@ -213,9 +213,6 @@
 
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover td { background: var(--bg-pagina); }
-
-    thead th:first-child, tbody td:first-child { padding-left: 0; }
-    thead th:last-child, tbody td:last-child { padding-right: 0; }
 
     .col-id { width: 64px; font-variant-numeric: tabular-nums; }
     td.col-id { color: var(--primaria-500); }
@@ -243,7 +240,7 @@
     #status.erro { color: var(--erro); }
 
     select {
-      padding: 10px 14px;
+      padding: 12px 14px;
       font-size: 14px;
       font-family: inherit;
       font-weight: 500;
@@ -261,7 +258,7 @@
     }
 
     .botao {
-      padding: 10px 18px;
+      padding: 13px 22px;
       font-size: 14px;
       font-family: inherit;
       font-weight: 600;
@@ -285,7 +282,9 @@
     .botao.secundario:hover:not(:disabled) { background: var(--cinza-100); border-color: var(--cinza-200); }
 
     dialog {
-      width: min(440px, calc(100vw - 32px));
+      width: min(520px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+      overflow: auto;
       padding: 0;
       color: var(--primaria-900);
       background: var(--bg-card);
@@ -302,7 +301,7 @@
     #formulario { display: grid; gap: 16px; padding: 20px 24px 24px; }
     #formulario input, #formulario select { width: 100%; }
 
-    .acoes { display: flex; justify-content: flex-end; gap: 12px; margin-top: 4px; }
+    .acoes { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 24px; flex-wrap: wrap; }
 
     #erro-formulario { min-height: 20px; margin: 0; font-size: 13px; color: var(--erro); }
 

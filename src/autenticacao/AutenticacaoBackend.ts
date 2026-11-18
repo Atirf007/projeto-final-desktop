@@ -1,5 +1,5 @@
 import { randomBytes, scrypt, timingSafeEqual } from 'crypto'
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { Perfil, Sessao, UsuarioSessao } from '../Sessao'
@@ -168,7 +168,7 @@ export class AutenticacaoIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('auth:login', async (_evento, email: unknown, senha: unknown): Promise<ResultadoLogin> => {
+    registrarCanal('auth:login', async (_evento, email: unknown, senha: unknown): Promise<ResultadoLogin> => {
       if (typeof email !== 'string' || typeof senha !== 'string') return { ok: false, mensagem: 'Dados inválidos.' }
 
       const emailLimpo = email.trim()
@@ -187,9 +187,9 @@ export class AutenticacaoIpc {
       }
     })
 
-    ipcMain.handle('auth:me', () => this.sessao.usuario())
+    registrarCanal('auth:me', () => this.sessao.usuario())
 
-    ipcMain.handle('auth:sair', () => {
+    registrarCanal('auth:sair', () => {
       this.sessao.encerrar()
       setImmediate(this.aoSair)
     })

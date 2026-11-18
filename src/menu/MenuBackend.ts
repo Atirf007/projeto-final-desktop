@@ -1,4 +1,5 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { Perfil, Sessao } from '../Sessao'
 
 type Opcao = { id: string; titulo: string; descricao: string; perfis: Perfil[] }
@@ -26,7 +27,7 @@ export class MenuIpc {
   ) {}
 
   registrar = (): void => {
-    ipcMain.handle('menu:carregar', () => {
+    registrarCanal('menu:carregar', () => {
       const usuario = this.sessao.exigir()
 
       return {
@@ -38,7 +39,7 @@ export class MenuIpc {
       }
     })
 
-    ipcMain.handle('menu:abrir', (_evento, id: unknown): boolean => {
+    registrarCanal('menu:abrir', (_evento, id: unknown): boolean => {
       const usuario = this.sessao.exigir()
       const opcao = this.opcoes.find((item) => item.id === id)
       if (!opcao || !opcao.perfis.includes(usuario.perfil)) throw new Error('Acesso negado')
@@ -50,7 +51,7 @@ export class MenuIpc {
       return true
     })
 
-    ipcMain.handle('menu:voltar', (evento): void => {
+    registrarCanal('menu:voltar', (evento): void => {
       this.sessao.exigir()
 
       const origem = BrowserWindow.fromWebContents(evento.sender)
