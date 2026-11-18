@@ -1,12 +1,12 @@
-const { existsSync, readFileSync } = require('fs')
-const { join } = require('path')
-const { spawnSync } = require('child_process')
+import { spawnSync } from 'child_process'
+import { existsSync, readFileSync } from 'fs'
+import { join } from 'path'
 
 const raiz = join(__dirname, '..')
 const pastaElectron = join(raiz, 'node_modules', 'electron')
 const instalador = join(pastaElectron, 'install.js')
 
-function localizarBinario() {
+function localizarBinario(): string | null {
   const arquivoPath = join(pastaElectron, 'path.txt')
   if (existsSync(arquivoPath)) {
     const relativo = readFileSync(arquivoPath, 'utf8').trim()
@@ -14,7 +14,7 @@ function localizarBinario() {
     if (existsSync(candidato)) return candidato
   }
 
-  const nomes =
+  const nomes: string[] =
     process.platform === 'win32'
       ? ['electron.exe']
       : process.platform === 'darwin'
