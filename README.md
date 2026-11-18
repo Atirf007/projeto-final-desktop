@@ -103,5 +103,5 @@ O portal não permite editar dados cadastrais, medidas ou avisos.
 ## Telas implementadas
 
 - **Login** e **Menu** como telas iniciais.
-- **Relatórios**, **Usuários**, **Funcionários**, **Alunos**, **Aulas**, **Avaliações**, **Planos**, **Pagamentos**, **Visitantes**, **Notificações** e **Bot** como módulos de gestão.
+- **Relatórios**, **Usuários**, **Funcionários**, **Alunos**, **Aulas**, **Avaliações**, **Planos**, **Pagamentos**, **Presenças**, **Visitantes**, **Notificações** e **Bot** como módulos de gestão.
 - **Meu painel** como portal do aluno.
