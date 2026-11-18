@@ -1,8 +1,7 @@
-require('dotenv/config')
-const path = require('path')
-const { EmailServico } = require(path.join(__dirname, '..', 'dist', 'integracoes', 'EmailBackend.js'))
+import 'dotenv/config'
+import { EmailServico } from '../src/integracoes/EmailBackend'
 
-async function main() {
+async function main(): Promise<void> {
   const servico = new EmailServico()
 
   if (!servico.configurado()) {
@@ -13,6 +12,12 @@ async function main() {
   }
 
   const destino = process.argv[2] || process.env.SMTP_USER
+  if (!destino) {
+    console.log('SMTP nao configurado.')
+    process.exitCode = 1
+    return
+  }
+
   console.log('Remetente:', servico.remetenteFormatado())
   console.log('Destino:', destino)
   console.log('Enviando...')
@@ -32,7 +37,7 @@ async function main() {
   process.exitCode = resultado.enviados > 0 ? 0 : 1
 }
 
-main().catch((erro) => {
+main().catch((erro: unknown) => {
   console.error('Erro inesperado:', erro instanceof Error ? erro.message : erro)
   process.exitCode = 1
 })
