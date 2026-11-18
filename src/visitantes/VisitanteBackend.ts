@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -386,19 +386,19 @@ export class VisitanteIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('visitantes:listar', async (_evento, entrada: unknown): Promise<Visitante[]> => {
+    registrarCanal('visitantes:listar', async (_evento, entrada: unknown): Promise<Visitante[]> => {
       this.sessao.exigir(['admin', 'instrutor'])
       return this.repositorio.listar(this.validador.filtro(entrada))
     })
 
-    ipcMain.handle('visitantes:obter', async (_evento, entrada: unknown): Promise<Visitante | null> => {
+    registrarCanal('visitantes:obter', async (_evento, entrada: unknown): Promise<Visitante | null> => {
       this.sessao.exigir(['admin', 'instrutor'])
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Visitante inválido.')
       return this.repositorio.obter(id)
     })
 
-    ipcMain.handle('visitantes:criar', async (_evento, entrada: unknown): Promise<ResultadoVisitante> => {
+    registrarCanal('visitantes:criar', async (_evento, entrada: unknown): Promise<ResultadoVisitante> => {
       this.sessao.exigir(['admin', 'instrutor'])
       const v = this.validador.validarCriacao(entrada)
       if (!v.ok) return v
@@ -410,7 +410,7 @@ export class VisitanteIpc {
       }
     })
 
-    ipcMain.handle('visitantes:atualizar', async (_evento, entrada: unknown): Promise<ResultadoVisitante> => {
+    registrarCanal('visitantes:atualizar', async (_evento, entrada: unknown): Promise<ResultadoVisitante> => {
       this.sessao.exigir(['admin', 'instrutor'])
       const v = this.validador.validarAtualizacao(entrada)
       if (!v.ok) return v
@@ -423,7 +423,7 @@ export class VisitanteIpc {
       }
     })
 
-    ipcMain.handle('visitantes:excluir', async (_evento, entrada: unknown): Promise<ResultadoVisitante> => {
+    registrarCanal('visitantes:excluir', async (_evento, entrada: unknown): Promise<ResultadoVisitante> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Visitante inválido.' }

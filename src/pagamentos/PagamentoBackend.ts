@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -315,17 +315,17 @@ export class PagamentoIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('pagamentos:listar', async (_evento, entrada: unknown): Promise<Pagamento[]> => {
+    registrarCanal('pagamentos:listar', async (_evento, entrada: unknown): Promise<Pagamento[]> => {
       this.sessao.exigir(['admin'])
       return this.repositorio.listar(this.validador.filtro(entrada))
     })
 
-    ipcMain.handle('pagamentos:resumo', async (_evento, entrada: unknown): Promise<ResumoPagamentos> => {
+    registrarCanal('pagamentos:resumo', async (_evento, entrada: unknown): Promise<ResumoPagamentos> => {
       this.sessao.exigir(['admin'])
       return this.repositorio.resumo(this.validador.filtro(entrada))
     })
 
-    ipcMain.handle('pagamentos:registrar', async (_evento, entrada: unknown): Promise<ResultadoPagamento> => {
+    registrarCanal('pagamentos:registrar', async (_evento, entrada: unknown): Promise<ResultadoPagamento> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarRegistro(entrada)
       if (!v.ok) return v
@@ -339,7 +339,7 @@ export class PagamentoIpc {
       }
     })
 
-    ipcMain.handle('pagamentos:cancelar', async (_evento, entrada: unknown): Promise<ResultadoPagamento> => {
+    registrarCanal('pagamentos:cancelar', async (_evento, entrada: unknown): Promise<ResultadoPagamento> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Pagamento inválido.' }
@@ -353,7 +353,7 @@ export class PagamentoIpc {
       }
     })
 
-    ipcMain.handle('pagamentos:gerar', async (): Promise<ResultadoPagamento> => {
+    registrarCanal('pagamentos:gerar', async (): Promise<ResultadoPagamento> => {
       this.sessao.exigir(['admin'])
       try {
         const resultado = await this.repositorio.gerar()

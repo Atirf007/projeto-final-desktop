@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { Sessao } from '../Sessao'
@@ -164,14 +164,14 @@ export class PresencaResumoIpc {
   ) {}
 
   registrar = (): void => {
-    ipcMain.handle('presencas:minhas', async (_evento, entrada: unknown): Promise<Presenca[]> => {
+    registrarCanal('presencas:minhas', async (_evento, entrada: unknown): Promise<Presenca[]> => {
       const usuario = this.sessao.exigir(['aluno'])
       const alunoId = await this.repositorio.alunoIdPorUsuario(usuario.id)
       if (alunoId === null) return []
       return this.repositorio.listar(alunoId, this.validador.validar(entrada))
     })
 
-    ipcMain.handle('presencas:minhaFrequencia', async (_evento, entrada: unknown): Promise<FrequenciaResumo> => {
+    registrarCanal('presencas:minhaFrequencia', async (_evento, entrada: unknown): Promise<FrequenciaResumo> => {
       const usuario = this.sessao.exigir(['aluno'])
       const alunoId = await this.repositorio.alunoIdPorUsuario(usuario.id)
       if (alunoId === null) {

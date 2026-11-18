@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, session } from 'electron'
 import { JanelaApp } from './JanelaApp'
 import { Sessao } from './Sessao'
 import { AlunoIpc } from './alunos/AlunoBackend'
@@ -20,6 +20,21 @@ import { PresencaResumoIpc } from './presencas/PresencaBackend'
 import { RelatorioIpc } from './relatorios/RelatorioBackend'
 import { UsuarioIpc } from './usuarios/UsuarioBackend'
 import { VisitanteIpc } from './visitantes/VisitanteBackend'
+
+const CSP = [
+  "default-src 'none'",
+  "script-src 'none'",
+  "style-src 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'none'",
+  "media-src 'none'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'"
+].join('; ')
 
 class Aplicacao {
   private readonly sessao = new Sessao()
@@ -93,6 +108,18 @@ class Aplicacao {
   iniciar = (): void => {
     app.whenReady().then(() => {
       if (process.platform === 'win32') app.setAppUserModelId('com.cotil.academia')
+
+      session.defaultSession.setPermissionRequestHandler((_conteudo, _permissao, callback) => callback(false))
+      session.defaultSession.setPermissionCheckHandler(() => false)
+
+      session.defaultSession.webRequest.onHeadersReceived((detalhes, callback) => {
+        callback({
+          responseHeaders: {
+            ...detalhes.responseHeaders,
+            'Content-Security-Policy': [CSP]
+          }
+        })
+      })
 
       const botClima = new BotClimaServico()
       const notificacaoServico = new NotificacaoServico()

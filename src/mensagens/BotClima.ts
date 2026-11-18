@@ -1,4 +1,5 @@
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import 'dotenv/config'
@@ -213,28 +214,28 @@ export class BotClimaIpc {
   ) {}
 
   registrar = (): void => {
-    ipcMain.handle('bot:estado', (): EstadoBot => {
+    registrarCanal('bot:estado', (): EstadoBot => {
       this.sessao.exigir(['admin', 'instrutor'])
       return this.bot.estado()
     })
 
-    ipcMain.handle('bot:verificar', async (): Promise<EstadoBot> => {
+    registrarCanal('bot:verificar', async (): Promise<EstadoBot> => {
       this.sessao.exigir(['admin', 'instrutor'])
       return this.bot.verificar()
     })
 
-    ipcMain.handle('bot:definir-ativo', async (_evento, ativo: unknown): Promise<EstadoBot> => {
+    registrarCanal('bot:definir-ativo', async (_evento, ativo: unknown): Promise<EstadoBot> => {
       this.sessao.exigir(['admin', 'instrutor'])
       if (typeof ativo !== 'boolean') throw new Error('Valor inválido')
       return this.bot.definirAtivo(ativo)
     })
 
-    ipcMain.handle('bot:definir-intervalo', (_evento, intervalo: unknown): EstadoBot => {
+    registrarCanal('bot:definir-intervalo', (_evento, intervalo: unknown): EstadoBot => {
       this.sessao.exigir(['admin', 'instrutor'])
       return this.bot.definirIntervalo(intervalo)
     })
 
-    ipcMain.handle('bot:definir-limiar', (_evento, limiar: unknown): EstadoBot => {
+    registrarCanal('bot:definir-limiar', (_evento, limiar: unknown): EstadoBot => {
       this.sessao.exigir(['admin'])
       return this.bot.definirLimiar(limiar)
     })

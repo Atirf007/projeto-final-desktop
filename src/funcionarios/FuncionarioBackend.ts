@@ -1,4 +1,4 @@
-﻿import { ipcMain } from 'electron'
+﻿import { registrarCanal } from '../SegurancaIpc'
 import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -560,19 +560,19 @@ export class FuncionarioIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('instrutores:listar', async (_evento, entrada: unknown): Promise<FuncionarioResumo[]> => {
+    registrarCanal('instrutores:listar', async (_evento, entrada: unknown): Promise<FuncionarioResumo[]> => {
       this.sessao.exigir(['admin', 'instrutor'])
       return this.repositorio.listar(this.filtroValido(entrada))
     })
 
-    ipcMain.handle('instrutores:obter', async (_evento, entrada: unknown): Promise<Funcionario | null> => {
+    registrarCanal('instrutores:obter', async (_evento, entrada: unknown): Promise<Funcionario | null> => {
       this.sessao.exigir(['admin', 'instrutor'])
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Funcionário inválido.')
       return this.repositorio.obter(id)
     })
 
-    ipcMain.handle('instrutores:criar', async (_evento, entrada: unknown): Promise<ResultadoFuncionario> => {
+    registrarCanal('instrutores:criar', async (_evento, entrada: unknown): Promise<ResultadoFuncionario> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarCriacao(entrada)
       if (!v.ok) return v
@@ -586,7 +586,7 @@ export class FuncionarioIpc {
       }
     })
 
-    ipcMain.handle('instrutores:atualizar', async (_evento, entrada: unknown): Promise<ResultadoFuncionario> => {
+    registrarCanal('instrutores:atualizar', async (_evento, entrada: unknown): Promise<ResultadoFuncionario> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarAtualizacao(entrada)
       if (!v.ok) return v
@@ -601,7 +601,7 @@ export class FuncionarioIpc {
       }
     })
 
-    ipcMain.handle('instrutores:excluir', async (_evento, entrada: unknown): Promise<ResultadoFuncionario> => {
+    registrarCanal('instrutores:excluir', async (_evento, entrada: unknown): Promise<ResultadoFuncionario> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Funcionário inválido.' }
@@ -637,12 +637,12 @@ export class ModalidadeIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('modalidades:listar', async (_evento, entrada: unknown): Promise<Modalidade[]> => {
+    registrarCanal('modalidades:listar', async (_evento, entrada: unknown): Promise<Modalidade[]> => {
       this.sessao.exigir(['admin', 'instrutor', 'aluno'])
       return this.repositorio.listar(this.filtroValido(entrada))
     })
 
-    ipcMain.handle('modalidades:criar', async (_evento, entrada: unknown): Promise<ResultadoModalidade> => {
+    registrarCanal('modalidades:criar', async (_evento, entrada: unknown): Promise<ResultadoModalidade> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarCriacao(entrada)
       if (!v.ok) return v
@@ -655,7 +655,7 @@ export class ModalidadeIpc {
       }
     })
 
-    ipcMain.handle('modalidades:atualizar', async (_evento, entrada: unknown): Promise<ResultadoModalidade> => {
+    registrarCanal('modalidades:atualizar', async (_evento, entrada: unknown): Promise<ResultadoModalidade> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarAtualizacao(entrada)
       if (!v.ok) return v
@@ -669,7 +669,7 @@ export class ModalidadeIpc {
       }
     })
 
-    ipcMain.handle('modalidades:excluir', async (_evento, entrada: unknown): Promise<ResultadoModalidade> => {
+    registrarCanal('modalidades:excluir', async (_evento, entrada: unknown): Promise<ResultadoModalidade> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Modalidade inválida.' }

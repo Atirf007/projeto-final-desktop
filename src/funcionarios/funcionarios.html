@@ -40,12 +40,12 @@
     .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
     .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
     .voltar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    main { padding: 28px 32px 40px; max-width: 1200px; margin: 0 auto; }
+    main { padding: 28px 32px 40px; max-width: 1440px; margin: 0 auto; }
     .painel { background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-card); padding: 24px; box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05); }
     .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--cinza-200); }
     .campo { display: grid; gap: 6px; }
     .campo span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); }
-    input, select, textarea { padding: 10px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
+    input, select, textarea { padding: 12px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
     input:focus, select:focus, textarea:focus { border-color: var(--secundaria); box-shadow: 0 0 0 3px var(--secundaria-suave); }
     textarea { resize: vertical; min-height: 72px; }
     .espaco { flex: 1; }
@@ -53,12 +53,10 @@
     h2::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 16px; border-radius: 2px; background: var(--secundaria); }
     .tabela { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    thead th { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; color: var(--primaria-600); background: var(--cinza-100); border-bottom: 1px solid var(--cinza-200); white-space: nowrap; }
+    thead th { padding: 12px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; color: var(--primaria-600); background: var(--cinza-100); border-bottom: 1px solid var(--cinza-200); white-space: nowrap; }
     tbody td { padding: 12px 14px; color: var(--primaria-700); border-bottom: 1px solid var(--cinza-200); vertical-align: middle; }
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover td { background: var(--bg-pagina); }
-    thead th:first-child, tbody td:first-child { padding-left: 0; }
-    thead th:last-child, tbody td:last-child { padding-right: 0; }
     .col-nome { font-weight: 600; color: var(--primaria-800); }
     .col-modalidades { max-width: 260px; color: var(--primaria-600); }
     .selo { display: inline-block; padding: 3px 10px; font-size: 11px; font-style: normal; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid transparent; border-radius: 999px; white-space: nowrap; }
@@ -66,17 +64,17 @@
     .selo.inativo { color: var(--primaria-600); background: var(--cinza-100); border-color: var(--cinza-200); }
     #status { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); min-height: 20px; }
     #status.erro { color: var(--erro); }
-    .botao { padding: 10px 18px; font-size: 14px; font-family: inherit; font-weight: 600; color: #ffffff; background: var(--primaria-800); border: 1px solid var(--primaria-800); border-radius: var(--raio-controle); cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .botao { padding: 13px 22px; font-size: 14px; font-family: inherit; font-weight: 600; color: #ffffff; background: var(--primaria-800); border: 1px solid var(--primaria-800); border-radius: var(--raio-controle); cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
     .botao:hover:not(:disabled) { background: var(--primaria-700); border-color: var(--primaria-700); }
     .botao:disabled { opacity: 0.6; cursor: default; }
     .botao.secundario { color: var(--primaria-700); background: var(--bg-card); border-color: var(--cinza-200); }
     .botao.secundario:hover:not(:disabled) { background: var(--cinza-100); border-color: var(--cinza-200); }
     .botao.perigo { background: #991b1b; border-color: #991b1b; }
     .botao.perigo:hover:not(:disabled) { background: #7f1d1d; border-color: #7f1d1d; }
-    .botao.pequeno { padding: 6px 10px; font-size: 12px; }
+    .botao.pequeno { padding: 8px 12px; font-size: 12px; }
     .acoes-linha { display: flex; gap: 8px; flex-wrap: wrap; }
-    dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 0; color: var(--primaria-900); background: var(--bg-card); border: 1px solid var(--cinza-200); border-top: 4px solid var(--secundaria); border-radius: var(--raio-card); box-shadow: 0 10px 25px rgba(17, 24, 39, 0.2); }
-    dialog.menor { width: min(520px, calc(100vw - 32px)); }
+    dialog { width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 0; color: var(--primaria-900); background: var(--bg-card); border: 1px solid var(--cinza-200); border-top: 4px solid var(--secundaria); border-radius: var(--raio-card); box-shadow: 0 10px 25px rgba(17, 24, 39, 0.2); }
+    dialog.menor { width: min(600px, calc(100vw - 32px)); }
     dialog.ampla { width: min(900px, calc(100vw - 32px)); }
     dialog::backdrop { background: rgba(17, 24, 39, 0.45); }
     dialog h2 { margin: 24px 24px 0; }
@@ -86,7 +84,7 @@
     .checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 16px; }
     .check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--primaria-700); }
     .check input { width: 16px; height: 16px; accent-color: var(--secundaria); }
-    .acoes { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .acoes { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 24px; flex-wrap: wrap; }
     .msg-erro { min-height: 20px; margin: 0; font-size: 13px; color: var(--erro); }
     .msg-info { min-height: 20px; margin: 8px 0 0; font-size: 13px; color: var(--primaria-600); }
     .msg-info.erro { color: var(--erro); }

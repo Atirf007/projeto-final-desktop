@@ -127,7 +127,7 @@
       display: grid;
       gap: 20px;
       padding: 28px 32px 40px;
-      max-width: 1120px;
+      max-width: 1440px;
       margin: 0 auto;
     }
 
@@ -152,7 +152,7 @@
 
     h2 {
       position: relative;
-      margin: 0;
+      margin: 0 0 16px;
       padding-left: 12px;
       font-size: 16px;
       font-weight: 700;
@@ -171,10 +171,10 @@
       background: var(--secundaria);
     }
 
-    .subtitulo { margin: 5px 0 0; padding-left: 12px; font-size: 13px; color: var(--primaria-500); }
+    .subtitulo { margin: 6px 0 0; padding-left: 12px; font-size: 13px; color: var(--primaria-500); }
 
     button {
-      padding: 10px 16px;
+      padding: 13px 22px;
       font-size: 14px;
       font-family: inherit;
       font-weight: 600;
@@ -202,6 +202,8 @@
       gap: 12px;
     }
 
+    .espaco { flex: 1; }
+
     .campo-intervalo { display: flex; align-items: center; gap: 8px; }
     .campo-intervalo > span {
       font-size: 11px;
@@ -213,7 +215,7 @@
 
     .campo-intervalo select,
     .campo-intervalo input {
-      padding: 10px 14px;
+      padding: 12px 14px;
       font-size: 14px;
       font-family: inherit;
       font-weight: 500;
@@ -446,7 +448,7 @@
           </label>
           <button id="salvar-limiar" type="button" class="secundario">Salvar limite</button>
         </div>
-        <span style="flex: 1;"></span>
+        <span class="espaco"></span>
         <button id="verificar" type="button" class="secundario">Verificar agora</button>
       </div>
       <div class="info-bot">

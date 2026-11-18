@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -433,17 +433,17 @@ export class NotificacaoIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('notificacoes:listar', async (_evento, entrada: unknown): Promise<Notificacao[]> => {
+    registrarCanal('notificacoes:listar', async (_evento, entrada: unknown): Promise<Notificacao[]> => {
       this.sessao.exigir(['admin'])
       return this.servico.listar(this.validador.filtro(entrada))
     })
 
-    ipcMain.handle('notificacoes:minhas', async (): Promise<Notificacao[]> => {
+    registrarCanal('notificacoes:minhas', async (): Promise<Notificacao[]> => {
       const usuario = this.sessao.exigir(['aluno'])
       return this.servico.minhas(usuario.id)
     })
 
-    ipcMain.handle(
+    registrarCanal(
       'notificacoes:situacao',
       async (): Promise<SituacaoNotificacoes & { agendador?: EstadoAgendadorVencimento }> => {
         this.sessao.exigir(['admin'])
@@ -452,7 +452,7 @@ export class NotificacaoIpc {
       }
     )
 
-    ipcMain.handle('notificacoes:excluir', async (_evento, entrada: unknown): Promise<{ ok: boolean; mensagem?: string }> => {
+    registrarCanal('notificacoes:excluir', async (_evento, entrada: unknown): Promise<{ ok: boolean; mensagem?: string }> => {
       this.sessao.exigir(['admin'])
       const id = this.validador.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Notificação inválida.' }

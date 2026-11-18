@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { Sessao } from '../Sessao'
 
 export type Feriado = {
@@ -107,13 +107,13 @@ export class FeriadosIpc {
   ) {}
 
   registrar = (): void => {
-    ipcMain.handle('feriados:listar', async (_evento, entrada: unknown): Promise<ResultadoFeriados> => {
+    registrarCanal('feriados:listar', async (_evento, entrada: unknown): Promise<ResultadoFeriados> => {
       this.sessao.exigir(['admin', 'instrutor'])
       const ano = typeof entrada === 'object' && entrada !== null ? (entrada as { ano?: unknown }).ano : entrada
       return this.cliente.listar(ano)
     })
 
-    ipcMain.handle('feriados:verificar', async (_evento, entrada: unknown): Promise<ResultadoFeriado> => {
+    registrarCanal('feriados:verificar', async (_evento, entrada: unknown): Promise<ResultadoFeriado> => {
       this.sessao.exigir()
       const data = typeof entrada === 'object' && entrada !== null ? (entrada as { data?: unknown }).data : entrada
       if (typeof data !== 'string') return { ok: false, mensagem: 'Informe a data.' }

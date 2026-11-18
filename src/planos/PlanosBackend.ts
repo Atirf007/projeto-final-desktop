@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
@@ -808,19 +808,19 @@ export class PlanoIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('planos:listar', async (_evento, entrada: unknown): Promise<Plano[]> => {
+    registrarCanal('planos:listar', async (_evento, entrada: unknown): Promise<Plano[]> => {
       this.sessao.exigir(['admin'])
       return this.repositorio.listar(this.filtroValido(entrada))
     })
 
-    ipcMain.handle('planos:obter', async (_evento, entrada: unknown): Promise<Plano | null> => {
+    registrarCanal('planos:obter', async (_evento, entrada: unknown): Promise<Plano | null> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Plano inválido.')
       return this.repositorio.obter(id)
     })
 
-    ipcMain.handle('planos:criar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
+    registrarCanal('planos:criar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarCriacao(entrada)
       if (!v.ok) return v
@@ -832,7 +832,7 @@ export class PlanoIpc {
       }
     })
 
-    ipcMain.handle('planos:atualizar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
+    registrarCanal('planos:atualizar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarAtualizacao(entrada)
       if (!v.ok) return v
@@ -845,7 +845,7 @@ export class PlanoIpc {
       }
     })
 
-    ipcMain.handle('planos:excluir', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
+    registrarCanal('planos:excluir', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Plano inválido.' }
@@ -883,19 +883,19 @@ export class AssinaturaIpc {
   }
 
   registrar = (): void => {
-    ipcMain.handle('assinaturas:listar', async (_evento, entrada: unknown): Promise<Assinatura[]> => {
+    registrarCanal('assinaturas:listar', async (_evento, entrada: unknown): Promise<Assinatura[]> => {
       this.sessao.exigir(['admin'])
       return this.repositorio.listar(this.validador.filtro(entrada))
     })
 
-    ipcMain.handle('assinaturas:obter', async (_evento, entrada: unknown): Promise<Assinatura | null> => {
+    registrarCanal('assinaturas:obter', async (_evento, entrada: unknown): Promise<Assinatura | null> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Assinatura inválida.')
       return this.repositorio.obter(id)
     })
 
-    ipcMain.handle('assinaturas:criar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
+    registrarCanal('assinaturas:criar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarCriacao(entrada)
       if (!v.ok) return v
@@ -907,7 +907,7 @@ export class AssinaturaIpc {
       }
     })
 
-    ipcMain.handle('assinaturas:atualizar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
+    registrarCanal('assinaturas:atualizar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarAtualizacao(entrada)
       if (!v.ok) return v
@@ -920,7 +920,7 @@ export class AssinaturaIpc {
       }
     })
 
-    ipcMain.handle('assinaturas:excluir', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
+    registrarCanal('assinaturas:excluir', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
       this.sessao.exigir(['admin'])
       const id = this.idValido(entrada)
       if (id === null) return { ok: false, mensagem: 'Assinatura inválida.' }
@@ -933,7 +933,7 @@ export class AssinaturaIpc {
       }
     })
 
-    ipcMain.handle('assinaturas:renovar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
+    registrarCanal('assinaturas:renovar', async (_evento, entrada: unknown): Promise<ResultadoPlano> => {
       this.sessao.exigir(['admin'])
       const v = this.validador.validarRenovacao(entrada)
       if (!v.ok) return v
@@ -946,12 +946,12 @@ export class AssinaturaIpc {
       }
     })
 
-    ipcMain.handle('assinaturas:vencendo', async (_evento, entrada: unknown): Promise<Assinatura[]> => {
+    registrarCanal('assinaturas:vencendo', async (_evento, entrada: unknown): Promise<Assinatura[]> => {
       this.sessao.exigir(['admin'])
       return this.repositorio.vencendo(this.validador.dias(entrada))
     })
 
-    ipcMain.handle('assinaturas:minha', async (): Promise<MinhaAssinatura | null> => {
+    registrarCanal('assinaturas:minha', async (): Promise<MinhaAssinatura | null> => {
       const usuario = this.sessao.exigir(['aluno'])
       const alunoId = await this.repositorio.alunoIdPorUsuario(usuario.id)
       if (alunoId === null) return null
