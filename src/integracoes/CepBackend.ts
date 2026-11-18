@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { registrarCanal } from '../SegurancaIpc'
 import { Sessao } from '../Sessao'
 
 export type EnderecoCep = {
@@ -68,7 +68,7 @@ export class CepIpc {
   ) {}
 
   registrar = (): void => {
-    ipcMain.handle('cep:buscar', async (_evento, entrada: unknown): Promise<ResultadoCep> => {
+    registrarCanal('cep:buscar', async (_evento, entrada: unknown): Promise<ResultadoCep> => {
       this.sessao.exigir(['admin', 'instrutor', 'aluno'])
       const cep = typeof entrada === 'string' ? entrada : (entrada as { cep?: unknown } | null)?.cep
       if (typeof cep !== 'string') return { ok: false, mensagem: 'Informe o CEP.' }
