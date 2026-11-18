@@ -4,7 +4,7 @@ Sistema de gestão de academia em Electron, TypeScript e MySQL.
 
 ## Como iniciar
 
-1. Preencha `DB_USER` e `DB_NAME` no arquivo `.env` (use o `.env.example` como modelo).
+1. Preencha `DB_USER` e `DB_NAME` no arquivo `.env`.
 2. Rode os dois comandos:
 
 ```
@@ -99,3 +99,9 @@ O perfil **aluno** vê a opção **Meu painel**, somente para consulta, com:
 - avisos recebidos, incluindo os lembretes de vencimento.
 
 O portal não permite editar dados cadastrais, medidas ou avisos.
+
+## Telas implementadas
+
+- **Login** e **Menu** como telas iniciais.
+- **Relatórios**, **Usuários**, **Funcionários**, **Alunos**, **Aulas**, **Avaliações**, **Planos**, **Pagamentos**, **Visitantes**, **Notificações** e **Bot** como módulos de gestão.
+- **Meu painel** como portal do aluno.
