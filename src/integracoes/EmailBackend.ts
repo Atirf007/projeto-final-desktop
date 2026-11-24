@@ -16,6 +16,35 @@ export type ResultadoEnvioEmail = {
 
 const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+/**
+ * Converte erros do Nodemailer em mensagens genéricas, evitando levar host,
+ * usuário ou detalhes de autenticação para o histórico exibido na tela.
+ */
+export const sanitizarErroEmail = (erro: unknown): string => {
+  const codigo =
+    typeof erro === 'object' && erro !== null && 'code' in erro
+      ? String((erro as { code?: unknown }).code ?? '').toUpperCase()
+      : ''
+  const texto = erro instanceof Error ? erro.message.toLowerCase() : ''
+
+  if (codigo === 'EAUTH' || /auth|credential|login|senha|password/.test(texto)) {
+    return 'Falha de autenticação no servidor de e-mail.'
+  }
+  if (
+    ['ECONNECTION', 'ETIMEDOUT', 'ESOCKET', 'ECONNREFUSED'].includes(codigo) ||
+    /connect|connection|timeout|timed out|socket/.test(texto)
+  ) {
+    return 'Não foi possível conectar ao servidor de e-mail.'
+  }
+  if (['ENOTFOUND', 'EAI_AGAIN', 'EDNS'].includes(codigo) || /dns|not found/.test(texto)) {
+    return 'Servidor de e-mail não encontrado.'
+  }
+  if (codigo === 'EENVELOPE' || /recipient|mailbox|address|destinat/.test(texto)) {
+    return 'O servidor de e-mail recusou um destinatário.'
+  }
+  return 'Falha ao enviar o e-mail.'
+}
+
 export class EmailServico {
   private transporte: Transporter | null = null
 
@@ -110,10 +139,7 @@ export class EmailServico {
           })
           enviados++
         } catch (erro) {
-          falhas.push({
-            email,
-            erro: erro instanceof Error ? erro.message : 'Falha ao enviar o e-mail.'
-          })
+          falhas.push({ email, erro: sanitizarErroEmail(erro) })
         }
       }
     }

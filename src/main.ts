@@ -11,6 +11,7 @@ import { ClimaIpc } from './integracoes/ClimaBackend'
 import { FeriadosIpc } from './integracoes/FeriadosBackend'
 import { WgerIpc } from './integracoes/WgerBackend'
 import { BotClimaIpc, BotClimaServico } from './mensagens/BotClima'
+import { ServidorDecisaoClima } from './mensagens/DecisaoClima'
 import { MenuIpc } from './menu/MenuBackend'
 import { BotVencimentoServico } from './notificacoes/BotVencimento'
 import { NotificacaoIpc, NotificacaoServico } from './notificacoes/NotificacaoBackend'
@@ -122,6 +123,7 @@ class Aplicacao {
       })
 
       const botClima = new BotClimaServico()
+      const decisaoClima = new ServidorDecisaoClima()
       const notificacaoServico = new NotificacaoServico()
       const botVencimento = new BotVencimentoServico(notificacaoServico)
 
@@ -161,10 +163,12 @@ class Aplicacao {
 
       this.abrirInicial()
       botClima.iniciar()
+      decisaoClima.iniciar()
       botVencimento.iniciar()
 
       app.on('before-quit', () => {
         botClima.encerrar()
+        decisaoClima.encerrar()
         botVencimento.encerrar()
       })
       app.on('activate', this.abrirInicial)
