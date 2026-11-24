@@ -3,7 +3,8 @@ import { OpenMeteoClient, PrevisaoClima } from '../integracoes/ClimaBackend'
 import { EmailServico, FalhaEmail, ResultadoEnvioEmail } from '../integracoes/EmailBackend'
 import { AlunoDestinatarios } from './DestinatariosAlunos'
 import { AulaExternaAmanha, AulasAmanha } from './AulasAmanha'
-import { NotificacaoChuvaRepositorio, RegistroNotificacaoChuva } from './NotificacaoChuva'
+import { NotificacaoChuvaRepositorio } from './NotificacaoChuva'
+import { AssinadorDecisao, obterAssinadorDecisao } from './DecisaoClima'
 
 export type Mensagem = {
   id: number
@@ -36,6 +37,12 @@ export type ResultadoVerificacao =
     }
   | { ok: false; mensagem: string; historico: Mensagem[] }
 
+type AvisoPreparado = {
+  id: number
+  aula: AulaExternaAmanha
+  email: string
+}
+
 const chaveAviso = (aulaId: number, email: string): string => `${aulaId}|${email.trim().toLowerCase()}`
 
 export class MensagemServico {
@@ -48,7 +55,8 @@ export class MensagemServico {
     private readonly emails: EmailServico = new EmailServico(),
     private readonly destinatarios: AlunoDestinatarios = new AlunoDestinatarios(),
     private readonly aulas: AulasAmanha = new AulasAmanha(),
-    private readonly notificacoes: NotificacaoChuvaRepositorio = new NotificacaoChuvaRepositorio()
+    private readonly notificacoes: NotificacaoChuvaRepositorio = new NotificacaoChuvaRepositorio(),
+    private readonly assinador: AssinadorDecisao = obterAssinadorDecisao()
   ) {}
 
   marcarAvisoAnterior = (data: string): void => {
@@ -64,12 +72,37 @@ export class MensagemServico {
     return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso
   }
 
-  private textoDoAviso = (previsao: PrevisaoClima): string => {
+  private horarioAula = (aula: AulaExternaAmanha): string => {
+    const hora = `${String(Math.floor(aula.inicioMin / 60)).padStart(2, '0')}:${String(
+      aula.inicioMin % 60
+    ).padStart(2, '0')}`
+    return `${this.dataBr(aula.data)} às ${hora}`
+  }
+
+  private textoDoAviso = (previsao: PrevisaoClima, aula: AulaExternaAmanha): string => {
     const janela = previsao.janela ? ` no horário das aulas (${previsao.janela})` : ''
     return (
-      `Atenção alunos: a previsão para amanhã (${this.dataBr(previsao.data)}) indica chuva${janela} ` +
-      'nas aulas ao ar livre. Por isso, a academia poderá transferir a aula para a área interna ou remarcá-la. ' +
-      'Aguarde a confirmação da equipe.'
+      `Atenção aluno: a previsão para amanhã (${this.dataBr(previsao.data)}) indica chuva${janela} ` +
+      `nas aulas ao ar livre. A aula "${aula.titulo}" de ${this.horarioAula(aula)} poderá ser ` +
+      'transferida para a área interna ou remarcada.'
+    )
+  }
+
+  private textoResumo = (previsao: PrevisaoClima): string =>
+    `Aviso de chuva para as aulas ao ar livre de amanhã (${this.dataBr(previsao.data)}). ` +
+    'O e-mail enviado contém um link para cada aluno escolher entre manter a aula ou pedir remarcação.'
+
+  private montarCorpoEmail = (previsao: PrevisaoClima, itens: AvisoPreparado[]): string => {
+    const linhas = itens.map((item) => {
+      const link = this.assinador.gerarLink(item.id)
+      return `- ${item.aula.titulo} (${this.horarioAula(item.aula)}): ${link}`
+    })
+
+    return (
+      `Atenção aluno: a previsão para amanhã (${this.dataBr(previsao.data)}) indica chuva nas aulas ao ar livre.\n\n` +
+      'Escolha, para cada aula abaixo, se deseja manter a aula ou pedir remarcação:\n\n' +
+      `${linhas.join('\n')}\n\n` +
+      'Se você não responder, a aula permanece como está.'
     )
   }
 
@@ -84,7 +117,7 @@ export class MensagemServico {
   }
 
   private enviarNotificacao = (assunto: string, texto: string): { status: 'enviado' | 'falhou'; erro?: string } => {
-    if (!Notification.isSupported()) {
+    if (typeof Notification === 'undefined' || !Notification.isSupported()) {
       return { status: 'falhou', erro: 'Notificações do sistema não estão disponíveis.' }
     }
 
@@ -201,7 +234,7 @@ export class MensagemServico {
 
     const existentes = await this.notificacoes.existentes(aulas.map((aula) => aula.id))
     const pendentes = destinatarios.alunos.filter(
-      (aluno) => !existentes.enviados.has(chaveAviso(aluno.aulaId, aluno.email))
+      (aluno) => existentes.get(chaveAviso(aluno.aulaId, aluno.email))?.status !== 'enviado'
     )
 
     if (pendentes.length === 0) {
@@ -236,41 +269,84 @@ export class MensagemServico {
     }
 
     const assunto = 'Aulas ao ar livre de amanhã: risco de chuva'
-    const texto = this.textoDoAviso(previsao)
-    const emailsUnicos = [...new Set(pendentes.map((aluno) => aluno.email.trim().toLowerCase()))]
+    const aulasPorId = new Map(aulas.map((aula) => [aula.id, aula]))
+    const preparados: AvisoPreparado[] = []
 
-    const notificacao: { status: 'enviado' | 'falhou'; erro?: string } = this.datasAvisadas.has(previsao.data)
-      ? { status: 'enviado' }
-      : this.enviarNotificacao(assunto, texto)
-
-    const emails = await this.emails.enviar(emailsUnicos, assunto, texto)
-    const falhasPorEmail = new Map(
-      emails.falhas.map((falha) => [falha.email.trim().toLowerCase(), falha.erro])
-    )
-    const sucesso = (email: string): boolean => !falhasPorEmail.has(email.trim().toLowerCase())
-
-    const registros: RegistroNotificacaoChuva[] = []
     for (const aluno of pendentes) {
-      const email = aluno.email.trim().toLowerCase()
-      const enviado = sucesso(email)
-      if (!enviado && existentes.falhas.has(chaveAviso(aluno.aulaId, email))) continue
+      const aula = aulasPorId.get(aluno.aulaId)
+      if (!aula) continue
 
-      registros.push({
-        aulaId: aluno.aulaId,
-        usuarioId: aluno.usuarioId,
-        email,
-        assunto,
-        mensagem: texto,
-        status: enviado ? 'enviado' : 'falhou',
-        erro: enviado ? undefined : falhasPorEmail.get(email) ?? 'Falha ao enviar o e-mail.'
-      })
+      const existente = existentes.get(chaveAviso(aluno.aulaId, aluno.email))
+      try {
+        const id = await this.notificacoes.preparar(
+          {
+            aulaId: aluno.aulaId,
+            usuarioId: aluno.usuarioId,
+            email: aluno.email,
+            assunto,
+            mensagem: this.textoDoAviso(previsao, aula)
+          },
+          existente
+        )
+        if (id !== null) {
+          preparados.push({ id, aula, email: aluno.email.trim().toLowerCase() })
+        }
+      } catch {
+        // Sem registro no banco não há link confiável: este aluno fica para a próxima tentativa.
+      }
     }
 
-    if (registros.length > 0) {
-      await this.notificacoes.registrar(registros)
+    if (preparados.length === 0) {
+      return {
+        ok: false,
+        mensagem: 'Não foi possível preparar os avisos de chuva no banco de dados.',
+        historico: this.listar()
+      }
     }
 
-    const consolidar = emails.total > 0 && emails.enviados === emails.total
+    const preparacaoCompleta = preparados.length === pendentes.length
+    const porEmail = new Map<string, AvisoPreparado[]>()
+    for (const item of preparados) {
+      const lista = porEmail.get(item.email) ?? []
+      lista.push(item)
+      porEmail.set(item.email, lista)
+    }
+
+    if (!this.datasAvisadas.has(previsao.data)) {
+      this.enviarNotificacao(assunto, this.textoResumo(previsao))
+    }
+
+    const falhas: FalhaEmail[] = []
+    let enviados = 0
+
+    for (const [email, itens] of porEmail) {
+      const corpo = this.montarCorpoEmail(previsao, itens)
+      const resultado = await this.emails.enviar([email], assunto, corpo)
+
+      if (resultado.enviados > 0) {
+        enviados += 1
+        for (const item of itens) {
+          await this.notificacoes.atualizarResultado(item.id, 'enviado')
+        }
+      } else {
+        const erro = resultado.falhas[0]?.erro ?? resultado.erroGeral ?? 'Falha ao enviar o e-mail.'
+        falhas.push({ email, erro })
+        for (const item of itens) {
+          await this.notificacoes.atualizarResultado(item.id, 'falhou', erro)
+        }
+      }
+    }
+
+    const emails: ResultadoEnvioEmail = {
+      configurado: this.emails.configurado(),
+      total: porEmail.size,
+      enviados,
+      falhas,
+      erroGeral:
+        enviados === 0 ? 'Nenhum e-mail pôde ser enviado. Verifique as configurações de SMTP.' : undefined
+    }
+
+    const consolidar = preparacaoCompleta && emails.total > 0 && emails.enviados === emails.total
     const enviada = emails.enviados > 0
     const status: 'enviado' | 'falhou' = enviada ? 'enviado' : 'falhou'
 
@@ -279,20 +355,21 @@ export class MensagemServico {
       criadaEm: new Date().toISOString(),
       tipo: 'chuva',
       assunto,
-      texto,
+      texto: this.textoResumo(previsao),
       status,
-      erro: status === 'falhou' ? emails.erroGeral ?? notificacao.erro : undefined,
+      erro: status === 'falhou' ? emails.erroGeral ?? falhas[0]?.erro : undefined,
       dataAula: previsao.data,
       previsao,
       emailConfigurado: emails.configurado,
       destinatarios: emails.total,
       emailsEnviados: emails.enviados,
-      falhasEmail: emails.falhas
+      falhasEmail: falhas
     }
 
     this.historico.push(mensagem)
     if (consolidar) this.datasAvisadas.add(previsao.data)
 
+    const motivoBase = this.montarMotivo(emails, previsao)
     return {
       ok: true,
       local,
@@ -301,7 +378,9 @@ export class MensagemServico {
       enviada,
       consolidar,
       emails,
-      motivo: this.montarMotivo(emails, previsao),
+      motivo: preparacaoCompleta
+        ? motivoBase
+        : `${motivoBase} Alguns avisos não puderam ser preparados e serão tentados novamente.`,
       mensagem,
       historico: this.listar()
     }
