@@ -2,9 +2,14 @@ import { RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { HorarioAula } from '../integracoes/ClimaBackend'
 
+export type AulaExternaAmanha = HorarioAula & {
+  id: number
+  data: string
+}
+
 /**
- * Lê as aulas de amanhã para que o bot de chuva use a probabilidade no
- * horário real das aulas, e não a máxima do dia inteiro.
+ * Lê apenas as aulas ao ar livre de amanhã. O bot de chuva usa o horário real
+ * dessas aulas para calcular o risco e os ids para registrar os avisos.
  */
 export class AulasAmanha {
   private readonly pool = Banco.pool
@@ -18,11 +23,12 @@ export class AulasAmanha {
     return `${ano}-${mes}-${dia}`
   }
 
-  listar = async (): Promise<HorarioAula[]> => {
+  listar = async (): Promise<AulaExternaAmanha[]> => {
     const [linhas] = await this.pool.query<RowDataPacket[]>(
-      `SELECT titulo, data_hora_inicio, duracao_min
+      `SELECT id, titulo, data_hora_inicio, duracao_min
          FROM aulas
         WHERE DATE(data_hora_inicio) = ?
+          AND local = 'externa'
           AND status IN ('agendada', 'confirmada')
         ORDER BY data_hora_inicio`,
       [this.amanha()]
@@ -37,6 +43,8 @@ export class AulasAmanha {
       const fim = Math.min(23, Math.max(inicio, Math.floor((fimMin - 1) / 60)))
 
       return {
+        id: Number(linha.id),
+        data: texto.slice(0, 10),
         inicio,
         fim,
         inicioMin,
