@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Menu</title>
+  <style>
+    :root {
+      --primaria-900: #111827;
+      --primaria-800: #1f2937;
+      --primaria-700: #374151;
+      --primaria-600: #4b5563;
+      --primaria-500: #6b7280;
+
+      --secundaria: #10b981;
+      --secundaria-hover: #059669;
+      --secundaria-suave: #ecfdf5;
+      --secundaria-borda: #a7f3d0;
+
+      --bg-pagina: #f9fafb;
+      --bg-card: #ffffff;
+      --cinza-200: #e5e7eb;
+      --cinza-100: #f3f4f6;
+
+      --erro: #b91c1c;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--fonte);
+      background: var(--bg-pagina);
+      color: var(--primaria-900);
+      line-height: 1.5;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      background: var(--primaria-800);
+      color: #ffffff;
+      padding: 14px 28px;
+      border-bottom: 3px solid var(--secundaria);
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
+    }
+
+    .marca { display: flex; align-items: center; gap: 10px; }
+
+    .marca-logo {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      background: var(--secundaria);
+      border-radius: 8px;
+    }
+
+    .marca-logo svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cinza-200);
+    }
+
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+
+    .conta { display: flex; align-items: center; gap: 14px; margin-left: auto; font-size: 14px; }
+
+    .dados { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+    #nome {
+      font-weight: 600;
+      color: #ffffff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 240px;
+    }
+
+    .selo {
+      padding: 3px 10px;
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--secundaria-hover);
+      background: var(--secundaria-suave);
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    #sair {
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #ffffff;
+      background: transparent;
+      border: 1px solid var(--primaria-500);
+      border-radius: var(--raio-controle);
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    #sair:hover { background: var(--primaria-700); border-color: #ffffff; }
+    #sair:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+
+    main { padding: 28px 32px 40px; max-width: 1440px; margin: 0 auto; }
+
+    .titulo-pagina { margin-bottom: 20px; }
+
+    .titulo-pagina h2 {
+      position: relative;
+      margin: 0 0 16px;
+      padding-left: 12px;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--primaria-800);
+      letter-spacing: -0.01em;
+    }
+
+    .titulo-pagina h2::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 18px;
+      border-radius: 2px;
+      background: var(--secundaria);
+    }
+
+    .titulo-pagina p { margin: 6px 0 0; padding-left: 12px; font-size: 14px; color: var(--primaria-500); }
+
+    .boas-vindas {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+      padding: 26px 30px;
+      overflow: hidden;
+      color: #ffffff;
+      background: linear-gradient(120deg, #1f2937 0%, #374151 58%, #4b5563 88%, #10b981 160%);
+      border-radius: 18px;
+      box-shadow: 0 16px 32px -18px rgba(31, 41, 55, 0.9);
+    }
+
+    .boas-vindas::after {
+      content: "";
+      position: absolute;
+      right: 130px;
+      top: -110px;
+      width: 300px;
+      height: 300px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 50%;
+      box-shadow: 0 0 0 40px rgba(255, 255, 255, 0.035), 0 0 0 80px rgba(255, 255, 255, 0.025);
+      pointer-events: none;
+    }
+
+    .boas-vindas > * { position: relative; z-index: 1; }
+
+    .boas-vindas small {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--verde-claro, #a7f3d0);
+    }
+
+    .boas-vindas h2 {
+      margin: 6px 0 4px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    
+    #boas-vindas {
+      display: block;
+      width: fit-content;
+      max-width: 100%;
+      color: transparent;
+      background: linear-gradient(90deg, #d1fae5 0%, #6ee7b7 22%, #10b981 46%, #047857 70%, #34d399 100%);
+      background-size: 250% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 2px 14px rgba(16, 185, 129, 0.28);
+      animation: tom-verde 7s ease-in-out infinite;
+    }
+
+    @keyframes tom-verde {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #boas-vindas {
+        animation: none;
+        background-position: 0% 50%;
+      }
+    }
+
+    .boas-vindas p { margin: 0; font-size: 13px; color: rgba(255, 255, 255, 0.78); }
+
+    .contador {
+      display: grid;
+      justify-items: center;
+      flex: none;
+      min-width: 112px;
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+    }
+
+    .contador strong { font-size: 30px; line-height: 1; font-weight: 800; }
+    .contador span { margin-top: 6px; font-size: 10px; text-align: center; color: rgba(255, 255, 255, 0.8); }
+
+    #opcoes { display: grid; gap: 26px; }
+
+    .grupo-modulos {
+      display: grid;
+      gap: 12px;
+      padding: 18px 20px 20px;
+      background: #f2f4f6;
+      border: 1px solid #dfe3e6;
+      border-left: 4px solid var(--secundaria);
+      border-radius: 14px;
+      box-shadow: 0 8px 24px -16px rgba(31, 41, 55, 0.45);
+    }
+
+    .grupo-cabecalho {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+    }
+
+    .grupo-cabecalho h3 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--primaria-700);
+    }
+
+    .grupo-cabecalho span {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--primaria-500);
+    }
+
+    .linha-modulos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 14px;
+    }
+
+    .opcao {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      min-height: 132px;
+      padding: 18px 20px;
+      text-align: left;
+      font-family: inherit;
+      color: var(--primaria-900);
+      background: var(--bg-card);
+      border: 1px solid var(--cinza-200);
+      border-radius: var(--raio-card);
+      box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .opcao:hover:not(:disabled) {
+      transform: translateY(-2px);
+      border-color: var(--secundaria);
+      box-shadow: 0 6px 16px rgba(17, 24, 39, 0.08);
+    }
+
+    .opcao:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+
+    .opcao-icone {
+      width: 38px;
+      height: 38px;
+      padding: 8px;
+      border-radius: 10px;
+      background: var(--secundaria-suave);
+      fill: none;
+      stroke: var(--secundaria-hover);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .opcao strong { font-size: 16px; font-weight: 700; }
+    .opcao span { font-size: 13px; color: var(--primaria-500); }
+
+    .opcao em {
+      justify-self: start;
+      margin-top: auto;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-style: normal;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--primaria-600);
+      background: var(--cinza-100);
+      border: 1px solid var(--cinza-200);
+      border-radius: 999px;
+    }
+
+    .opcao:disabled { cursor: default; }
+    .opcao:disabled strong { color: var(--primaria-500); }
+    .opcao:disabled .opcao-icone { background: var(--cinza-200); stroke: var(--primaria-500); }
+
+    #status { margin: 16px 0 0; font-size: 13px; color: var(--erro); }
+
+    @media (max-width: 720px) {
+      main { padding: 20px; }
+      .conta { margin-left: 0; width: 100%; justify-content: space-between; }
+      #nome { max-width: 160px; }
+    }
+  
+
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    ::selection { background: #d1d5db; color: #111827; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #eceef1; }
+    ::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 8px; border: 2px solid #eceef1; }
+    ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+    body {
+      background:
+        radial-gradient(900px 420px at 100% -10%, rgba(107, 114, 128, 0.12), transparent 60%),
+        linear-gradient(180deg, #eceef1 0%, #f6f7f8 320px);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1f2937 0%, #374151 55%, #4b5563 100%) !important;
+      border-bottom: 3px solid #10b981 !important;
+      box-shadow: 0 6px 18px rgba(31, 41, 55, 0.2) !important;
+    }
+
+    .marca-logo { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16); }
+
+    .painel, .cartao, .card, .opcao, .secao, .bloco {
+      background: #f8f9fa;
+      border: 1px solid #dfe3e6;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(31, 41, 55, 0.05), 0 8px 24px -12px rgba(31, 41, 55, 0.16);
+      transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .painel-bot { border-top: 3px solid #10b981 !important; }
+
+    .opcao:hover {
+      transform: translateY(-3px);
+      border-color: #10b981;
+      box-shadow: 0 2px 4px rgba(31, 41, 55, 0.06), 0 16px 32px -14px rgba(16, 185, 129, 0.35);
+    }
+
+    h2 { letter-spacing: -0.01em; }
+
+    button {
+      border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(31, 41, 55, 0.14);
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    }
+
+    button:not(.secundario):not(.perigo):not(.opcao):not(.voltar):not(#sair) {
+      background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+      border-color: #374151;
+      color: #ffffff;
+    }
+
+    button:not(.secundario):not(.perigo):not(.opcao):not(.voltar):not(#sair):hover:not(:disabled) {
+      background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+      border-color: #047857;
+      box-shadow: 0 6px 14px -6px rgba(16, 185, 129, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .opcao,
+    .opcao strong,
+    .opcao em {
+      color: #111827;
+    }
+
+    .opcao {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: #cbd5e1;
+    }
+
+    .opcao span {
+      color: #374151;
+      font-weight: 500;
+    }
+
+    .opcao em {
+      color: #374151;
+      background: #f3f4f6;
+      border-color: #cbd5e1;
+    }
+
+    .opcao:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: #10b981;
+    }
+
+    .opcao:disabled {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .opcao:disabled strong { color: var(--primaria-500); }
+
+    .voltar,
+    #sair {
+      background: transparent;
+      color: #ffffff;
+      border-color: var(--primaria-500);
+    }
+
+    .voltar:hover:not(:disabled),
+    #sair:hover:not(:disabled) {
+      background: var(--primaria-700);
+      border-color: #10b981;
+      transform: none;
+    }
+
+    button.secundario { background: #eef0f2; color: #374151; border-color: #cbd5e1; }
+    button.secundario:hover:not(:disabled) { background: #e2e6ea; border-color: #9ca3af; }
+    button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 1px 2px rgba(31, 41, 55, 0.12); }
+
+    input, select, textarea {
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    input:hover, select:hover, textarea:hover { border-color: #9ca3af; }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #10b981;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+    }
+
+    table { border-collapse: separate; border-spacing: 0; width: 100%; }
+    thead th {
+      background: #e5e8eb;
+      color: #374151;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 2px solid #10b981;
+    }
+    tbody tr { transition: background 0.12s ease; }
+    tbody tr:nth-child(even) { background: #f3f4f6; }
+    tbody tr:hover { background: #e8eaed; }
+    tbody td { border-bottom: 1px solid #dfe3e6; }
+
+    .selo, .selo-mini { border-radius: 999px; letter-spacing: 0.02em; }
+    .status { border-radius: 10px; }
+    .vazio { border-radius: 12px; border: 1px dashed #cbd5e1; background: #f3f4f6; color: #6b7280; }
+
+    .aviso-enviado { background: #f2f4f6 !important; border-color: #cbd5e1 !important; border-left: 4px solid #10b981 !important; }
+    .comparacao-dias { background: #eef0f2; border-color: #cbd5e1; border-left: 4px solid #10b981; }
+
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .kpi {
+      display: grid;
+      gap: 6px;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #eef0f2 100%);
+      border: 1px solid #dfe3e6;
+      border-left: 4px solid #10b981;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px -14px rgba(31, 41, 55, 0.5);
+    }
+    .kpi span { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #6b7280; }
+    .kpi strong { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: #1f2937; }
+    .kpi small { font-size: 11px; color: #6b7280; }
+
+    .ranking { display: grid; gap: 12px; }
+    .ranking-item {
+      display: grid;
+      grid-template-columns: minmax(110px, 150px) 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 14px;
+      background: #f8f9fa;
+      border: 1px solid #dfe3e6;
+      border-radius: 10px;
+    }
+    .ranking-item.lider { border-left: 4px solid #10b981; }
+    .ranking-item > span { font-size: 13px; font-weight: 700; color: #374151; }
+    .ranking-trilha { height: 10px; background: #e5e8eb; border-radius: 999px; overflow: hidden; }
+    .ranking-barra { display: block; height: 100%; background: linear-gradient(90deg, #6b7280 0%, #374151 100%); border-radius: 999px; }
+    .ranking-item.lider .ranking-barra { background: linear-gradient(90deg, #10b981 0%, #047857 100%); }
+    .ranking-item > strong { font-size: 13px; color: #1f2937; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; transform: none !important; }
+    }
+
+    
+    .painel { padding: 22px 24px; }
+
+    .filtros {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #eef0f2;
+      border: 1px solid #dfe3e6;
+      border-radius: 12px;
+    }
+
+    .filtros .campo span,
+    .filtros label > span {
+      color: #4b5563;
+      font-weight: 700;
+    }
+
+    .campo input,
+    .campo select,
+    .filtros input,
+    .filtros select {
+      min-height: 42px;
+      padding: 10px 12px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+    }
+
+    .filtros button,
+    .acoes button,
+    .acoes-linha button,
+    button.pequeno,
+    .botao.pequeno {
+      padding: 8px 13px;
+      font-size: 12px;
+      min-height: 36px;
+    }
+
+    .acoes,
+    .acoes-linha {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    h2,
+    .titulo-secao {
+      color: #1f2937;
+    }
+
+    table {
+      background: #f8f9fa;
+      border: 1px solid #dfe3e6;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 11px 12px;
+    }
+
+    tbody td {
+      padding: 10px 12px;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover { background: #e8eaed; }
+
+    .selo,
+    .selo-mini {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .selo.ativo,
+    .selo.confirmada,
+    .selo.presente,
+    .selo.concluida,
+    .selo.ok {
+      color: #047857;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+    }
+
+    .selo.inativo,
+    .selo.cancelada,
+    .selo.falta,
+    .selo.neutro {
+      color: #4b5563;
+      background: #eef0f2;
+      border: 1px solid #d1d5db;
+    }
+
+    .selo.cancelada,
+    .selo.falha {
+      color: #991b1b;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    .vazio,
+    .msg-info,
+    .nota-previsao {
+      padding: 12px 14px;
+      color: #4b5563;
+      background: #f3f4f6;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+    }
+
+    .status {
+      padding: 10px 14px;
+      background: #eef0f2;
+      border: 1px solid #dfe3e6;
+      border-radius: 10px;
+    }
+
+    .status.erro,
+    #status.erro {
+      color: #991b1b;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+
+    dialog {
+      max-width: min(780px, 92vw);
+      padding: 0;
+      color: #1f2937;
+      background: #f8f9fa;
+      border: 1px solid #dfe3e6;
+      border-radius: 16px;
+      box-shadow: 0 24px 60px -24px rgba(17, 24, 39, 0.65);
+    }
+
+    dialog::backdrop {
+      background: rgba(17, 24, 39, 0.55);
+      backdrop-filter: blur(3px);
+    }
+
+    dialog h2,
+    dialog h3 {
+      margin: 0;
+      padding: 18px 24px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+      border-bottom: 3px solid #10b981;
+      border-radius: 16px 16px 0 0;
+    }
+
+    dialog form,
+    dialog .conteudo {
+      padding: 22px 24px;
+    }
+  </style>
+</head>
+<body>
+  <svg style="display: none;" aria-hidden="true">
+    <defs>
+      <symbol id="ico-relatorios" viewBox="0 0 24 24">
+        <line x1="3" y1="20" x2="21" y2="20" />
+        <line x1="6" y1="20" x2="6" y2="16" />
+        <line x1="12" y1="20" x2="12" y2="10" />
+        <line x1="18" y1="20" x2="18" y2="4" />
+      </symbol>
+      <symbol id="ico-mensagens" viewBox="0 0 24 24">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+      </symbol>
+      <symbol id="ico-bot" viewBox="0 0 24 24">
+        <rect x="4" y="8" width="16" height="12" rx="3" />
+        <circle cx="9" cy="14" r="1.5" />
+        <circle cx="15" cy="14" r="1.5" />
+        <path d="M12 4v4" />
+        <path d="M8 20v2" />
+        <path d="M16 20v2" />
+        <path d="M2 13v4" />
+        <path d="M22 13v4" />
+      </symbol>
+      <symbol id="ico-funcionarios" viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </symbol>
+      <symbol id="ico-alunos" viewBox="0 0 24 24">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </symbol>
+      <symbol id="ico-aulas" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <line x1="16" y1="3" x2="16" y2="7" />
+        <line x1="8" y1="3" x2="8" y2="7" />
+        <line x1="3" y1="11" x2="21" y2="11" />
+      </symbol>
+      <symbol id="ico-planos" viewBox="0 0 24 24">
+        <line x1="9" y1="6" x2="20" y2="6" />
+        <line x1="9" y1="12" x2="20" y2="12" />
+        <line x1="9" y1="18" x2="20" y2="18" />
+        <line x1="4" y1="6" x2="4.01" y2="6" />
+        <line x1="4" y1="12" x2="4.01" y2="12" />
+        <line x1="4" y1="18" x2="4.01" y2="18" />
+      </symbol>
+      <symbol id="ico-pagamentos" viewBox="0 0 24 24">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <line x1="2" y1="10" x2="22" y2="10" />
+        <line x1="6" y1="15" x2="10" y2="15" />
+      </symbol>
+      <symbol id="ico-visitantes" viewBox="0 0 24 24">
+        <path d="M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="8.5" cy="7" r="4" />
+        <line x1="19" y1="8" x2="19" y2="14" />
+        <line x1="22" y1="11" x2="16" y2="11" />
+      </symbol>
+      <symbol id="ico-usuarios" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <circle cx="9" cy="10" r="2.5" />
+        <path d="M5.5 17c.7-1.7 2-2.5 3.5-2.5s2.8.8 3.5 2.5" />
+        <line x1="15" y1="9" x2="18.5" y2="9" />
+        <line x1="15" y1="13" x2="18.5" y2="13" />
+      </symbol>
+      <symbol id="ico-avaliacoes" viewBox="0 0 24 24">
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+        <rect x="9" y="3" width="6" height="4" rx="1" />
+        <path d="M8 13h2l1.5-3 2 5 1.5-2h2" />
+      </symbol>
+      <symbol id="ico-notificacoes" viewBox="0 0 24 24">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+      </symbol>
+      <symbol id="ico-portal" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+      </symbol>
+    </defs>
+  </svg>
+  <header>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M6.5 7.5v9" />
+          <path d="M17.5 7.5v9" />
+          <path d="M3.5 9.5v5" />
+          <path d="M20.5 9.5v5" />
+          <path d="M6.5 12h11" />
+        </svg>
+      </span>
+      <span class="marca-texto">
+        <strong>Cotil</strong>
+        <small>Academia</small>
+      </span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Menu</h1>
+    <div class="conta">
+      <span class="dados">
+        <span id="nome"></span>
+        <em id="perfil" class="selo"></em>
+      </span>
+      <button id="sair" type="button">Sair</button>
+    </div>
+  </header>
+  <main>
+    <section class="boas-vindas">
+      <div>
+        <small>Painel de controle</small>
+        <h2 id="boas-vindas">Olá!</h2>
+        <p id="resumo-menu">Escolha uma funcionalidade para continuar.</p>
+      </div>
+      <div class="contador" aria-hidden="true">
+        <strong id="total-opcoes">0</strong>
+        <span>módulos disponíveis</span>
+      </div>
+    </section>
+    <section id="opcoes"></section>
+    <p id="status" role="alert"></p>
+  </main>
+</body>
+</html>
