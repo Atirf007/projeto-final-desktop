@@ -596,7 +596,7 @@ class AulaRepository {
     try {
       await conexao.beginTransaction()
       const [aulas] = await conexao.query<RowDataPacket[]>({
-        sql: 'SELECT id, capacidade_max, status FROM aulas WHERE id = ? FOR UPDATE',
+        sql: 'SELECT id, capacidade_max, status, data_hora_inicio FROM aulas WHERE id = ? FOR UPDATE',
         values: [aulaId],
         timeout: TIMEOUT
       })
@@ -605,14 +605,30 @@ class AulaRepository {
       if (statusAula === 'cancelada' || statusAula === 'concluida') {
         throw new ErroAula('Esta aula não aceita novas inscrições.')
       }
+      const dataAula = dataHoraBanco(aulas[0].data_hora_inicio).slice(0, 10)
 
       const [alunos] = await conexao.query<RowDataPacket[]>({
-        sql: 'SELECT id, ativo FROM alunos WHERE id = ? LIMIT 1',
+        sql: 'SELECT id, ativo FROM alunos WHERE id = ? FOR UPDATE',
         values: [alunoId],
         timeout: TIMEOUT
       })
       if (!alunos.length) throw new ErroAula('Aluno não encontrado.')
       if (!alunos[0].ativo) throw new ErroAula('O aluno está inativo e não pode ser inscrito.')
+
+      const [mesmaData] = await conexao.query<RowDataPacket[]>({
+        sql: `SELECT ia.id
+              FROM inscricoes_aula ia
+              INNER JOIN aulas a ON a.id = ia.aula_id
+              WHERE ia.aluno_id = ? AND ia.aula_id <> ?
+                AND ia.status <> 'cancelada'
+                AND DATE(a.data_hora_inicio) = ?
+              LIMIT 1`,
+        values: [alunoId, aulaId, dataAula],
+        timeout: TIMEOUT
+      })
+      if (mesmaData.length) {
+        throw new ErroAula('O aluno já possui inscrição em outra aula nesta data. O limite é de uma aula por dia.')
+      }
 
       const [ocupacao] = await conexao.query<RowDataPacket[]>({
         sql: `SELECT COUNT(*) AS total FROM inscricoes_aula
