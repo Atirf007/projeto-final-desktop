@@ -106,6 +106,14 @@
     .detalhes dd { margin: 2px 0 0; color: var(--primaria-800); word-break: break-word; }
     .detalhes .span2 { grid-column: 1 / -1; }
     .bloco-api { margin-top: 20px; padding: 16px; background: var(--cinza-100); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); }
+    .cabecalho-sugestoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .cabecalho-sugestoes h3 { margin: 0; }
+    .lista-sugestoes { display: grid; gap: 8px; }
+    .sugestao { padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); }
+    .sugestao-titulo { display: block; color: var(--primaria-800); }
+    .sugestao-metadados { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .etiqueta { padding: 2px 8px; font-size: 11px; color: var(--primaria-600); background: var(--cinza-100); border-radius: 999px; }
+    .sugestao-resumo { margin: 6px 0 0; font-size: 12px; color: var(--primaria-500); }
     .lista-inscritos { display: grid; gap: 8px; }
     .inscrito { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); }
     .inscrito-nome { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 600; color: var(--primaria-800); }
@@ -198,6 +206,7 @@
         <label class="campo"><span>Modalidade</span><select id="modalidade"></select></label>
         <label class="campo"><span>Instrutor</span><select id="instrutor"></select></label>
         <label class="campo"><span>Data e hora de início</span><input id="data-hora" type="datetime-local"></label>
+        <p id="aviso-feriado-form" class="msg-info span2" role="status"></p>
         <label class="campo"><span>Duração (minutos)</span><input id="duracao" type="number" min="1" max="600" step="5" value="60"></label>
         <label class="campo"><span>Capacidade máxima</span><input id="capacidade" type="number" min="1" max="500" value="15"></label>
         <label class="campo"><span>Local</span>
@@ -234,6 +243,16 @@
         <h3>Previsão do tempo (Open-Meteo)</h3>
         <p style="margin:0 0 10px;font-size:13px;color:var(--primaria-600)">Aula ao ar livre: confira o risco de chuva antes de confirmar a turma.</p>
         <p id="msg-clima" class="msg-info" style="margin:0"></p>
+      </div>
+
+      <div id="bloco-sugestoes" class="bloco-api oculto">
+        <div class="cabecalho-sugestoes">
+          <h3>Sugestões de exercícios (Wger)</h3>
+          <button id="atualizar-sugestoes" type="button" class="botao secundario pequeno">Atualizar</button>
+        </div>
+        <p id="origem-sugestoes" class="msg-info"></p>
+        <div id="lista-sugestoes" class="lista-sugestoes"></div>
+        <p id="msg-sugestoes" class="msg-info" role="status"></p>
       </div>
 
       <div id="bloco-inscritos" class="bloco-api">

@@ -1,4 +1,5 @@
 import { ipcRenderer } from 'electron'
+import { SugestoesExercicios } from './SugestoesExercicios'
 
 type Perfil = 'admin' | 'instrutor' | 'aluno'
 type UsuarioSessao = { id: number; nome: string; perfil: Perfil }
@@ -76,6 +77,12 @@ type ResultadoClima =
     }
   | { ok: false; mensagem: string }
 
+type Feriado = { data: string; nome: string; tipo?: string }
+
+type ResultadoFeriado =
+  | { ok: true; data: string; feriado: Feriado | null }
+  | { ok: false; mensagem: string }
+
 class AulasView {
   private usuario: UsuarioSessao | null = null
   private aulas: Aula[] = []
@@ -85,6 +92,8 @@ class AulasView {
   private instrutorId: number | null = null
   private alunosCarregados = false
   private climaConsulta = 0
+  private feriadoConsulta = 0
+  private sugestoes: SugestoesExercicios | null = null
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -331,6 +340,9 @@ class AulasView {
     this.el<HTMLSelectElement>('local').value = 'interna'
     this.el<HTMLInputElement>('duracao').value = '60'
     this.el<HTMLInputElement>('capacidade').value = '15'
+    this.el('aviso-feriado-form').className = 'msg-info span2'
+    this.el('aviso-feriado-form').textContent = ''
+    this.feriadoConsulta += 1
   }
 
   private abrirNovo = (): void => {
@@ -341,6 +353,7 @@ class AulasView {
     this.el('campo-status').classList.add('oculto')
     this.el<HTMLInputElement>('data-hora').value = this.proximoHorario()
     this.aplicarInstrutorFixo()
+    void this.verificarFeriadoForm()
     this.el<HTMLDialogElement>('dialogo-form').showModal()
     this.el<HTMLInputElement>('titulo').focus()
   }
@@ -367,6 +380,7 @@ class AulasView {
       this.el<HTMLButtonElement>('salvar').textContent = 'Salvar alterações'
       this.el('campo-status').classList.remove('oculto')
       this.aplicarInstrutorFixo()
+      void this.verificarFeriadoForm()
       this.el<HTMLDialogElement>('dialogo-form').showModal()
     } catch (erro) {
       console.error(erro)
@@ -418,7 +432,15 @@ class AulasView {
     }
 
     botao.disabled = true
+    let falhaFeriado = ''
     try {
+      const feriado = await this.confirmarFeriado(
+        dados.dataHoraInicio,
+        'A aula será salva nessa data.'
+      )
+      if (!feriado.ok) return
+      falhaFeriado = feriado.falha ?? ''
+
       let resultado: ResultadoAcao
       if (id > 0) {
         resultado = (await ipcRenderer.invoke('aulas:atualizar', {
@@ -437,7 +459,10 @@ class AulasView {
       this.el<HTMLDialogElement>('dialogo-form').close()
       await this.carregar()
       if (this.detalheAtual?.id === id) await this.atualizarDetalhe()
-      this.statusPagina(id > 0 ? 'Aula atualizada com sucesso.' : 'Aula cadastrada com sucesso.')
+      this.statusPagina(
+        (id > 0 ? 'Aula atualizada com sucesso.' : 'Aula cadastrada com sucesso.') +
+          (falhaFeriado ? ' Atenção: não foi possível verificar feriados.' : '')
+      )
     } catch (e) {
       console.error(e)
       erro.textContent = 'Não foi possível salvar a aula.'
@@ -482,6 +507,11 @@ class AulasView {
 
     this.renderInscritos(aula)
     void this.consultarClima(aula)
+
+    const blocoSugestoes = this.el('bloco-sugestoes')
+    blocoSugestoes.classList.toggle('oculto', !gestor)
+    if (gestor) void this.sugestoes?.carregar(aula.modalidadeNome || aula.titulo)
+    else this.el('lista-sugestoes').replaceChildren()
   }
 
   private abrirDetalhe = async (id: number): Promise<void> => {
@@ -637,6 +667,66 @@ class AulasView {
     }
   }
 
+  private consultarFeriado = async (dataHora: string): Promise<ResultadoFeriado> => {
+    const data = dataHora.slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+      return { ok: false, mensagem: 'Informe uma data válida para verificar feriados.' }
+    }
+    try {
+      return (await ipcRenderer.invoke('feriados:verificar', { data })) as ResultadoFeriado
+    } catch (erro) {
+      console.error(erro)
+      return { ok: false, mensagem: 'Não foi possível consultar os feriados agora.' }
+    }
+  }
+
+  private textoFeriado = (feriado: Feriado): string =>
+    `Feriado nacional: ${feriado.nome} (${this.dataBr(feriado.data)}).`
+
+  private confirmarFeriado = async (
+    dataHora: string,
+    contexto: string
+  ): Promise<{ ok: boolean; falha?: string }> => {
+    const resultado = await this.consultarFeriado(dataHora)
+    if (!resultado.ok) return { ok: true, falha: resultado.mensagem }
+    if (!resultado.feriado) return { ok: true }
+    return {
+      ok: window.confirm(`${this.textoFeriado(resultado.feriado)} ${contexto} Deseja continuar mesmo assim?`)
+    }
+  }
+
+  private verificarFeriadoForm = async (): Promise<void> => {
+    const aviso = this.el('aviso-feriado-form')
+    const input = this.el<HTMLInputElement>('data-hora')
+    const valor = input.value
+    const token = ++this.feriadoConsulta
+
+    if (!valor) {
+      aviso.className = 'msg-info span2'
+      aviso.textContent = ''
+      return
+    }
+
+    aviso.className = 'msg-info span2'
+    aviso.textContent = 'Verificando feriado nacional...'
+    const resultado = await this.consultarFeriado(valor)
+    if (token !== this.feriadoConsulta || input.value !== valor) return
+
+    if (!resultado.ok) {
+      aviso.className = 'msg-info span2 erro'
+      aviso.textContent = `Não foi possível verificar feriados: ${resultado.mensagem}`
+      return
+    }
+    if (!resultado.feriado) {
+      aviso.className = 'msg-info span2'
+      aviso.textContent = ''
+      return
+    }
+
+    aviso.className = 'msg-info span2 aviso'
+    aviso.textContent = `${this.textoFeriado(resultado.feriado)} A aula pode ser salva, mas confirme a programação.`
+  }
+
   private marcarPresenca = async (inscricaoId: number, presente: boolean): Promise<void> => {
     const msg = this.el('msg-inscritos')
     msg.className = 'msg-info'
@@ -689,6 +779,21 @@ class AulasView {
 
   private reservarMe = async (aulaId: number): Promise<void> => {
     try {
+      const aula =
+        this.detalheAtual?.id === aulaId
+          ? this.detalheAtual
+          : ((await ipcRenderer.invoke('aulas:obter', aulaId)) as AulaDetalhe | null)
+
+      let falhaFeriado = ''
+      if (aula) {
+        const feriado = await this.confirmarFeriado(
+          aula.dataHoraInicio,
+          'Sua reserva será feita para essa data.'
+        )
+        if (!feriado.ok) return
+        falhaFeriado = feriado.falha ?? ''
+      }
+
       const resultado = (await ipcRenderer.invoke('aulas:inscreverMe', { aulaId })) as ResultadoAcao
       if (!resultado.ok) {
         this.statusPagina(resultado.mensagem, true)
@@ -697,14 +802,15 @@ class AulasView {
         msg.textContent = resultado.mensagem
         return
       }
+      const aviso = falhaFeriado ? ' Atenção: não foi possível verificar feriados.' : ''
       await this.carregar()
       if (this.detalheAtual?.id === aulaId) {
         await this.atualizarDetalhe()
         const msg = this.el('msg-detalhe')
         msg.className = 'msg-info sucesso'
-        msg.textContent = 'Reserva confirmada com sucesso.'
+        msg.textContent = 'Reserva confirmada com sucesso.' + aviso
       }
-      this.statusPagina('Reserva confirmada com sucesso.')
+      this.statusPagina('Reserva confirmada com sucesso.' + aviso)
     } catch (erro) {
       console.error(erro)
       this.statusPagina('Não foi possível reservar a vaga.', true)
@@ -744,6 +850,14 @@ class AulasView {
       msg.textContent = 'Selecione um aluno para inscrever.'
       return
     }
+
+    const feriado = await this.confirmarFeriado(
+      aula.dataHoraInicio,
+      'O aluno será inscrito nessa data.'
+    )
+    if (!feriado.ok) return
+    const avisoFeriado = feriado.falha ? ' Atenção: não foi possível verificar feriados.' : ''
+
     msg.className = 'msg-info'
     msg.textContent = 'Inscrevendo aluno...'
     try {
@@ -760,7 +874,7 @@ class AulasView {
       await this.carregar()
       const atualizada = this.el('msg-inscritos')
       atualizada.className = 'msg-info sucesso'
-      atualizada.textContent = 'Aluno inscrito com sucesso.'
+      atualizada.textContent = 'Aluno inscrito com sucesso.' + avisoFeriado
     } catch (erro) {
       console.error(erro)
       msg.className = 'msg-info erro'
@@ -883,6 +997,16 @@ class AulasView {
     if (!gestor) this.el('campo-filtro-instrutor').classList.add('oculto')
     if (this.admin()) this.el('campo-filtro-instrutor').classList.remove('oculto')
 
+    if (gestor) {
+      this.sugestoes = new SugestoesExercicios({
+        origem: this.el('origem-sugestoes'),
+        lista: this.el('lista-sugestoes'),
+        mensagem: this.el('msg-sugestoes'),
+        atualizar: this.el<HTMLButtonElement>('atualizar-sugestoes')
+      })
+      this.sugestoes.registrar()
+    }
+
     this.el('voltar').addEventListener('click', () => void this.voltar())
     this.el('nova-aula').addEventListener('click', this.abrirNovo)
     this.el('limpar-filtros').addEventListener('click', this.limparFiltros)
@@ -891,6 +1015,7 @@ class AulasView {
     this.el('filtro-instrutor').addEventListener('change', () => void this.carregar())
     this.el('filtro-status').addEventListener('change', () => void this.carregar())
     this.el('formulario').addEventListener('submit', (evento) => void this.salvar(evento))
+    this.el('data-hora').addEventListener('change', () => void this.verificarFeriadoForm())
     this.el('cancelar-form').addEventListener('click', () => this.el<HTMLDialogElement>('dialogo-form').close())
     this.el('fechar-detalhe').addEventListener('click', () => this.el<HTMLDialogElement>('dialogo-detalhe').close())
     this.el('editar-detalhe').addEventListener('click', () => {
