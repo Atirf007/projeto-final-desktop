@@ -6,6 +6,16 @@ import 'dotenv/config'
 import { Sessao } from '../Sessao'
 import { Mensagem, MensagemServico, ResultadoVerificacao } from './MensagemBackend'
 
+/**
+ * Variável de ambiente que desliga o agendamento automático em qualquer
+ * processo (app Electron ou clima-servidor). Valores vazios ou inválidos
+ * mantêm o comportamento padrão, que é permitir o agendamento.
+ */
+const agendamentoHabilitado = (): boolean => {
+  const valor = (process.env.CLIMA_BOT_ATIVO ?? '').trim().toLowerCase()
+  return !['false', '0', 'no', 'off', 'nao', 'não'].includes(valor)
+}
+
 export type ConfiguracaoBot = {
   ativo: boolean
   intervaloMinutos: number
@@ -27,7 +37,10 @@ export type EstadoBot = {
 }
 
 export class ConfiguracaoBotArquivo {
-  constructor(private readonly caminho: string = join(app.getPath('userData'), 'bot-clima.json')) {}
+  constructor(
+    private readonly caminho: string = join(app.getPath('userData'), 'bot-clima.json'),
+    private readonly ativoPadrao = false
+  ) {}
 
   private numero = (valor: unknown): number => {
     const numero = Number(valor)
@@ -54,7 +67,7 @@ export class ConfiguracaoBotArquivo {
         ultimaDataAviso: typeof dados.ultimaDataAviso === 'string' ? dados.ultimaDataAviso : undefined
       }
     } catch {
-      return { ativo: false, intervaloMinutos: 30, limiarChuva: this.limiarPadrao() }
+      return { ativo: this.ativoPadrao, intervaloMinutos: 30, limiarChuva: this.limiarPadrao() }
     }
   }
 
@@ -68,7 +81,7 @@ export class ConfiguracaoBotArquivo {
 }
 
 export class BotClimaServico {
-  private ativo: boolean
+  private ativoDesejado: boolean
   private intervaloMinutos: number
   private limiarChuva: number
   private ultimaDataAviso?: string
@@ -83,11 +96,16 @@ export class BotClimaServico {
     private readonly configuracao: ConfiguracaoBotArquivo = new ConfiguracaoBotArquivo()
   ) {
     const salva = this.configuracao.carregar()
-    this.ativo = salva.ativo
+    this.ativoDesejado = salva.ativo
     this.intervaloMinutos = this.normalizarIntervalo(salva.intervaloMinutos)
     this.limiarChuva = this.normalizarLimiar(salva.limiarChuva)
     this.ultimaDataAviso = salva.ultimaDataAviso
     if (this.ultimaDataAviso) this.mensagens.marcarAvisoAnterior(this.ultimaDataAviso)
+  }
+
+  /** Estado efetivo: a preferência salva só agenda se a variável permitir. */
+  private get ativo(): boolean {
+    return this.ativoDesejado && agendamentoHabilitado()
   }
 
   private normalizarIntervalo = (valor: unknown): number => {
@@ -104,7 +122,7 @@ export class BotClimaServico {
 
   private salvar = (): void => {
     this.configuracao.salvar({
-      ativo: this.ativo,
+      ativo: this.ativoDesejado,
       intervaloMinutos: this.intervaloMinutos,
       limiarChuva: this.limiarChuva,
       ultimaDataAviso: this.ultimaDataAviso
@@ -152,7 +170,7 @@ export class BotClimaServico {
   })
 
   definirAtivo = async (ativo: boolean): Promise<EstadoBot> => {
-    this.ativo = ativo
+    this.ativoDesejado = ativo
     this.salvar()
 
     if (!ativo) {
