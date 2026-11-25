@@ -66,6 +66,30 @@ type FrequenciaResumo = {
   percentual: number
 }
 
+type FaixaFrequencia = 'baixa' | 'media' | 'alta'
+
+type ResumoFaixaFrequencia = {
+  faixa: FaixaFrequencia
+  rotulo: string
+  avaliacoes: number
+  frequenciaMedia: number
+  pesoInicial?: number
+  pesoFinal?: number
+  variacaoPeso?: number
+  variacaoImc?: number
+}
+
+type ResumoAssiduidadeEvolucao = {
+  faixaAtual: FaixaFrequencia
+  percentualAtual: number
+  totalPresencas: number
+  diasNoPeriodo: number
+  totalAvaliacoes: number
+  variacaoPeso?: number
+  variacaoImc?: number
+  faixas: ResumoFaixaFrequencia[]
+}
+
 type Notificacao = {
   id: number
   assunto: string
@@ -76,9 +100,108 @@ type Notificacao = {
   erro?: string
 }
 
+class AnaliseAssiduidadeEvolucao {
+  private static readonly DIAS_JANELA = 90
+  private static readonly FAIXAS: { faixa: FaixaFrequencia; rotulo: string }[] = [
+    { faixa: 'baixa', rotulo: 'Baixa (até 49,9%)' },
+    { faixa: 'media', rotulo: 'Média (50% a 74,9%)' },
+    { faixa: 'alta', rotulo: 'Alta (75% ou mais)' }
+  ]
+
+  private dataISO = (valor: string): string => String(valor ?? '').slice(0, 10)
+
+  private somarDias = (data: string, dias: number): string => {
+    const [ano, mes, dia] = data.split('-').map(Number)
+    return new Date(Date.UTC(ano, mes - 1, dia + dias)).toISOString().slice(0, 10)
+  }
+
+  private hojeISO = (): string => {
+    const agora = new Date()
+    const mes = String(agora.getMonth() + 1).padStart(2, '0')
+    const dia = String(agora.getDate()).padStart(2, '0')
+    return `${agora.getFullYear()}-${mes}-${dia}`
+  }
+
+  private ordenar = (avaliacoes: Avaliacao[]): Avaliacao[] =>
+    [...avaliacoes].sort((a, b) => a.dataAvaliacao.localeCompare(b.dataAvaliacao) || a.id - b.id)
+
+  private faixaDe = (percentual: number): FaixaFrequencia =>
+    percentual >= 75 ? 'alta' : percentual >= 50 ? 'media' : 'baixa'
+
+  private percentualAte = (presencas: Presenca[], fim: string): number => {
+    const inicio = this.somarDias(fim, -(AnaliseAssiduidadeEvolucao.DIAS_JANELA - 1))
+    const total = presencas.filter((presenca) => {
+      const data = this.dataISO(presenca.dataPresenca)
+      return data >= inicio && data <= fim
+    }).length
+    return Math.round((total / AnaliseAssiduidadeEvolucao.DIAS_JANELA) * 1000) / 10
+  }
+
+  periodoHistorico = (avaliacoes: Avaliacao[]): { inicio: string; fim: string } => {
+    const fim = this.hojeISO()
+    const padrao = this.somarDias(fim, -(AnaliseAssiduidadeEvolucao.DIAS_JANELA - 1))
+    const maisAntiga = this.ordenar(avaliacoes)[0]
+    const inicio = maisAntiga
+      ? this.somarDias(this.dataISO(maisAntiga.dataAvaliacao), -(AnaliseAssiduidadeEvolucao.DIAS_JANELA - 1))
+      : padrao
+    return { inicio: inicio > fim ? padrao : inicio, fim }
+  }
+
+  calcular = (
+    frequencia: FrequenciaResumo,
+    presencas: Presenca[],
+    avaliacoes: Avaliacao[]
+  ): ResumoAssiduidadeEvolucao => {
+    const ordenadas = this.ordenar(avaliacoes)
+    const grupos = new Map<FaixaFrequencia, { avaliacoes: Avaliacao[]; percentuais: number[] }>()
+    for (const avaliacao of ordenadas) {
+      const percentual = this.percentualAte(presencas, this.dataISO(avaliacao.dataAvaliacao))
+      const faixa = this.faixaDe(percentual)
+      const grupo = grupos.get(faixa) ?? { avaliacoes: [], percentuais: [] }
+      grupo.avaliacoes.push(avaliacao)
+      grupo.percentuais.push(percentual)
+      grupos.set(faixa, grupo)
+    }
+
+    const faixas = AnaliseAssiduidadeEvolucao.FAIXAS.map(
+      ({ faixa, rotulo }): ResumoFaixaFrequencia => {
+        const grupo = grupos.get(faixa)
+        if (!grupo?.avaliacoes.length) return { faixa, rotulo, avaliacoes: 0, frequenciaMedia: 0 }
+        const soma = grupo.percentuais.reduce((total, atual) => total + atual, 0)
+        const primeira = grupo.avaliacoes[0]
+        const ultima = grupo.avaliacoes[grupo.avaliacoes.length - 1]
+        return {
+          faixa,
+          rotulo,
+          avaliacoes: grupo.avaliacoes.length,
+          frequenciaMedia: Math.round((soma / grupo.percentuais.length) * 10) / 10,
+          pesoInicial: primeira.pesoKg,
+          pesoFinal: ultima.pesoKg,
+          variacaoPeso: ultima.pesoKg - primeira.pesoKg,
+          variacaoImc: ultima.imc - primeira.imc
+        }
+      }
+    )
+
+    const primeira = ordenadas[0]
+    const ultima = ordenadas[ordenadas.length - 1]
+    return {
+      faixaAtual: this.faixaDe(frequencia.percentual),
+      percentualAtual: frequencia.percentual,
+      totalPresencas: frequencia.totalPresencas,
+      diasNoPeriodo: frequencia.diasNoPeriodo,
+      totalAvaliacoes: ordenadas.length,
+      variacaoPeso: primeira && ultima ? ultima.pesoKg - primeira.pesoKg : undefined,
+      variacaoImc: primeira && ultima ? ultima.imc - primeira.imc : undefined,
+      faixas
+    }
+  }
+}
+
 class PortalAlunoView {
   private usuario: UsuarioSessao | null = null
   private aluno: Aluno | null = null
+  private readonly analise = new AnaliseAssiduidadeEvolucao()
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -113,6 +236,9 @@ class PortalAlunoView {
 
   private numeroOpcaoFmt = (valor: number | undefined, sufixo = ''): string =>
     valor === undefined ? '—' : this.numeroFmt(valor, sufixo)
+
+  private variacaoFmt = (valor: number | undefined, sufixo = ''): string =>
+    valor === undefined ? '—' : `${valor > 0 ? '+' : ''}${this.numeroFmt(valor, sufixo)}`
 
   private cpfFmt = (cpf: string): string => {
     const digitos = cpf.replace(/\D/g, '')
@@ -197,7 +323,7 @@ class PortalAlunoView {
     }
   }
 
-  private carregarFrequencia = async (): Promise<void> => {
+  private carregarFrequencia = async (): Promise<FrequenciaResumo | null> => {
     try {
       const resumo = (await ipcRenderer.invoke('presencas:minhaFrequencia')) as FrequenciaResumo
       this.el('freq-percentual').textContent = this.numeroFmt(resumo.percentual, '%')
@@ -205,9 +331,11 @@ class PortalAlunoView {
       this.el('freq-total').textContent =
         `${resumo.totalPresencas} presença(s) em ${resumo.diasNoPeriodo} dias` +
         (resumo.ultimaPresenca ? ` • última em ${this.dataBr(resumo.ultimaPresenca)}` : '')
+      return resumo
     } catch (erro) {
       console.error(erro)
       this.el('freq-percentual').textContent = '—'
+      return null
     }
   }
 
@@ -343,7 +471,7 @@ class PortalAlunoView {
     container.append(svg)
   }
 
-  private carregarAvaliacoes = async (): Promise<void> => {
+  private carregarAvaliacoes = async (): Promise<Avaliacao[]> => {
     try {
       const avaliacoes = (await ipcRenderer.invoke('avaliacoes:minhas')) as Avaliacao[]
       const vazio = this.el('grafico-vazio')
@@ -354,7 +482,7 @@ class PortalAlunoView {
         this.el('ultima-detalhe').textContent = 'Nenhuma avaliação registrada.'
         this.el('ultima-data').textContent = ''
         this.el<HTMLTableSectionElement>('corpo-medidas').replaceChildren()
-        return
+        return []
       }
 
       const ultima = avaliacoes[0]
@@ -367,10 +495,99 @@ class PortalAlunoView {
       )
       vazio.classList.add('oculto')
       this.desenharGrafico(avaliacoes)
+      return avaliacoes
     } catch (erro) {
       console.error(erro)
       this.el('grafico-vazio').textContent = 'Não foi possível carregar suas avaliações.'
       this.el('grafico-vazio').classList.remove('oculto')
+      return []
+    }
+  }
+
+  private renderizarAnalise = (resumo: ResumoAssiduidadeEvolucao): void => {
+    const painel = this.el('analise-assiduidade')
+    painel.classList.remove('vazio')
+    painel.replaceChildren()
+
+    const rotuloAtual: Record<FaixaFrequencia, string> = {
+      baixa: 'baixa',
+      media: 'média',
+      alta: 'alta'
+    }
+    painel.append(
+      this.criar(
+        'p',
+        'analise-resumo',
+        `Faixa atual: ${rotuloAtual[resumo.faixaAtual]} ` +
+          `(${this.numeroFmt(resumo.percentualAtual, '%')} em ${resumo.diasNoPeriodo} dias, ` +
+          `${resumo.totalPresencas} presença(s)). ` +
+          `${resumo.totalAvaliacoes} avaliação(ões) no histórico • ` +
+          `peso ${this.variacaoFmt(resumo.variacaoPeso, ' kg')} • ` +
+          `IMC ${this.variacaoFmt(resumo.variacaoImc)}.`
+      )
+    )
+
+    if (!resumo.totalAvaliacoes) {
+      painel.append(this.criar('p', 'vazio', 'Sem avaliações para cruzar com as presenças.'))
+      return
+    }
+
+    const tabela = document.createElement('table')
+    const cabecalho = document.createElement('thead')
+    const linhaCabecalho = document.createElement('tr')
+    for (const titulo of ['Faixa de frequência', 'Avaliações', 'Presença média', 'Peso', 'Δ peso', 'Δ IMC']) {
+      const th = document.createElement('th')
+      th.textContent = titulo
+      linhaCabecalho.append(th)
+    }
+    cabecalho.append(linhaCabecalho)
+
+    const corpo = document.createElement('tbody')
+    for (const faixa of resumo.faixas) {
+      const tr = document.createElement('tr')
+      if (faixa.faixa === resumo.faixaAtual) tr.className = 'faixa-atual'
+      const tdFaixa = document.createElement('td')
+      tdFaixa.append(this.criar('span', `selo ${faixa.faixa}`, faixa.rotulo))
+      const tdAvaliacoes = this.criar('td', undefined, String(faixa.avaliacoes))
+      const tdFrequencia = this.criar(
+        'td',
+        undefined,
+        faixa.avaliacoes ? this.numeroFmt(faixa.frequenciaMedia, '%') : '—'
+      )
+      const tdPeso = this.criar(
+        'td',
+        undefined,
+        faixa.pesoInicial !== undefined && faixa.pesoFinal !== undefined
+          ? `${this.numeroFmt(faixa.pesoInicial, ' kg')} → ${this.numeroFmt(faixa.pesoFinal, ' kg')}`
+          : '—'
+      )
+      const tdVariacaoPeso = this.criar('td', 'destaque', this.variacaoFmt(faixa.variacaoPeso, ' kg'))
+      const tdVariacaoImc = this.criar('td', undefined, this.variacaoFmt(faixa.variacaoImc))
+      tr.append(tdFaixa, tdAvaliacoes, tdFrequencia, tdPeso, tdVariacaoPeso, tdVariacaoImc)
+      corpo.append(tr)
+    }
+    tabela.append(cabecalho, corpo)
+    painel.append(tabela)
+  }
+
+  private carregarAnaliseCruzada = async (
+    frequencia: FrequenciaResumo | null,
+    avaliacoes: Avaliacao[]
+  ): Promise<void> => {
+    const painel = this.el('analise-assiduidade')
+    if (!frequencia) {
+      painel.textContent = 'Não foi possível carregar a assiduidade.'
+      return
+    }
+    try {
+      const presencas = (await ipcRenderer.invoke(
+        'presencas:minhas',
+        this.analise.periodoHistorico(avaliacoes)
+      )) as Presenca[]
+      this.renderizarAnalise(this.analise.calcular(frequencia, presencas, avaliacoes))
+    } catch (erro) {
+      console.error(erro)
+      painel.textContent = 'Não foi possível cruzar presenças e avaliações.'
     }
   }
 
@@ -483,12 +700,15 @@ class PortalAlunoView {
     const perfilOk = await this.carregarPerfil()
     if (!perfilOk) return
 
+    const [frequencia, avaliacoes] = await Promise.all([
+      this.carregarFrequencia(),
+      this.carregarAvaliacoes()
+    ])
     await Promise.all([
       this.carregarPlano(),
-      this.carregarFrequencia(),
-      this.carregarAvaliacoes(),
       this.carregarPresencas(),
-      this.carregarAvisos()
+      this.carregarAvisos(),
+      this.carregarAnaliseCruzada(frequencia, avaliacoes)
     ])
   }
 }
