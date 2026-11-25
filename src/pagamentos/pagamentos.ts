@@ -36,8 +36,16 @@ type FiltroPagamentos = {
   competencia?: string
 }
 
+type AssinaturaOpcao = {
+  id: number
+  alunoNome: string
+  planoNome: string
+  valorContratado: number
+  status: 'ativa' | 'vencida' | 'cancelada' | 'suspensa'
+}
+
 type ResultadoAcao =
-  | { ok: true; id?: number; criados?: number; ignorados?: number }
+  | { ok: true; id?: number; criados?: number; ignorados?: number; aviso?: string }
   | { ok: false; mensagem: string }
 
 class PagamentosView {
@@ -203,6 +211,17 @@ class PagamentosView {
       acoes.append(btnCancelar)
     }
 
+    const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
+    btnEditar.addEventListener('click', () => void this.abrirEdicao(pagamento.id))
+    const btnExcluir = this.criarBotao('Excluir', 'botao perigo pequeno')
+    if (pagamento.status === 'pago') {
+      btnExcluir.disabled = true
+      btnExcluir.title = 'Pagamentos já validados não podem ser excluídos.'
+    } else {
+      btnExcluir.addEventListener('click', () => this.excluirPagamento(pagamento))
+    }
+    acoes.append(btnEditar, btnExcluir)
+
     acoesTd.append(acoes)
 
     tr.append(tituloTd, competenciaTd, vencimentoTd, valorTd, statusTd, pagamentoTd, acoesTd)
@@ -254,6 +273,161 @@ class PagamentosView {
   private agendarBusca = (): void => {
     if (this.timerBusca) clearTimeout(this.timerBusca)
     this.timerBusca = setTimeout(() => void this.carregar(), 300)
+  }
+
+  private carregarAssinaturas = async (selecionada?: number): Promise<void> => {
+    const select = this.el<HTMLSelectElement>('form-assinatura')
+    try {
+      const assinaturas = (await ipcRenderer.invoke('assinaturas:listar', {})) as AssinaturaOpcao[]
+      select.replaceChildren()
+      const vazio = document.createElement('option')
+      vazio.value = ''
+      vazio.textContent = 'Selecione uma assinatura'
+      select.append(vazio)
+      ;(Array.isArray(assinaturas) ? assinaturas : []).forEach((assinatura) => {
+        const opcao = document.createElement('option')
+        opcao.value = String(assinatura.id)
+        opcao.textContent = `${assinatura.alunoNome} — ${assinatura.planoNome} (${assinatura.status})`
+        select.append(opcao)
+      })
+      if (selecionada) select.value = String(selecionada)
+    } catch {
+      select.replaceChildren()
+      const opcao = document.createElement('option')
+      opcao.value = ''
+      opcao.textContent = 'Não foi possível carregar as assinaturas'
+      select.append(opcao)
+    }
+  }
+
+  private abrirFormulario = async (pagamento: Pagamento | null): Promise<void> => {
+    this.el<HTMLFormElement>('formulario-pagamento').reset()
+    this.el('erro-formulario').textContent = ''
+    const edicao = pagamento !== null
+    this.el<HTMLInputElement>('pagamento-id').value = edicao ? String(pagamento.id) : ''
+    this.el('titulo-formulario').textContent = edicao ? 'Editar pagamento' : 'Novo pagamento'
+    this.el<HTMLButtonElement>('salvar-formulario').textContent = edicao ? 'Salvar alterações' : 'Cadastrar'
+
+    await this.carregarAssinaturas(edicao ? pagamento.assinaturaId : undefined)
+    this.el<HTMLSelectElement>('form-assinatura').disabled = edicao
+    this.el<HTMLInputElement>('form-competencia').value = edicao ? pagamento.competencia.slice(0, 7) : ''
+    const valor = this.el<HTMLInputElement>('form-valor')
+    valor.value = edicao ? String(pagamento.valor) : ''
+    this.el<HTMLInputElement>('form-vencimento').value = edicao ? pagamento.dataVencimento : this.hoje()
+    this.el<HTMLSelectElement>('form-status').value = edicao ? pagamento.status : 'pendente'
+    this.el<HTMLSelectElement>('form-status').disabled = !edicao
+    this.el<HTMLInputElement>('form-data-pagamento').value = edicao ? (pagamento.dataPagamento ?? '') : ''
+    this.el<HTMLInputElement>('form-data-pagamento').disabled = !edicao
+    this.el<HTMLSelectElement>('form-metodo').value = edicao ? (pagamento.metodo ?? '') : ''
+    this.el<HTMLSelectElement>('form-metodo').disabled = !edicao
+    this.el<HTMLTextAreaElement>('form-observacao').value = edicao ? (pagamento.observacao ?? '') : ''
+
+    this.el<HTMLDialogElement>('dialogo-formulario').showModal()
+  }
+
+  private abrirEdicao = async (id: number): Promise<void> => {
+    try {
+      const pagamento = (await ipcRenderer.invoke('pagamentos:obter', id)) as Pagamento | null
+      if (!pagamento) {
+        this.status('Pagamento não encontrado.', 'erro')
+        return
+      }
+      await this.abrirFormulario(pagamento)
+    } catch {
+      this.status('Não foi possível carregar o pagamento.', 'erro')
+    }
+  }
+
+  private fecharFormulario = (): void => {
+    this.el<HTMLDialogElement>('dialogo-formulario').close()
+  }
+
+  private salvarFormulario = async (evento: Event): Promise<void> => {
+    evento.preventDefault()
+    const erro = this.el('erro-formulario')
+    const botao = this.el<HTMLButtonElement>('salvar-formulario')
+    const id = Number(this.el<HTMLInputElement>('pagamento-id').value || '0')
+    const assinaturaId = Number(this.el<HTMLSelectElement>('form-assinatura').value || '0')
+    const competencia = this.el<HTMLInputElement>('form-competencia').value
+    const valor = Number(this.el<HTMLInputElement>('form-valor').value)
+    const dataVencimento = this.el<HTMLInputElement>('form-vencimento').value
+    const statusPagamento = this.el<HTMLSelectElement>('form-status').value as StatusPagamento
+    const dataPagamento = this.el<HTMLInputElement>('form-data-pagamento').value || null
+    const metodo = this.el<HTMLSelectElement>('form-metodo').value || null
+    const observacao = this.el<HTMLTextAreaElement>('form-observacao').value
+
+    if (!id && !assinaturaId) {
+      erro.textContent = 'Selecione uma assinatura.'
+      return
+    }
+    if (!/^\d{4}-\d{2}$/.test(competencia)) {
+      erro.textContent = 'Informe a competência no formato AAAA-MM.'
+      return
+    }
+    if (!Number.isFinite(valor) || valor <= 0) {
+      erro.textContent = 'Informe um valor maior que zero.'
+      return
+    }
+    if (!dataVencimento) {
+      erro.textContent = 'Informe a data de vencimento.'
+      return
+    }
+    if (statusPagamento === 'pago' && (!dataPagamento || !metodo)) {
+      erro.textContent = 'Para pagamentos pagos, informe a data e o método de pagamento.'
+      return
+    }
+
+    botao.disabled = true
+    erro.textContent = ''
+
+    const entrada = id
+      ? {
+          id,
+          competencia,
+          valor,
+          dataVencimento,
+          status: statusPagamento,
+          dataPagamento: statusPagamento === 'pago' ? dataPagamento : null,
+          metodo: statusPagamento === 'pago' ? metodo : null,
+          observacao
+        }
+      : { assinaturaId, competencia, valor, dataVencimento }
+
+    try {
+      const resultado = (await ipcRenderer.invoke(
+        id ? 'pagamentos:atualizar' : 'pagamentos:criar',
+        entrada
+      )) as ResultadoAcao
+      if (!resultado.ok) {
+        erro.textContent = resultado.mensagem
+        return
+      }
+
+      this.fecharFormulario()
+      await this.carregar()
+      this.status(id ? 'Pagamento atualizado com sucesso.' : 'Pagamento cadastrado com sucesso.', 'sucesso')
+    } catch {
+      erro.textContent = 'Não foi possível salvar o pagamento.'
+    } finally {
+      botao.disabled = false
+    }
+  }
+
+  private excluirPagamento = (pagamento: Pagamento): void => {
+    this.abrirConfirmacao(
+      'Excluir pagamento',
+      `Deseja excluir a cobrança de ${this.moeda(pagamento.valor)} de ${pagamento.alunoNome} referente a ${this.competenciaTexto(pagamento.competencia)}?`,
+      'Excluir',
+      true,
+      async () => {
+        const resultado = (await ipcRenderer.invoke('pagamentos:excluir', pagamento.id)) as ResultadoAcao
+        if (!resultado.ok) throw new Error(resultado.mensagem)
+        await this.carregar()
+        this.status(resultado.aviso
+          ? `Pagamento excluído. ${resultado.aviso}`
+          : 'Pagamento excluído com sucesso.', 'sucesso')
+      }
+    )
   }
 
   private abrirValidacao = (pagamento: Pagamento): void => {
@@ -403,6 +577,12 @@ class PagamentosView {
     this.el('filtro-competencia').addEventListener('change', () => void this.carregar())
     this.el('limpar').addEventListener('click', () => void this.limpar())
     this.el('gerar').addEventListener('click', () => void this.gerar())
+    this.el('novo').addEventListener('click', () => void this.abrirFormulario(null))
+
+    this.el('cancelar-formulario').addEventListener('click', this.fecharFormulario)
+    this.el('formulario-pagamento').addEventListener('submit', (evento) =>
+      void this.salvarFormulario(evento)
+    )
 
     this.el('cancelar-validar').addEventListener('click', () =>
       this.el<HTMLDialogElement>('dialogo-validar').close()

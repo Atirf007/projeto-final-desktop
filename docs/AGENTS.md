@@ -4,10 +4,10 @@
 
 Este projeto é um sistema desktop desenvolvido com Electron, TypeScript e MySQL.
 
-Antes de realizar qualquer alteração no código, leia obrigatoriamente os seguintes documentos, localizados na raiz do projeto:
+Antes de realizar qualquer alteração no código, leia obrigatoriamente os seguintes documentos, localizados em `docs/`:
 
-- `requisitos.md`
-- `ARQUITETURA.md`
+- `docs/requisitos.md`
+- `docs/ARQUITETURA.md`
 
 Esses documentos são as principais referências para compreender o funcionamento, as funcionalidades e a estrutura do projeto.
 
@@ -17,8 +17,8 @@ Não comece a implementar alterações sem antes compreender os dois documentos.
 
 Cada documento possui uma finalidade específica:
 
-- `requisitos.md`: define as funcionalidades, regras de negócio e comportamentos esperados do sistema.
-- `ARQUITETURA.md`: define a organização do código, responsabilidades dos arquivos, comunicação entre os componentes e decisões técnicas.
+- `docs/requisitos.md`: define as funcionalidades, regras de negócio e comportamentos esperados do sistema.
+- `docs/ARQUITETURA.md`: define a organização do código, responsabilidades dos arquivos, comunicação entre os componentes e decisões técnicas.
 
 As implementações devem respeitar os dois documentos simultaneamente.
 
@@ -30,7 +30,7 @@ Não invente requisitos ou decisões arquiteturais.
 
 - Não remova funcionalidades existentes sem autorização.
 - Não altere regras de negócio sem necessidade.
-- Não modifique a arquitetura definida em `ARQUITETURA.md` por conveniência.
+- Não modifique a arquitetura definida em `docs/ARQUITETURA.md` por conveniência.
 - Não substitua tecnologias ou bibliotecas sem justificativa.
 - Não reescreva arquivos inteiros quando uma alteração pontual for suficiente.
 - Preserve os padrões de nomenclatura e organização já utilizados no projeto.
@@ -41,8 +41,8 @@ Não invente requisitos ou decisões arquiteturais.
 Ao implementar uma funcionalidade ou corrigir um problema:
 
 1. Analise os arquivos relacionados à alteração.
-2. Consulte os requisitos correspondentes em `requisitos.md`.
-3. Verifique se a implementação respeita `ARQUITETURA.md`.
+2. Consulte os requisitos correspondentes em `docs/requisitos.md`.
+3. Verifique se a implementação respeita `docs/ARQUITETURA.md`.
 4. Explique brevemente o que pretende alterar.
 5. Faça as modificações necessárias, preservando o restante do projeto.
 6. Verifique se a alteração não prejudicou funcionalidades existentes.
@@ -81,8 +81,8 @@ Não afirme que algo foi testado se não foi.
 
 Se uma alteração modificar efetivamente algum requisito ou decisão arquitetural:
 
-- Atualize `requisitos.md` quando houver mudança nos requisitos funcionais ou regras de negócio.
-- Atualize `ARQUITETURA.md` quando houver mudança na estrutura ou nas decisões técnicas.
+- Atualize `docs/requisitos.md` quando houver mudança nos requisitos funcionais ou regras de negócio.
+- Atualize `docs/ARQUITETURA.md` quando houver mudança na estrutura ou nas decisões técnicas.
 
 Não altere esses documentos apenas para registrar pequenas mudanças de implementação que não modificam seu conteúdo.
 

@@ -146,6 +146,7 @@
         </label>
         <button id="limpar" type="button" class="botao secundario">Limpar</button>
         <span class="espaco"></span>
+        <button id="novo" type="button" class="botao secundario">Novo pagamento</button>
         <button id="gerar" type="button" class="botao">Gerar mensalidades</button>
       </div>
 
@@ -192,6 +193,47 @@
       <p class="msg-info">Esta tela é exclusiva do administrador.</p>
     </section>
   </main>
+
+  <dialog id="dialogo-formulario" aria-labelledby="titulo-formulario">
+    <h2 id="titulo-formulario">Novo pagamento</h2>
+    <form id="formulario-pagamento" class="dialogo-conteudo" novalidate>
+      <input id="pagamento-id" type="hidden">
+      <div class="grade">
+        <label class="campo span2">
+          <span>Assinatura</span>
+          <select id="form-assinatura"></select>
+        </label>
+        <label class="campo"><span>Competência</span><input id="form-competencia" type="month"></label>
+        <label class="campo"><span>Valor (R$)</span><input id="form-valor" type="number" min="0.01" step="0.01"></label>
+        <label class="campo"><span>Vencimento</span><input id="form-vencimento" type="date"></label>
+        <label class="campo"><span>Status</span>
+          <select id="form-status">
+            <option value="pendente">Pendente</option>
+            <option value="pago">Pago</option>
+            <option value="atrasado">Atrasado</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </label>
+        <label class="campo"><span>Data do pagamento</span><input id="form-data-pagamento" type="date"></label>
+        <label class="campo"><span>Método</span>
+          <select id="form-metodo">
+            <option value="">Nenhum</option>
+            <option value="dinheiro">Dinheiro</option>
+            <option value="pix">PIX</option>
+            <option value="cartao">Cartão</option>
+            <option value="boleto">Boleto</option>
+            <option value="transferencia">Transferência</option>
+          </select>
+        </label>
+        <label class="campo span2"><span>Observação</span><textarea id="form-observacao" maxlength="255" placeholder="Opcional"></textarea></label>
+      </div>
+      <p id="erro-formulario" class="msg-erro" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-formulario" type="button" class="botao secundario">Cancelar</button>
+        <button id="salvar-formulario" type="submit" class="botao">Salvar</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="dialogo-validar" aria-labelledby="titulo-validar">
     <h2 id="titulo-validar">Validar pagamento</h2>

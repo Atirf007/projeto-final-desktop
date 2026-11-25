@@ -54,8 +54,11 @@
     .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--cinza-200); }
     .campo { display: grid; gap: 6px; }
     .campo span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); }
-    input, select { padding: 12px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
-    input:focus, select:focus { border-color: var(--secundaria); box-shadow: 0 0 0 3px var(--secundaria-suave); }
+    input, select, textarea { padding: 12px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
+    input:focus, select:focus, textarea:focus { border-color: var(--secundaria); box-shadow: 0 0 0 3px var(--secundaria-suave); }
+    textarea { resize: vertical; min-height: 96px; }
+    .grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .grade .span2 { grid-column: 1 / -1; }
     h2 { position: relative; margin: 0 0 16px; padding-left: 12px; font-size: 16px; font-weight: 700; color: var(--primaria-800); }
     h2::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 16px; border-radius: 2px; background: var(--secundaria); }
     .tabela { overflow-x: auto; }
@@ -165,6 +168,8 @@
           <input id="filtro-busca" type="search" maxlength="120" placeholder="Nome, e-mail ou assunto">
         </label>
         <button id="limpar-filtros" type="button" class="botao secundario">Limpar</button>
+        <span style="flex:1"></span>
+        <button id="nova-notificacao" type="button" class="botao">Nova notificação</button>
       </div>
       <h2>Histórico de notificações</h2>
       <div class="tabela">
@@ -186,6 +191,48 @@
       <p id="status" role="status"></p>
     </section>
   </main>
+
+  <dialog id="dialogo-formulario" aria-labelledby="titulo-formulario">
+    <h2 id="titulo-formulario">Nova notificação</h2>
+    <form id="formulario-notificacao" class="dialogo-conteudo" novalidate>
+      <input id="notificacao-id" type="hidden">
+      <div class="grade">
+        <label class="campo span2"><span>E-mail do destinatário</span><input id="form-email" type="email" maxlength="160"></label>
+        <label class="campo"><span>Tipo</span>
+          <select id="form-tipo">
+            <option value="geral">Geral</option>
+            <option value="vencimento">Vencimento</option>
+            <option value="chuva">Chuva</option>
+            <option value="experimental">Experimental</option>
+          </select>
+        </label>
+        <label class="campo"><span>Canal</span>
+          <select id="form-canal">
+            <option value="sistema">Sistema</option>
+            <option value="email">E-mail</option>
+          </select>
+        </label>
+        <label class="campo span2"><span>Assunto</span><input id="form-assunto" type="text" maxlength="160"></label>
+        <label class="campo span2"><span>Mensagem</span><textarea id="form-mensagem" maxlength="4000"></textarea></label>
+        <label class="campo"><span>Status</span>
+          <select id="form-status-notificacao">
+            <option value="pendente">Pendente</option>
+            <option value="enviado">Enviado</option>
+            <option value="falhou">Falhou</option>
+          </select>
+        </label>
+        <label class="campo"><span>Erro (opcional)</span><input id="form-erro" type="text" maxlength="255"></label>
+        <label class="campo"><span>Usuário ID (opcional)</span><input id="form-usuario-id" type="number" min="1"></label>
+        <label class="campo"><span>Aula ID (opcional)</span><input id="form-aula-id" type="number" min="1"></label>
+        <label class="campo"><span>Pagamento ID (opcional)</span><input id="form-pagamento-id" type="number" min="1"></label>
+      </div>
+      <p id="erro-formulario" class="msg-erro" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-formulario" type="button" class="botao secundario">Cancelar</button>
+        <button id="salvar-formulario" type="submit" class="botao">Salvar</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="dialogo-detalhe" aria-labelledby="titulo-detalhe">
     <h2 id="titulo-detalhe">Notificação</h2>

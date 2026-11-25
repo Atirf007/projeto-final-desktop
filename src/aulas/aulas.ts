@@ -1,4 +1,5 @@
 import { ipcRenderer } from 'electron'
+import { SugestoesExercicios } from './SugestoesExercicios'
 
 type Perfil = 'admin' | 'instrutor' | 'aluno'
 type UsuarioSessao = { id: number; nome: string; perfil: Perfil }
@@ -85,6 +86,7 @@ class AulasView {
   private instrutorId: number | null = null
   private alunosCarregados = false
   private climaConsulta = 0
+  private sugestoes: SugestoesExercicios | null = null
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -482,6 +484,11 @@ class AulasView {
 
     this.renderInscritos(aula)
     void this.consultarClima(aula)
+
+    const blocoSugestoes = this.el('bloco-sugestoes')
+    blocoSugestoes.classList.toggle('oculto', !gestor)
+    if (gestor) void this.sugestoes?.carregar(aula.modalidadeNome || aula.titulo)
+    else this.el('lista-sugestoes').replaceChildren()
   }
 
   private abrirDetalhe = async (id: number): Promise<void> => {
@@ -882,6 +889,16 @@ class AulasView {
     this.el('nova-aula').classList.toggle('oculto', !gestor)
     if (!gestor) this.el('campo-filtro-instrutor').classList.add('oculto')
     if (this.admin()) this.el('campo-filtro-instrutor').classList.remove('oculto')
+
+    if (gestor) {
+      this.sugestoes = new SugestoesExercicios({
+        origem: this.el('origem-sugestoes'),
+        lista: this.el('lista-sugestoes'),
+        mensagem: this.el('msg-sugestoes'),
+        atualizar: this.el<HTMLButtonElement>('atualizar-sugestoes')
+      })
+      this.sugestoes.registrar()
+    }
 
     this.el('voltar').addEventListener('click', () => void this.voltar())
     this.el('nova-aula').addEventListener('click', this.abrirNovo)

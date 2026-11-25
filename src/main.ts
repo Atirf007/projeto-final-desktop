@@ -8,6 +8,7 @@ import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/Autenticaca
 import { FuncionarioIpc, ModalidadeIpc } from './funcionarios/FuncionarioBackend'
 import { CepIpc } from './integracoes/CepBackend'
 import { ClimaIpc } from './integracoes/ClimaBackend'
+import { LancamentoIpc } from './lancamentos/LancamentoBackend'
 import { FeriadosIpc } from './integracoes/FeriadosBackend'
 import { WgerIpc } from './integracoes/WgerBackend'
 import { BotClimaIpc, BotClimaServico } from './mensagens/BotClima'
@@ -17,7 +18,7 @@ import { BotVencimentoServico } from './notificacoes/BotVencimento'
 import { NotificacaoIpc, NotificacaoServico } from './notificacoes/NotificacaoBackend'
 import { PagamentoIpc } from './pagamentos/PagamentoBackend'
 import { AssinaturaIpc, PlanoIpc } from './planos/PlanosBackend'
-import { PresencaResumoIpc } from './presencas/PresencaBackend'
+import { PresencaCrudIpc, PresencaResumoIpc } from './presencas/PresencaBackend'
 import { RelatorioIpc } from './relatorios/RelatorioBackend'
 import { UsuarioIpc } from './usuarios/UsuarioBackend'
 import { VisitanteIpc } from './visitantes/VisitanteBackend'
@@ -74,6 +75,12 @@ class Aplicacao {
 
   private readonly notificacoes = new JanelaApp({ pasta: 'notificacoes', nome: 'notificacoes', largura: 1280, altura: 820 })
 
+  private readonly presencas = new JanelaApp({ pasta: 'presencas', nome: 'presencas', largura: 1280, altura: 800 })
+
+  private readonly inscricoes = new JanelaApp({ pasta: 'inscricoes', nome: 'inscricoes', largura: 1280, altura: 800 })
+
+  private readonly lancamentos = new JanelaApp({ pasta: 'lancamentos', nome: 'lancamentos', largura: 1100, altura: 760 })
+
   private readonly portal = new JanelaApp({ pasta: 'portal', nome: 'portal', largura: 1280, altura: 900 })
 
   private readonly bot = new JanelaApp({ pasta: 'mensagens', nome: 'mensagens', largura: 1000, altura: 820 })
@@ -97,6 +104,9 @@ class Aplicacao {
     this.visitantes.fechar()
     this.avaliacoes.fechar()
     this.notificacoes.fechar()
+    this.presencas.fechar()
+    this.inscricoes.fechar()
+    this.lancamentos.fechar()
     this.portal.fechar()
     this.bot.fechar()
     this.menu.fechar()
@@ -141,8 +151,10 @@ class Aplicacao {
       new BotClimaIpc(this.sessao, botClima).registrar()
       new AlunoIpc(this.sessao).registrar()
       new AulaIpc(this.sessao).registrar()
+      new LancamentoIpc(this.sessao).registrar()
       new AvaliacaoIpc(this.sessao).registrar()
       new PresencaResumoIpc(this.sessao).registrar()
+      new PresencaCrudIpc(this.sessao).registrar()
       new PlanoIpc(this.sessao).registrar()
       new AssinaturaIpc(this.sessao).registrar()
       new PagamentoIpc(this.sessao).registrar()
@@ -163,6 +175,9 @@ class Aplicacao {
         pagamentos: () => this.pagamentos.abrir(),
         visitantes: () => this.visitantes.abrir(),
         notificacoes: () => this.notificacoes.abrir(),
+        presencas: () => this.presencas.abrir(),
+        inscricoes: () => this.inscricoes.abrir(),
+        lancamentos: () => this.lancamentos.abrir(),
         portal: () => this.portal.abrir(),
         bot: () => this.bot.abrir()
       }, this.aoVoltar).registrar()
