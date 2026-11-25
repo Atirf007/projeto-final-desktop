@@ -123,7 +123,8 @@ export class WgerCliente {
 
       this.cache = { expiraEm: Date.now() + this.ttlMs, valor: exercicios }
       return { ok: true, exercicios }
-    } catch {
+    } catch (erro) {
+      console.error('[wger] falha ao carregar o catálogo de exercícios:', erro)
       return {
         ok: false,
         mensagem: 'Não foi possível consultar o catálogo de exercícios. Verifique a conexão com a internet.'
@@ -147,7 +148,7 @@ export class WgerCliente {
   }
 
   obter = async (id: number): Promise<ResultadoExercicio> => {
-    const resultado = await this.buscar('', LIMITE_API)
+    const resultado = await this.carregar()
     if (!resultado.ok) return resultado
 
     const exercicio = resultado.exercicios.find((item) => item.id === id)

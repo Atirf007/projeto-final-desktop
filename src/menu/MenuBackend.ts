@@ -11,6 +11,8 @@ export class MenuIpc {
     { id: 'funcionarios', titulo: 'Funcionários', descricao: 'Instrutores e equipe', perfis: ['admin'] },
     { id: 'alunos', titulo: 'Alunos', descricao: 'Cadastro e consulta de alunos', perfis: ['admin', 'instrutor'] },
     { id: 'aulas', titulo: 'Aulas', descricao: 'Agenda, inscrições e presenças', perfis: ['admin', 'instrutor', 'aluno'] },
+    { id: 'feriados', titulo: 'Feriados', descricao: 'Calendário nacional da BrasilAPI', perfis: ['admin', 'instrutor'] },
+    { id: 'exercicios', titulo: 'Biblioteca de exercícios', descricao: 'Catálogo Wger para treinos', perfis: ['admin', 'instrutor'] },
     { id: 'avaliacoes', titulo: 'Avaliações físicas', descricao: 'Medidas, histórico e evolução dos alunos', perfis: ['admin', 'instrutor'] },
     { id: 'planos', titulo: 'Planos e assinaturas', descricao: 'Planos contratados pelos alunos', perfis: ['admin'] },
     { id: 'pagamentos', titulo: 'Pagamentos', descricao: 'Mensalidades e cobranças', perfis: ['admin'] },
