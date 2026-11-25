@@ -523,6 +523,8 @@ projeto-final-desktop/
 │  ├─ gerar-hash-senha.ts
 │  └─ testar-conexao.ts
 ├─ src/
+│  ├─ feriados/
+│  ├─ exercicios/
 │  ├─ main/
 │  │  ├─ index.ts
 │  │  ├─ window.ts
@@ -1724,3 +1726,12 @@ Uma entrega só conta como pronta quando:
 - o fluxo foi testado com o perfil correto e com um perfil sem permissão;
 - o código passou por revisão cruzada;
 - a documentação/contrato foi atualizada se algo mudou.
+
+---
+
+## 11. Decisões de uso de IA
+
+- A IA (OpenCode ou cliente equivalente) é apoio para arquitetar, documentar e revisar; a explicação e a responsabilidade pelas decisões são do grupo.
+- A arquitetura vem antes do código e continua subordinada a `docs/requisitos.md`, aos contratos IPC e às regras de segurança aqui definidas.
+- MCP/RAG não foram adotados nesta fase: as APIs são HTTP públicas e o conhecimento do domínio já está versionado em `docs/`; a decisão será reavaliada se surgir integração específica.
+- Código ou texto sugerido por IA passa pela mesma revisão cruzada do time (SQL, segurança e UI) antes de entrar.
