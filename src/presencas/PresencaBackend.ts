@@ -1,6 +1,7 @@
 import { registrarCanal } from '../SegurancaIpc'
-import { RowDataPacket } from 'mysql2/promise'
+import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
+import { BancoErros } from '../BancoErros'
 import { Sessao } from '../Sessao'
 
 export type OrigemPresenca = 'aula' | 'livre' | 'experimental'
@@ -30,6 +31,25 @@ export type PeriodoPresencas = {
   fim?: string
 }
 
+export type FiltroPresencas = {
+  alunoId?: number
+  inicio?: string
+  fim?: string
+  origem?: OrigemPresenca
+  busca?: string
+}
+
+export type PresencaInput = {
+  id?: number
+  alunoId: number
+  aulaId?: number | null
+  dataPresenca: string
+  origem: OrigemPresenca
+}
+
+export type ResultadoPresenca = { ok: true; id: number } | { ok: false; mensagem: string }
+
+const ORIGENS: OrigemPresenca[] = ['aula', 'livre', 'experimental']
 const TIMEOUT = 15000
 
 const dataStr = (valor: unknown): string => String(valor ?? '').slice(0, 10)
@@ -153,6 +173,92 @@ class PresencaRepository {
       percentual: Math.round((total / dias) * 1000) / 10
     }
   }
+
+  listarTodos = async (filtro: FiltroPresencas): Promise<Presenca[]> => {
+    const condicoes: string[] = []
+    const valores: unknown[] = []
+    if (filtro.alunoId) {
+      condicoes.push('p.aluno_id = ?')
+      valores.push(filtro.alunoId)
+    }
+    if (filtro.inicio) {
+      condicoes.push('p.data_presenca >= ?')
+      valores.push(filtro.inicio)
+    }
+    if (filtro.fim) {
+      condicoes.push('p.data_presenca <= ?')
+      valores.push(filtro.fim)
+    }
+    if (filtro.origem) {
+      condicoes.push('p.origem = ?')
+      valores.push(filtro.origem)
+    }
+    if (filtro.busca) {
+      const termo = `%${filtro.busca.replace(/[\\%_]/g, '\\$&')}%`
+      condicoes.push('u.nome LIKE ?')
+      valores.push(termo)
+    }
+    const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
+    const [linhas] = await this.pool.query<RowDataPacket[]>({
+      sql: `SELECT p.id, p.aluno_id, u.nome AS aluno_nome, p.aula_id, a.titulo AS aula_titulo,
+                   p.data_presenca, p.origem, p.criado_em
+            FROM presencas p
+            INNER JOIN alunos al ON al.id = p.aluno_id
+            INNER JOIN usuarios u ON u.id = al.usuario_id
+            LEFT JOIN aulas a ON a.id = p.aula_id
+            ${where}
+            ORDER BY p.data_presenca DESC, p.id DESC
+            LIMIT 500`,
+      values: valores,
+      timeout: TIMEOUT
+    })
+    return linhas.map(mapear)
+  }
+
+  obter = async (id: number): Promise<Presenca | null> => {
+    const [linhas] = await this.pool.query<RowDataPacket[]>({
+      sql: `SELECT p.id, p.aluno_id, u.nome AS aluno_nome, p.aula_id, a.titulo AS aula_titulo,
+                   p.data_presenca, p.origem, p.criado_em
+            FROM presencas p
+            INNER JOIN alunos al ON al.id = p.aluno_id
+            INNER JOIN usuarios u ON u.id = al.usuario_id
+            LEFT JOIN aulas a ON a.id = p.aula_id
+            WHERE p.id = ? LIMIT 1`,
+      values: [id],
+      timeout: TIMEOUT
+    })
+    return linhas.length ? mapear(linhas[0]) : null
+  }
+
+  criar = async (dados: PresencaInput): Promise<number> => {
+    const [resultado] = await this.pool.query<ResultSetHeader>({
+      sql: `INSERT INTO presencas (aluno_id, aula_id, data_presenca, origem, criado_em)
+            VALUES (?, ?, ?, ?, NOW())`,
+      values: [dados.alunoId, dados.aulaId ?? null, dados.dataPresenca, dados.origem],
+      timeout: TIMEOUT
+    })
+    return Number(resultado.insertId)
+  }
+
+  atualizar = async (dados: PresencaInput): Promise<boolean> => {
+    const [resultado] = await this.pool.query<ResultSetHeader>({
+      sql: `UPDATE presencas
+            SET aluno_id = ?, aula_id = ?, data_presenca = ?, origem = ?
+            WHERE id = ?`,
+      values: [dados.alunoId, dados.aulaId ?? null, dados.dataPresenca, dados.origem, dados.id],
+      timeout: TIMEOUT
+    })
+    return resultado.affectedRows > 0
+  }
+
+  excluir = async (id: number): Promise<boolean> => {
+    const [resultado] = await this.pool.query<ResultSetHeader>({
+      sql: 'DELETE FROM presencas WHERE id = ?',
+      values: [id],
+      timeout: TIMEOUT
+    })
+    return resultado.affectedRows > 0
+  }
 }
 
 export class PresencaResumoIpc {
@@ -184,6 +290,129 @@ export class PresencaResumoIpc {
         }
       }
       return this.repositorio.resumo(alunoId, this.validador.validar(entrada))
+    })
+  }
+}
+
+export class PresencaCrudIpc {
+  private readonly repositorio = new PresencaRepository()
+
+  constructor(private readonly sessao: Sessao) {}
+
+  private id = (valor: unknown): number | null => {
+    const numero = typeof valor === 'number' ? valor : typeof valor === 'string' ? Number(valor) : NaN
+    return Number.isInteger(numero) && numero > 0 ? numero : null
+  }
+
+  private erro = (contexto: string, erro: unknown, padrao: string): ResultadoPresenca => {
+    if (erro instanceof Error && erro.message === 'Acesso negado') {
+      return { ok: false, mensagem: 'Acesso negado para esta operação.' }
+    }
+    console.error(`[${contexto}]`, erro)
+    return { ok: false, mensagem: BancoErros.mensagem(erro, padrao) }
+  }
+
+  private validarFiltro = (entrada: unknown): FiltroPresencas => {
+    if (typeof entrada !== 'object' || entrada === null) return {}
+    const e = entrada as Record<string, unknown>
+    const filtro: FiltroPresencas = {}
+    const alunoId = this.id(e.alunoId)
+    if (alunoId !== null) filtro.alunoId = alunoId
+    const inicio = dataValida(e.inicio)
+    if (inicio) filtro.inicio = inicio
+    const fim = dataValida(e.fim)
+    if (fim) filtro.fim = fim
+    if (typeof e.origem === 'string' && ORIGENS.includes(e.origem as OrigemPresenca)) {
+      filtro.origem = e.origem as OrigemPresenca
+    }
+    if (typeof e.busca === 'string') filtro.busca = e.busca.trim().slice(0, 120)
+    return filtro
+  }
+
+  private validar = (entrada: unknown): { ok: true; dados: PresencaInput } | { ok: false; mensagem: string } => {
+    if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
+    const e = entrada as Record<string, unknown>
+
+    let id: number | undefined
+    if (e.id !== undefined) {
+      const idValido = this.id(e.id)
+      if (idValido === null) return { ok: false, mensagem: 'Presença inválida.' }
+      id = idValido
+    }
+
+    const alunoId = this.id(e.alunoId)
+    if (alunoId === null) return { ok: false, mensagem: 'Selecione um aluno válido.' }
+
+    let aulaId: number | null = null
+    if (e.aulaId !== undefined && e.aulaId !== null && e.aulaId !== '') {
+      aulaId = this.id(e.aulaId)
+      if (aulaId === null) return { ok: false, mensagem: 'Aula inválida.' }
+    }
+
+    const dataPresenca = dataValida(e.dataPresenca)
+    if (!dataPresenca) return { ok: false, mensagem: 'Informe uma data válida.' }
+
+    if (typeof e.origem !== 'string' || !ORIGENS.includes(e.origem as OrigemPresenca)) {
+      return { ok: false, mensagem: 'Selecione uma origem válida.' }
+    }
+    const origem = e.origem as OrigemPresenca
+    if (origem === 'aula' && aulaId === null) {
+      return { ok: false, mensagem: 'Selecione a aula desta presença.' }
+    }
+
+    return { ok: true, dados: { id, alunoId, aulaId, dataPresenca, origem } }
+  }
+
+  registrar = (): void => {
+    registrarCanal('presencas:listarTodos', async (_evento, entrada: unknown): Promise<Presenca[]> => {
+      this.sessao.exigir(['admin', 'instrutor'])
+      return this.repositorio.listarTodos(this.validarFiltro(entrada))
+    })
+
+    registrarCanal('presencas:obter', async (_evento, entrada: unknown): Promise<Presenca | null> => {
+      this.sessao.exigir(['admin', 'instrutor'])
+      const id = this.id(entrada)
+      if (id === null) throw new Error('Presença inválida.')
+      return this.repositorio.obter(id)
+    })
+
+    registrarCanal('presencas:criar', async (_evento, entrada: unknown): Promise<ResultadoPresenca> => {
+      this.sessao.exigir(['admin', 'instrutor'])
+      const v = this.validar(entrada)
+      if (!v.ok) return v
+      try {
+        const id = await this.repositorio.criar(v.dados)
+        return { ok: true, id }
+      } catch (erro) {
+        return this.erro('presencas:criar', erro, 'Não foi possível registrar a presença.')
+      }
+    })
+
+    registrarCanal('presencas:atualizar', async (_evento, entrada: unknown): Promise<ResultadoPresenca> => {
+      this.sessao.exigir(['admin', 'instrutor'])
+      const v = this.validar(entrada)
+      if (!v.ok) return v
+      if (v.dados.id === undefined) return { ok: false, mensagem: 'Presença inválida.' }
+      try {
+        const ok = await this.repositorio.atualizar(v.dados)
+        if (!ok) return { ok: false, mensagem: 'Presença não encontrada.' }
+        return { ok: true, id: v.dados.id }
+      } catch (erro) {
+        return this.erro('presencas:atualizar', erro, 'Não foi possível atualizar a presença.')
+      }
+    })
+
+    registrarCanal('presencas:excluir', async (_evento, entrada: unknown): Promise<ResultadoPresenca> => {
+      this.sessao.exigir(['admin', 'instrutor'])
+      const id = this.id(entrada)
+      if (id === null) return { ok: false, mensagem: 'Presença inválida.' }
+      try {
+        const ok = await this.repositorio.excluir(id)
+        if (!ok) return { ok: false, mensagem: 'Presença não encontrada.' }
+        return { ok: true, id }
+      } catch (erro) {
+        return this.erro('presencas:excluir', erro, 'Não foi possível excluir a presença.')
+      }
     })
   }
 }

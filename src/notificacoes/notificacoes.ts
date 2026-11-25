@@ -41,6 +41,10 @@ type Situacao = {
 
 type ResultadoExclusao = { ok: boolean; mensagem?: string }
 
+type ResultadoNotificacao =
+  | { ok: true; id: number }
+  | { ok: false; mensagem: string }
+
 class NotificacoesView {
   private usuario: UsuarioSessao | null = null
   private notificacoes: Notificacao[] = []
@@ -170,9 +174,11 @@ class NotificacoesView {
     acoes.className = 'acoes-linha'
     const btnVer = this.criarBotao('Ver', 'botao secundario pequeno')
     btnVer.addEventListener('click', () => this.abrirDetalhe(notificacao))
+    const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
+    btnEditar.addEventListener('click', () => void this.abrirEdicao(notificacao.id))
     const btnExcluir = this.criarBotao('Excluir', 'botao perigo pequeno')
     btnExcluir.addEventListener('click', () => this.abrirExclusao(notificacao))
-    acoes.append(btnVer, btnExcluir)
+    acoes.append(btnVer, btnEditar, btnExcluir)
     tdAcoes.append(acoes)
 
     tr.append(tdData, tdDest, tdTipo, tdAssunto, tdStatus, tdErro, tdAcoes)
@@ -230,6 +236,94 @@ class NotificacoesView {
     this.el('mensagem').textContent = notificacao.mensagem
     const dialogo = this.el<HTMLDialogElement>('dialogo-detalhe')
     if (!dialogo.open) dialogo.showModal()
+  }
+
+  private abrirFormulario = (notificacao: Notificacao | null): void => {
+    this.el<HTMLFormElement>('formulario-notificacao').reset()
+    this.el('erro-formulario').textContent = ''
+    const edicao = notificacao !== null
+    this.el<HTMLInputElement>('notificacao-id').value = edicao ? String(notificacao.id) : ''
+    this.el('titulo-formulario').textContent = edicao ? 'Editar notificação' : 'Nova notificação'
+    this.el<HTMLButtonElement>('salvar-formulario').textContent = edicao ? 'Salvar alterações' : 'Cadastrar'
+    this.el<HTMLInputElement>('form-email').value = edicao ? notificacao.destinatarioEmail : ''
+    this.el<HTMLSelectElement>('form-tipo').value = edicao ? notificacao.tipo : 'geral'
+    this.el<HTMLSelectElement>('form-canal').value = edicao ? notificacao.canal : 'sistema'
+    this.el<HTMLInputElement>('form-assunto').value = edicao ? notificacao.assunto : ''
+    this.el<HTMLTextAreaElement>('form-mensagem').value = edicao ? notificacao.mensagem : ''
+    this.el<HTMLSelectElement>('form-status-notificacao').value = edicao ? notificacao.status : 'pendente'
+    this.el<HTMLInputElement>('form-erro').value = edicao ? (notificacao.erro ?? '') : ''
+    this.el<HTMLInputElement>('form-usuario-id').value = edicao && notificacao.usuarioId ? String(notificacao.usuarioId) : ''
+    this.el<HTMLInputElement>('form-aula-id').value = edicao && notificacao.aulaId ? String(notificacao.aulaId) : ''
+    this.el<HTMLInputElement>('form-pagamento-id').value =
+      edicao && notificacao.pagamentoId ? String(notificacao.pagamentoId) : ''
+    this.el<HTMLDialogElement>('dialogo-formulario').showModal()
+  }
+
+  private abrirEdicao = async (id: number): Promise<void> => {
+    try {
+      const notificacao = (await ipcRenderer.invoke('notificacoes:obter', id)) as Notificacao | null
+      if (!notificacao) {
+        this.statusPagina('Notificação não encontrada.', true)
+        return
+      }
+      this.abrirFormulario(notificacao)
+    } catch {
+      this.statusPagina('Não foi possível carregar a notificação.', true)
+    }
+  }
+
+  private fecharFormulario = (): void => {
+    this.el<HTMLDialogElement>('dialogo-formulario').close()
+  }
+
+  private salvarFormulario = async (evento: Event): Promise<void> => {
+    evento.preventDefault()
+    const erro = this.el('erro-formulario')
+    const botao = this.el<HTMLButtonElement>('salvar-formulario')
+    const id = Number(this.el<HTMLInputElement>('notificacao-id').value || '0')
+    const numeroOpcional = (idDoCampo: string): number | null => {
+      const valor = Number(this.el<HTMLInputElement>(idDoCampo).value || '0')
+      return valor > 0 ? valor : null
+    }
+    const entrada = {
+      id: id || undefined,
+      usuarioId: numeroOpcional('form-usuario-id'),
+      aulaId: numeroOpcional('form-aula-id'),
+      pagamentoId: numeroOpcional('form-pagamento-id'),
+      destinatarioEmail: this.el<HTMLInputElement>('form-email').value,
+      tipo: this.el<HTMLSelectElement>('form-tipo').value,
+      canal: this.el<HTMLSelectElement>('form-canal').value,
+      assunto: this.el<HTMLInputElement>('form-assunto').value,
+      mensagem: this.el<HTMLTextAreaElement>('form-mensagem').value,
+      status: this.el<HTMLSelectElement>('form-status-notificacao').value,
+      erro: this.el<HTMLInputElement>('form-erro').value
+    }
+
+    if (!entrada.destinatarioEmail.trim() || !entrada.assunto.trim() || !entrada.mensagem.trim()) {
+      erro.textContent = 'Preencha e-mail, assunto e mensagem.'
+      return
+    }
+
+    botao.disabled = true
+    erro.textContent = ''
+    try {
+      const resultado = (await ipcRenderer.invoke(
+        id ? 'notificacoes:atualizar' : 'notificacoes:criar',
+        entrada
+      )) as ResultadoNotificacao
+      if (!resultado.ok) {
+        erro.textContent = resultado.mensagem
+        return
+      }
+      this.fecharFormulario()
+      await this.carregar()
+      await this.carregarSituacao()
+      this.statusPagina(id ? 'Notificação atualizada.' : 'Notificação criada.')
+    } catch {
+      erro.textContent = 'Não foi possível salvar a notificação.'
+    } finally {
+      botao.disabled = false
+    }
   }
 
   private abrirExclusao = (notificacao: Notificacao): void => {
@@ -303,6 +397,11 @@ class NotificacoesView {
       void this.carregar()
     })
     this.el('limpar-filtros').addEventListener('click', this.limparFiltros)
+    this.el('nova-notificacao').addEventListener('click', () => this.abrirFormulario(null))
+    this.el('cancelar-formulario').addEventListener('click', this.fecharFormulario)
+    this.el('formulario-notificacao').addEventListener('submit', (evento) =>
+      void this.salvarFormulario(evento)
+    )
     this.el('filtro-tipo').addEventListener('change', () => void this.carregar())
     this.el('filtro-status').addEventListener('change', () => void this.carregar())
     this.el('filtro-busca').addEventListener('input', () => {

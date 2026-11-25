@@ -46,13 +46,33 @@ export type RegistrarPagamentoInput = {
   observacao?: string | null
 }
 
+export type CriarPagamentoInput = {
+  assinaturaId: number
+  competencia: string
+  valor: number
+  dataVencimento: string
+}
+
+export type AtualizarPagamentoInput = {
+  id: number
+  competencia?: string
+  valor?: number
+  dataVencimento?: string
+  status?: StatusPagamento
+  dataPagamento?: string | null
+  metodo?: MetodoPagamento | null
+  observacao?: string | null
+}
+
 export type ResultadoPagamento =
-  | { ok: true; id?: number; criados?: number; ignorados?: number }
+  | { ok: true; id?: number; criados?: number; ignorados?: number; aviso?: string }
   | { ok: false; mensagem: string }
 
 const TIMEOUT = 15000
 const STATUS: StatusPagamento[] = ['pendente', 'pago', 'atrasado', 'cancelado']
 const METODOS: MetodoPagamento[] = ['dinheiro', 'pix', 'cartao', 'boleto', 'transferencia']
+
+class ErroPagamento extends Error {}
 
 const dataISO = (valor: unknown): string => String(valor ?? '').slice(0, 10)
 
@@ -181,6 +201,147 @@ export class PagamentoRepository {
     return resumo
   }
 
+  obter = async (id: number): Promise<Pagamento | null> => {
+    const [linhas] = await this.pool.query<RowDataPacket[]>({
+      sql: `${this.selectBase} WHERE pg.id = ? LIMIT 1`,
+      values: [id],
+      timeout: TIMEOUT
+    })
+    return linhas.length ? this.mapear(linhas[0]) : null
+  }
+
+  criar = async (dados: CriarPagamentoInput): Promise<number> => {
+    const conexao = await this.pool.getConnection()
+    try {
+      await conexao.beginTransaction()
+      const [assinaturas] = await conexao.query<RowDataPacket[]>({
+        sql: 'SELECT id FROM assinaturas WHERE id = ? LIMIT 1 FOR UPDATE',
+        values: [dados.assinaturaId],
+        timeout: TIMEOUT
+      })
+      if (!assinaturas.length) throw new ErroPagamento('Assinatura não encontrada.')
+
+      const [resultado] = await conexao.query<ResultSetHeader>({
+        sql: `INSERT INTO pagamentos
+              (assinatura_id, competencia, valor, data_vencimento, status, criado_em, atualizado_em)
+              VALUES (?, ?, ?, ?, 'pendente', NOW(), NOW())`,
+        values: [dados.assinaturaId, dados.competencia, dados.valor, dados.dataVencimento],
+        timeout: TIMEOUT
+      })
+      await conexao.commit()
+      return Number(resultado.insertId)
+    } catch (erro) {
+      await conexao.rollback().catch(() => undefined)
+      throw erro
+    } finally {
+      conexao.release()
+    }
+  }
+
+  atualizar = async (dados: AtualizarPagamentoInput): Promise<boolean> => {
+    const conexao = await this.pool.getConnection()
+    try {
+      await conexao.beginTransaction()
+      const [linhas] = await conexao.query<RowDataPacket[]>({
+        sql: `SELECT status, data_pagamento, metodo FROM pagamentos WHERE id = ? LIMIT 1 FOR UPDATE`,
+        values: [dados.id],
+        timeout: TIMEOUT
+      })
+      if (!linhas.length) {
+        await conexao.rollback()
+        return false
+      }
+
+      const atual = linhas[0]
+      const statusFinal = dados.status ?? (String(atual.status) as StatusPagamento)
+      const dataFinal = dados.dataPagamento !== undefined ? dados.dataPagamento : (atual.data_pagamento ? dataISO(atual.data_pagamento) : null)
+      const metodoFinal = dados.metodo !== undefined ? dados.metodo : (atual.metodo ? (String(atual.metodo) as MetodoPagamento) : null)
+
+      if (statusFinal === 'pago' && (!dataFinal || !metodoFinal)) {
+        throw new ErroPagamento('Para pagamentos pagos, informe a data do pagamento e o método.')
+      }
+      if (statusFinal !== 'pago' && dados.dataPagamento !== undefined && dados.dataPagamento !== null) {
+        throw new ErroPagamento('Data de pagamento só pode ser informada para pagamentos com status pago.')
+      }
+
+      const campos: string[] = []
+      const valores: unknown[] = []
+      const set = (coluna: string, valor: unknown): void => {
+        campos.push(`${coluna} = ?`)
+        valores.push(valor)
+      }
+      if (dados.competencia !== undefined) set('competencia', dados.competencia)
+      if (dados.valor !== undefined) set('valor', dados.valor)
+      if (dados.dataVencimento !== undefined) set('data_vencimento', dados.dataVencimento)
+      if (dados.status !== undefined) set('status', dados.status)
+      if (dados.dataPagamento !== undefined) set('data_pagamento', dados.dataPagamento)
+      if (dados.metodo !== undefined) set('metodo', dados.metodo)
+      if (dados.observacao !== undefined) set('observacao', dados.observacao)
+      if (statusFinal !== 'pago' && atual.data_pagamento) {
+        set('data_pagamento', null)
+        set('metodo', null)
+      }
+      if (!campos.length) {
+        await conexao.commit()
+        return true
+      }
+
+      campos.push('atualizado_em = NOW()')
+      await conexao.query({
+        sql: `UPDATE pagamentos SET ${campos.join(', ')} WHERE id = ?`,
+        values: [...valores, dados.id],
+        timeout: TIMEOUT
+      })
+      await conexao.commit()
+      return true
+    } catch (erro) {
+      await conexao.rollback().catch(() => undefined)
+      throw erro
+    } finally {
+      conexao.release()
+    }
+  }
+
+  excluir = async (id: number): Promise<{ excluido: boolean; aviso?: string; mensagem?: string }> => {
+    const conexao = await this.pool.getConnection()
+    try {
+      await conexao.beginTransaction()
+      const [linhas] = await conexao.query<RowDataPacket[]>({
+        sql: `SELECT status,
+                (SELECT COUNT(*) FROM notificacoes n WHERE n.pagamento_id = p.id) AS notificacoes
+              FROM pagamentos p WHERE p.id = ? LIMIT 1 FOR UPDATE`,
+        values: [id],
+        timeout: TIMEOUT
+      })
+      if (!linhas.length) {
+        await conexao.rollback()
+        return { excluido: false }
+      }
+      if (String(linhas[0].status) === 'pago') {
+        await conexao.rollback()
+        return { excluido: false, mensagem: 'Pagamentos já confirmados não podem ser excluídos. Cancele a cobrança se necessário.' }
+      }
+
+      const [resultado] = await conexao.query<ResultSetHeader>({
+        sql: 'DELETE FROM pagamentos WHERE id = ?',
+        values: [id],
+        timeout: TIMEOUT
+      })
+      await conexao.commit()
+      return {
+        excluido: resultado.affectedRows > 0,
+        aviso: Number(linhas[0].notificacoes) > 0
+          ? 'Notificações vinculadas foram mantidas, porém sem referência a este pagamento.'
+          : undefined
+      }
+    } catch (erro) {
+      await conexao.rollback().catch(() => undefined)
+      throw erro
+    } finally {
+      conexao.release()
+    }
+  }
+
   registrar = async (dados: RegistrarPagamentoInput): Promise<boolean> => {
     const [resultado] = await this.pool.query<ResultSetHeader>({
       sql: `UPDATE pagamentos
@@ -256,6 +417,97 @@ class PagamentoValidador {
       : null
   }
 
+  private status(valor: unknown): StatusPagamento | null {
+    return typeof valor === 'string' && STATUS.includes(valor as StatusPagamento)
+      ? (valor as StatusPagamento)
+      : null
+  }
+
+  private competencia(valor: unknown): string | null {
+    if (typeof valor !== 'string') return null
+    const m = valor.trim().match(/^(\d{4})-(\d{2})$/)
+    if (!m) return null
+    const ano = Number(m[1])
+    const mes = Number(m[2])
+    if (ano < 2000 || ano > 2100 || mes < 1 || mes > 12) return null
+    return `${m[1]}-${m[2]}-01`
+  }
+
+  private valorPositivo(valor: unknown): number | null {
+    const numero = typeof valor === 'number' ? valor : typeof valor === 'string' && valor.trim() !== '' ? Number(valor) : NaN
+    if (!Number.isFinite(numero) || numero <= 0 || numero > 99999999.99) return null
+    return Math.round(numero * 100) / 100
+  }
+
+  validarCriacao(entrada: unknown): { ok: true; dados: CriarPagamentoInput } | { ok: false; mensagem: string } {
+    if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
+    const e = entrada as Record<string, unknown>
+
+    const assinaturaId = this.id(e.assinaturaId)
+    if (assinaturaId === null) return { ok: false, mensagem: 'Selecione uma assinatura válida.' }
+    const competencia = this.competencia(e.competencia)
+    if (!competencia) return { ok: false, mensagem: 'Informe uma competência válida (AAAA-MM).' }
+    const valor = this.valorPositivo(e.valor)
+    if (valor === null) return { ok: false, mensagem: 'Informe um valor válido para o pagamento.' }
+    const dataVencimento = this.data(e.dataVencimento)
+    if (!dataVencimento) return { ok: false, mensagem: 'Informe uma data de vencimento válida.' }
+
+    return { ok: true, dados: { assinaturaId, competencia, valor, dataVencimento } }
+  }
+
+  validarAtualizacao(entrada: unknown): { ok: true; dados: AtualizarPagamentoInput } | { ok: false; mensagem: string } {
+    if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
+    const e = entrada as Record<string, unknown>
+
+    const id = this.id(e.id)
+    if (id === null) return { ok: false, mensagem: 'Pagamento inválido.' }
+    const dados: AtualizarPagamentoInput = { id }
+
+    if (e.competencia !== undefined) {
+      const competencia = this.competencia(e.competencia)
+      if (!competencia) return { ok: false, mensagem: 'Competência inválida.' }
+      dados.competencia = competencia
+    }
+    if (e.valor !== undefined) {
+      const valor = this.valorPositivo(e.valor)
+      if (valor === null) return { ok: false, mensagem: 'Valor do pagamento inválido.' }
+      dados.valor = valor
+    }
+    if (e.dataVencimento !== undefined) {
+      const dataVencimento = this.data(e.dataVencimento)
+      if (!dataVencimento) return { ok: false, mensagem: 'Data de vencimento inválida.' }
+      dados.dataVencimento = dataVencimento
+    }
+    if (e.status !== undefined) {
+      const status = this.status(e.status)
+      if (!status) return { ok: false, mensagem: 'Status de pagamento inválido.' }
+      dados.status = status
+    }
+    if (e.dataPagamento !== undefined) {
+      if (e.dataPagamento === null || e.dataPagamento === '') {
+        dados.dataPagamento = null
+      } else {
+        const dataPagamento = this.data(e.dataPagamento)
+        if (!dataPagamento) return { ok: false, mensagem: 'Data de pagamento inválida.' }
+        dados.dataPagamento = dataPagamento
+      }
+    }
+    if (e.metodo !== undefined) {
+      if (e.metodo === null || e.metodo === '') {
+        dados.metodo = null
+      } else {
+        const metodo = this.metodo(e.metodo)
+        if (!metodo) return { ok: false, mensagem: 'Método de pagamento inválido.' }
+        dados.metodo = metodo
+      }
+    }
+    if (e.observacao !== undefined) {
+      dados.observacao = typeof e.observacao === 'string' ? e.observacao.trim().slice(0, 255) || null : null
+    }
+
+    return { ok: true, dados }
+  }
+
   filtro(entrada: unknown): FiltroPagamentos {
     if (typeof entrada !== 'object' || entrada === null) return {}
 
@@ -307,6 +559,7 @@ export class PagamentoIpc {
   }
 
   private erro = (contexto: string, erro: unknown, padrao: string): ResultadoPagamento => {
+    if (erro instanceof ErroPagamento) return { ok: false, mensagem: erro.message }
     if (erro instanceof Error && erro.message === 'Acesso negado') {
       return { ok: false, mensagem: 'Acesso negado para esta operação.' }
     }
@@ -360,6 +613,59 @@ export class PagamentoIpc {
         return { ok: true, ...resultado }
       } catch (erro) {
         return this.erro('pagamentos:gerar', erro, 'Não foi possível gerar as mensalidades.')
+      }
+    })
+
+    registrarCanal('pagamentos:obter', async (_evento, entrada: unknown): Promise<Pagamento | null> => {
+      this.sessao.exigir(['admin'])
+      const id = this.idValido(entrada)
+      if (id === null) throw new Error('Pagamento inválido.')
+      return this.repositorio.obter(id)
+    })
+
+    registrarCanal('pagamentos:criar', async (_evento, entrada: unknown): Promise<ResultadoPagamento> => {
+      this.sessao.exigir(['admin'])
+      const v = this.validador.validarCriacao(entrada)
+      if (!v.ok) return v
+
+      try {
+        const id = await this.repositorio.criar(v.dados)
+        return { ok: true, id }
+      } catch (erro) {
+        return this.erro('pagamentos:criar', erro, 'Não foi possível criar o pagamento.')
+      }
+    })
+
+    registrarCanal('pagamentos:atualizar', async (_evento, entrada: unknown): Promise<ResultadoPagamento> => {
+      this.sessao.exigir(['admin'])
+      const v = this.validador.validarAtualizacao(entrada)
+      if (!v.ok) return v
+
+      try {
+        const atualizado = await this.repositorio.atualizar(v.dados)
+        if (!atualizado) return { ok: false, mensagem: 'Pagamento não encontrado.' }
+        return { ok: true, id: v.dados.id }
+      } catch (erro) {
+        return this.erro('pagamentos:atualizar', erro, 'Não foi possível atualizar o pagamento.')
+      }
+    })
+
+    registrarCanal('pagamentos:excluir', async (_evento, entrada: unknown): Promise<ResultadoPagamento> => {
+      this.sessao.exigir(['admin'])
+      const id = this.idValido(entrada)
+      if (id === null) return { ok: false, mensagem: 'Pagamento inválido.' }
+
+      try {
+        const resultado = await this.repositorio.excluir(id)
+        if (!resultado.excluido) {
+          return {
+            ok: false,
+            mensagem: resultado.mensagem ?? 'Pagamento não encontrado.'
+          }
+        }
+        return { ok: true, id, aviso: resultado.aviso }
+      } catch (erro) {
+        return this.erro('pagamentos:excluir', erro, 'Não foi possível excluir o pagamento.')
       }
     })
   }
