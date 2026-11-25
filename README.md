@@ -4,17 +4,47 @@ Sistema de gestão de academia em Electron, TypeScript e MySQL.
 
 ## Como iniciar
 
-1. Preencha `DB_USER` e `DB_NAME` no arquivo `.env` (use o `.env.example` como modelo).
-2. Rode os dois comandos:
+1. Preencha `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME` no arquivo `.env` (use o `.env.example` como modelo).
+2. Rode os comandos:
 
 ```
 npm install
+npm run criar-tabelas
+npm run criar-admin
+npm run criar-funcionario
 npm start
+```
+
+`criar-tabelas` aplica `database/schema.sql`. `criar-admin` cria ou atualiza o administrador usando `ADMIN_NOME`, `ADMIN_EMAIL` e `ADMIN_SENHA` do `.env`. `criar-funcionario` cria ou atualiza um usuário com perfil de funcionário (`instrutor`) usando `FUNCIONARIO_NOME`, `FUNCIONARIO_EMAIL` e `FUNCIONARIO_SENHA` do `.env`.
+
+Login de funcionário já disponível neste projeto:
+
+```
+E-mail: funcionario@cl205172.com
+Senha:  Funcionario@123456
 ```
 
 O `npm install` baixa o binário do Electron automaticamente. Caso o binário esteja ausente ou corrompido, o `npm start` executa `scripts/garantir-electron.js` e baixa novamente antes de abrir a aplicação.
 
+## Tela inicial
+
+A janela de login abre em 1200×760 e traz a foto da academia. Para usar a sua foto, salve o arquivo como:
+
+```
+src/autenticacao/assets/login-foto.jpg
+```
+
+(crie a pasta `assets` se ela não existir) e rode `npm run build` antes de `npm start`. Sem o arquivo, a tela mostra um fundo verde automático no lugar da foto.
+
 O primeiro administrador precisa existir na tabela `usuarios`. A senha é guardada como hash `scrypt`, no formato `scrypt:<sal>:<hash>`. Depois de entrar como administrador, novos usuários são cadastrados pela opção Usuários do menu.
+
+## Permissões
+
+- **Administrador:** acessa todas as telas, incluindo Gerenciar Bot, Relatórios e Funcionários.
+- **Funcionário (`instrutor`):** acessa as telas de rotina (Alunos, Aulas, Avaliações e Visitantes); não acessa Gerenciar Bot, Relatórios, Funcionários, Usuários, Planos, Pagamentos, Notificações nem Meu painel.
+- **Aluno:** não entra no sistema — o login é recusado mesmo com e-mail e senha corretos.
+
+As regras são aplicadas também nos canais IPC, no processo principal — esconder o botão no menu não é a única proteção.
 
 ## Bot de clima
 
@@ -37,6 +67,7 @@ SMTP_USER=seu.email@cotil.unicamp.br
 SMTP_PASS=sua_senha_de_app
 SMTP_FROM=seu.email@cotil.unicamp.br
 SMTP_REMETENTE_NOME=Academia Cotil
+SMTP_TESTE_DESTINATARIO=seu.email@cotil.unicamp.br
 ```
 
 Passos para gerar a senha de app:
@@ -58,6 +89,8 @@ O teste envia uma mensagem para o próprio `SMTP_USER`. Para enviar a outro ende
 ```
 npm run testar-email outro@email.com
 ```
+
+Dentro do aplicativo, abra **Gerenciar Bot** e clique em **Enviar e-mail de teste**. O destinatário vem de `SMTP_TESTE_DESTINATARIO` (ou de `SMTP_USER`, se não estiver definido). Neste projeto o destino do teste já está preenchido como `Tengpescarolo@gmail.com`; falta apenas a senha de app do Gmail em `SMTP_USER`, `SMTP_PASS` e `SMTP_FROM`.
 
 Outras observações:
 
@@ -88,14 +121,68 @@ A tela **Notificações** é exclusiva do administrador e mostra o histórico do
 - Falhas ficam registradas com o motivo e são tentadas novamente no ciclo seguinte; não existe botão de envio ou reenvio manual.
 - Sem SMTP configurado, nenhuma notificação é registrada e a tela informa que o envio está desativado.
 
+## Relatórios — participação da categoria líder
+
+A tela **Relatórios** trabalha com quatro categorias de receita no período escolhido (mensal ou anual): **Planos**, **Aulas**, **Aluguel** e **Outros**. A **categoria líder** é aquela com o maior valor no período.
+
+A "Participação da líder", mostrada nos indicadores, é calculada assim:
+
+```
+participação da líder = (valor da categoria líder / receita total do período) × 100
+```
+
+Onde:
+
+```
+receita total do período = planos + aulas + aluguel + outros
+```
+
+Regras de apresentação:
+
+- O percentual aparece com uma casa decimal e vírgula, por exemplo `80,0%`.
+- Se não houver receita no período (`receita total = 0`) ou não houver categorias, o indicador mostra `0,0%`.
+- Em caso de empate, vale a ordem **Planos → Aulas → Aluguel → Outros**.
+- O cartão **Categoria líder** mostra o nome da categoria e, abaixo, o valor arrecadado por ela.
+- No **ranking**, a largura das barras é relativa à líder — a líder ocupa 100% da trilha —, mas o percentual escrito em cada linha continua sendo calculado sobre a receita total do período.
+
+Exemplo:
+
+| Categoria | Valor | Participação no total |
+|---|---:|---:|
+| Planos | R$ 800,00 | 80,0% |
+| Aulas | R$ 150,00 | 15,0% |
+| Aluguel | R$ 50,00 | 5,0% |
+| Outros | R$ 0,00 | 0,0% |
+| **Total** | **R$ 1.000,00** | **100,0%** |
+
+Nesse exemplo, a categoria líder é **Planos** e a participação da líder é **80,0%**.
+
+Origem dos valores:
+
+- **Planos:** soma dos valores dos planos das assinaturas não canceladas iniciadas no período, menos a soma dos pagamentos cancelados dessas assinaturas; o resultado nunca é negativo.
+- **Aulas, Aluguel e Outros:** soma dos lançamentos (`lancamentos`) de cada categoria no período.
+
+O cálculo e a formatação ficam em `src/relatorios/relatorios.ts`, nas funções `renderResumo` e `renderRanking`; a consulta ao banco está em `src/relatorios/RelatorioBackend.ts`.
+
+### Exportação
+
+No campo **Formato**, ao lado do botão **Exportar**, é possível escolher:
+
+- **PDF** — impressão em A4 paisagem com os estilos da tela.
+- **CSV (Excel)** — separador `;`, decimais com vírgula e BOM UTF-8 para abrir corretamente no Excel.
+- **JSON** — dados estruturados com período, receitas, total, participações e categoria líder.
+- **Imagem PNG** — captura da janela do relatório.
+
+CSV e JSON usam exatamente os valores carregados para o período selecionado, incluindo totais e participações percentuais.
+
 ## Portal do aluno
 
-O perfil **aluno** vê a opção **Meu painel**, somente para consulta, com:
+Nesta versão o acesso é exclusivo de funcionários e administradores. O perfil **aluno** não consegue entrar e a opção **Meu painel** não aparece no menu.
+
+O código do portal permanece no projeto para uso futuro e, quando for liberado, mostrará somente para consulta:
 
 - plano contratado e situação da assinatura;
 - frequência dos últimos 90 dias;
 - última avaliação física, gráfico de evolução do peso e histórico de medidas;
 - presenças recentes;
 - avisos recebidos, incluindo os lembretes de vencimento.
-
-O portal não permite editar dados cadastrais, medidas ou avisos.
