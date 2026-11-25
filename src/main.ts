@@ -26,7 +26,7 @@ const CSP = [
   "default-src 'none'",
   "script-src 'none'",
   "style-src 'unsafe-inline'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https://wger.de",
   "font-src 'self'",
   "connect-src 'none'",
   "media-src 'none'",

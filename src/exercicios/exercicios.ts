@@ -19,6 +19,17 @@ class ExerciciosView {
     return elemento
   }
 
+  private criarImagem = (exercicio: ExercicioExterno, classe: string): HTMLImageElement | null => {
+    if (!exercicio.imagemUrl) return null
+    const imagem = new Image()
+    imagem.className = classe
+    imagem.src = exercicio.imagemUrl
+    imagem.alt = exercicio.nome
+    imagem.loading = 'lazy'
+    imagem.referrerPolicy = 'no-referrer'
+    return imagem
+  }
+
   private statusPagina = (texto: string, erro = false): void => {
     const elemento = this.el('status')
     elemento.textContent = texto
@@ -46,7 +57,10 @@ class ExerciciosView {
     botao.addEventListener('click', () => void this.abrirDetalhe(exercicio.id))
     acoes.append(botao)
 
-    cartao.append(titulo, metadados, resumo, acoes)
+    const imagem = this.criarImagem(exercicio, 'cartao-imagem')
+    cartao.append(titulo)
+    if (imagem) cartao.append(imagem)
+    cartao.append(metadados, resumo, acoes)
     return cartao
   }
 
@@ -108,6 +122,11 @@ class ExerciciosView {
       ? exercicio.equipamento.join(', ')
       : 'Não informado'
     this.el('detalhe-descricao').textContent = exercicio.descricao || 'Sem descrição disponível na API Wger.'
+    const imagem = this.el<HTMLImageElement>('detalhe-imagem')
+    imagem.alt = exercicio.nome
+    imagem.hidden = !exercicio.imagemUrl
+    if (exercicio.imagemUrl) imagem.src = exercicio.imagemUrl
+    else imagem.removeAttribute('src')
   }
 
   private abrirDetalhe = async (id: number): Promise<void> => {
@@ -121,6 +140,9 @@ class ExerciciosView {
     this.el('detalhe-musculos').textContent = '—'
     this.el('detalhe-equipamento').textContent = '—'
     this.el('detalhe-descricao').textContent = ''
+    const imagem = this.el<HTMLImageElement>('detalhe-imagem')
+    imagem.hidden = true
+    imagem.removeAttribute('src')
     if (!dialogo.open) dialogo.showModal()
 
     this.detalhando = true
