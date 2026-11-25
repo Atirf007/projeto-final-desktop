@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('src','dist',{recursive:true,filter:(s)=>!s.endsWith('.ts')})\"",
     "typecheck": "tsc --noEmit",
     "criar-tabelas": "tsx scripts/criar-tabelas.ts",
+    "popular-tabelas": "tsx scripts/popular-tabelas.ts",
     "criar-admin": "tsx scripts/criar-admin.ts",
     "criar-funcionario": "tsx scripts/criar-funcionario.ts",
     "start": "npm run build && electron .",

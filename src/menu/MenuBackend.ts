@@ -14,6 +14,7 @@ export class MenuIpc {
     { id: 'avaliacoes', titulo: 'Avaliações físicas', descricao: 'Medidas, histórico e evolução dos alunos', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
     { id: 'visitantes', titulo: 'Visitantes', descricao: 'Aulas experimentais e visitas', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
     { id: 'pagamentos', titulo: 'Pagamentos', descricao: 'Mensalidades e cobranças', grupo: 'Rotina da academia', perfis: ['admin'] },
+    { id: 'lancamentos', titulo: 'Lançamentos', descricao: 'Receitas avulsas de aulas, aluguel e outros', grupo: 'Ferramentas', perfis: ['admin'] },
     { id: 'relatorios', titulo: 'Relatórios', descricao: 'Receitas por categoria, mensal e anual', grupo: 'Ferramentas', perfis: ['admin'] },
     { id: 'notificacoes', titulo: 'Notificações', descricao: 'Histórico dos lembretes de vencimento', grupo: 'Ferramentas', perfis: ['admin'] },
     { id: 'bot', titulo: 'Gerenciar Bot', descricao: 'Automação de avisos por clima', grupo: 'Ferramentas', perfis: ['admin'] }

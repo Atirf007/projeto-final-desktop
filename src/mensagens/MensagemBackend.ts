@@ -35,6 +35,19 @@ export type ResultadoVerificacao =
     }
   | { ok: false; mensagem: string; historico: Mensagem[] }
 
+export const textoNotificacaoChuva = (previsao: PrevisaoClima): string => {
+  const [ano, mes, dia] = previsao.data.split('-')
+  const data = ano && mes && dia ? `${dia}/${mes}/${ano}` : previsao.data
+  const janela = previsao.janela ? ` no horário das aulas (${previsao.janela})` : ''
+  const percentual = Math.round(previsao.probabilidadeChuva)
+
+  return (
+    `Caro instrutor, a previsão para amanhã (${data}) indica ${percentual}% de chance de chuva${janela}. ` +
+    'Por isso, a aula será realizada dentro da academia, no espaço coberto. ' +
+    'Por favor, avise os alunos.'
+  )
+}
+
 export class MensagemServico {
   private readonly historico: Mensagem[] = []
   private readonly avisosPorData = new Map<string, Mensagem>()
@@ -229,13 +242,14 @@ export class MensagemServico {
     }
 
     const assunto = 'Aula de amanhã será dentro da academia'
-    const texto = this.textoDoAviso(previsao)
+    const textoNotificacao = textoNotificacaoChuva(previsao)
+    const textoEmail = this.textoDoAviso(previsao)
 
     const notificacao: { status: 'enviado' | 'falhou'; erro?: string } = this.datasNotificadas.has(previsao.data)
       ? { status: 'enviado' }
-      : this.enviarNotificacao(assunto, texto)
+      : this.enviarNotificacao(assunto, textoNotificacao)
     if (notificacao.status === 'enviado') this.datasNotificadas.add(previsao.data)
-    const emails = await this.enviarEmails(assunto, texto)
+    const emails = await this.enviarEmails(assunto, textoEmail)
 
     const enviada = emails.configurado ? emails.enviados > 0 : notificacao.status === 'enviado'
     const consolidar = emails.configurado && (emails.total === 0 || emails.enviados > 0)
@@ -246,7 +260,7 @@ export class MensagemServico {
       criadaEm: new Date().toISOString(),
       tipo: 'chuva',
       assunto,
-      texto,
+      texto: textoNotificacao,
       status,
       erro: status === 'falhou' ? emails.erroGeral ?? notificacao.erro : undefined,
       dataAula: previsao.data,

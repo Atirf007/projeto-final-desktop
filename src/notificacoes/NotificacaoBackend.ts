@@ -169,17 +169,21 @@ class NotificacaoRepository {
     destinatarioEmail: string
     assunto: string
     mensagem: string
+    canal: 'email' | 'sistema'
+    statusInicial?: StatusNotificacao
   }): Promise<number> => {
     const [resultado] = await this.pool.query<ResultSetHeader>({
       sql: `INSERT INTO notificacoes
         (usuario_id, pagamento_id, destinatario_email, tipo, canal, assunto, mensagem, status, criado_em)
-        VALUES (?, ?, ?, 'vencimento', 'email', ?, ?, 'pendente', NOW())`,
+        VALUES (?, ?, ?, 'vencimento', ?, ?, ?, ?, NOW())`,
       values: [
         dados.usuarioId,
         dados.pagamentoId,
         dados.destinatarioEmail,
+        dados.canal,
         dados.assunto,
-        dados.mensagem
+        dados.mensagem,
+        dados.statusInicial ?? 'pendente'
       ],
       timeout: TIMEOUT
     })
@@ -312,17 +316,7 @@ export class NotificacaoServico {
 
   enviarVencimentos = async (diasAntes = DIAS_ANTES_PADRAO): Promise<ResultadoEnvioVencimentos> => {
     const dias = Math.min(60, Math.max(1, Math.round(diasAntes)))
-    if (!this.email.configurado()) {
-      return {
-        configurado: false,
-        total: 0,
-        enviados: 0,
-        semEmail: 0,
-        falhas: [],
-        notificacoes: []
-      }
-    }
-
+    const emailConfigurado = this.email.configurado()
     const pagamentos = await this.repositorio.pagamentosVencendo(dias)
     const falhas: FalhaNotificacao[] = []
     const notificacoes: Notificacao[] = []
@@ -331,11 +325,13 @@ export class NotificacaoServico {
 
     for (const pagamento of pagamentos) {
       const email = pagamento.email.trim().toLowerCase()
-      if (!EMAIL_VALIDO.test(email)) {
+      const emailValido = EMAIL_VALIDO.test(email)
+      if (emailConfigurado && !emailValido) {
         semEmail++
         continue
       }
 
+      const destinatario = emailValido ? email : 'Aviso interno'
       const competencia = competenciaBr(pagamento.competencia)
       const assunto = `Lembrete de vencimento — ${pagamento.planoNome} (${competencia})`
       const situacao = pagamento.statusPagamento === 'atrasado' ? 'em atraso' : 'em aberto'
@@ -354,25 +350,32 @@ export class NotificacaoServico {
         'Academia Cotil'
       ].join('\n')
 
+      const canal = emailConfigurado ? 'email' : 'sistema'
       const notificacaoId = await this.repositorio.criar({
         usuarioId: pagamento.usuarioId,
         pagamentoId: pagamento.pagamentoId,
-        destinatarioEmail: email,
+        destinatarioEmail: destinatario,
         assunto,
-        mensagem
+        mensagem,
+        canal,
+        statusInicial: emailConfigurado ? 'pendente' : 'enviado'
       })
 
-      const resultado = await this.email.enviar([email], assunto, mensagem)
-      const enviado = resultado.enviados > 0
-      const erro = enviado
-        ? null
-        : resultado.falhas[0]?.erro ?? resultado.erroGeral ?? 'Não foi possível enviar o e-mail.'
-      await this.repositorio.atualizarStatus(notificacaoId, enviado ? 'enviado' : 'falhou', erro)
+      if (emailConfigurado) {
+        const resultado = await this.email.enviar([email], assunto, mensagem)
+        const enviado = resultado.enviados > 0
+        const erro = enviado
+          ? null
+          : resultado.falhas[0]?.erro ?? resultado.erroGeral ?? 'Não foi possível enviar o e-mail.'
+        await this.repositorio.atualizarStatus(notificacaoId, enviado ? 'enviado' : 'falhou', erro)
 
-      if (enviado) {
-        enviados++
+        if (enviado) {
+          enviados++
+        } else {
+          falhas.push({ notificacaoId, email, erro: erro ?? 'Falha ao enviar o e-mail.' })
+        }
       } else {
-        falhas.push({ notificacaoId, email, erro: erro ?? 'Falha ao enviar o e-mail.' })
+        enviados++
       }
 
       const criada = await this.repositorio.obter(notificacaoId)
@@ -380,7 +383,7 @@ export class NotificacaoServico {
     }
 
     return {
-      configurado: true,
+      configurado: emailConfigurado,
       total: pagamentos.length,
       enviados,
       semEmail,

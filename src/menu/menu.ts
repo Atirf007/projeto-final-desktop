@@ -57,13 +57,10 @@ class MenuView {
     const descricao = document.createElement('span')
     descricao.textContent = opcao.descricao
 
-    botao.append(icone, titulo, descricao)
+    const acao = document.createElement('em')
+    acao.textContent = opcao.disponivel ? 'Abrir' : 'Em breve'
 
-    if (!opcao.disponivel) {
-      const selo = document.createElement('em')
-      selo.textContent = 'Em breve'
-      botao.append(selo)
-    }
+    botao.append(icone, titulo, descricao, acao)
 
     botao.addEventListener('click', () => this.abrir(opcao.id))
     return botao

@@ -203,7 +203,6 @@
       letter-spacing: -0.02em;
     }
 
-    
     #boas-vindas {
       display: block;
       width: fit-content;
@@ -357,7 +356,6 @@
       .conta { margin-left: 0; width: 100%; justify-content: space-between; }
       #nome { max-width: 160px; }
     }
-  
 
     html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     ::selection { background: #d1d5db; color: #111827; }
@@ -541,7 +539,6 @@
       * { transition: none !important; animation: none !important; transform: none !important; }
     }
 
-    
     .painel { padding: 22px 24px; }
 
     .filtros {
@@ -704,6 +701,29 @@
     dialog .conteudo {
       padding: 22px 24px;
     }
+    html { scroll-behavior: smooth; }
+    body { min-height: 100vh; }
+    :where(button) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; cursor: pointer; }
+    :where(button svg) { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    :where(.painel, .cartao, .card, .opcao, .secao, .bloco, .filtros, .kpi, table, dialog) { border-radius: 14px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; overflow: hidden; }
+    :where(thead th) { letter-spacing: 0.05em; text-transform: uppercase; }
+    :where(tbody td, .vazio, .msg-info, .status) { line-height: 1.45; }
+    :where(dialog) { max-height: calc(100vh - 40px); overflow: auto; }
+    :where(.msg-erro, .erro, #status.erro) { font-weight: 600; }
+    :where(button, input, select, textarea):focus-visible { outline: 3px solid rgba(16, 185, 129, 0.35); outline-offset: 2px; }
+    .opcao:not(:disabled) em { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+    @media (max-width: 720px) {
+      :where(.painel, .filtros, dialog form, .dialogo-conteudo) { padding: 16px; }
+      :where(.tabela) { overflow-x: auto; }
+    }
+    @media print {
+      :where(header, .voltar, #sair, .filtros, .acoes, .acoes-linha) { display: none !important; }
+      :where(body, .painel, table, dialog) { background: #ffffff !important; box-shadow: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
   </style>
 </head>
 <body>
@@ -783,6 +803,12 @@
       <symbol id="ico-portal" viewBox="0 0 24 24">
         <circle cx="12" cy="8" r="4" />
         <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+      </symbol>
+      <symbol id="ico-lancamentos" viewBox="0 0 24 24">
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" />
+        <line x1="9" y1="8" x2="15" y2="8" />
+        <line x1="9" y1="12" x2="15" y2="12" />
+        <path d="M12 16h.01" />
       </symbol>
     </defs>
   </svg>

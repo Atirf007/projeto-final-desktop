@@ -102,7 +102,6 @@
     .oculto { display: none !important; }
     @media (max-width: 900px) { .grade, .detalhes { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grade .span3, .detalhes .span3 { grid-column: 1 / -1; } }
     @media (max-width: 640px) { main { padding: 20px; } .grade, .detalhes { grid-template-columns: 1fr; } .grade .span2, .grade .span3, .detalhes .span3 { grid-column: auto; } }
-  
 
     html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     ::selection { background: #d1d5db; color: #111827; }
@@ -164,7 +163,6 @@
       transform: translateY(-1px);
     }
 
-    
     .opcao,
     .opcao strong,
     .opcao em {
@@ -281,7 +279,6 @@
       * { transition: none !important; animation: none !important; transform: none !important; }
     }
 
-    
     .painel { padding: 22px 24px; }
 
     .filtros {
@@ -443,6 +440,29 @@
     dialog form,
     dialog .conteudo {
       padding: 22px 24px;
+    }
+    html { scroll-behavior: smooth; }
+    body { min-height: 100vh; }
+    :where(button) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; cursor: pointer; }
+    :where(button svg) { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    :where(.painel, .cartao, .card, .opcao, .secao, .bloco, .filtros, .kpi, table, dialog) { border-radius: 14px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; overflow: hidden; }
+    :where(thead th) { letter-spacing: 0.05em; text-transform: uppercase; }
+    :where(tbody td, .vazio, .msg-info, .status) { line-height: 1.45; }
+    :where(dialog) { max-height: calc(100vh - 40px); overflow: auto; }
+    :where(.msg-erro, .erro, #status.erro) { font-weight: 600; }
+    :where(button, input, select, textarea):focus-visible { outline: 3px solid rgba(16, 185, 129, 0.35); outline-offset: 2px; }
+    .opcao:not(:disabled) em { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+    @media (max-width: 720px) {
+      :where(.painel, .filtros, dialog form, .dialogo-conteudo) { padding: 16px; }
+      :where(.tabela) { overflow-x: auto; }
+    }
+    @media print {
+      :where(header, .voltar, #sair, .filtros, .acoes, .acoes-linha) { display: none !important; }
+      :where(body, .painel, table, dialog) { background: #ffffff !important; box-shadow: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
     }
   </style>
 </head>

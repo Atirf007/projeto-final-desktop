@@ -10,19 +10,32 @@ Sistema de gestão de academia em Electron, TypeScript e MySQL.
 ```
 npm install
 npm run criar-tabelas
-npm run criar-admin
-npm run criar-funcionario
+npm run popular-tabelas
 npm start
 ```
 
-`criar-tabelas` aplica `database/schema.sql`. `criar-admin` cria ou atualiza o administrador usando `ADMIN_NOME`, `ADMIN_EMAIL` e `ADMIN_SENHA` do `.env`. `criar-funcionario` cria ou atualiza um usuário com perfil de funcionário (`instrutor`) usando `FUNCIONARIO_NOME`, `FUNCIONARIO_EMAIL` e `FUNCIONARIO_SENHA` do `.env`.
+`criar-tabelas` cria o database `DB_NAME` quando ele não existe, aplica `database/schema.sql` e executa migrações idempotentes para atualizar bancos já existentes. `popular-tabelas` aplica `database/seed.sql`, uma carga de demonstração que cobre as 15 tabelas — inclusive `lancamentos`, usada pelos relatórios.
 
-Login de funcionário já disponível neste projeto:
+Para um ambiente sem dados de demonstração, substitua `popular-tabelas` por:
 
 ```
-E-mail: funcionario@cl205172.com
-Senha:  Funcionario@123456
+npm run criar-admin
+npm run criar-funcionario
 ```
+
+`criar-admin` cria ou atualiza o administrador usando `ADMIN_NOME`, `ADMIN_EMAIL` e `ADMIN_SENHA` do `.env`. `criar-funcionario` cria ou atualiza um usuário com perfil de funcionário (`instrutor`) usando `FUNCIONARIO_NOME`, `FUNCIONARIO_EMAIL` e `FUNCIONARIO_SENHA` do `.env`.
+
+### Dados de demonstração
+
+O seed é idempotente: pode ser reaplicado sem duplicar registros; ele atualiza as linhas de demonstração e recalcula as datas relativas ao dia da execução. Credenciais disponíveis após `npm run popular-tabelas`:
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Administrador | `admin@cotil.unicamp.br` | `Admin@123456` |
+| Funcionário (`instrutor`) | `funcionario@cl205172.com` | `Funcionario@123456` |
+| Alunos | `aluno1@exemplo.com` a `aluno4@exemplo.com` | `Aluno@123456` |
+
+As senhas são gravadas como hash `scrypt`, no formato `scrypt:<sal>:<hash>`, compatível com `Senha.gerar` em `src/autenticacao/AutenticacaoBackend.ts`. O perfil **aluno** não entra no desktop; os usuários-aluno existem para popular assinaturas, presenças, avaliações e notificações de exemplo. Detalhes em `database/README.md`.
 
 O `npm install` baixa o binário do Electron automaticamente. Caso o binário esteja ausente ou corrompido, o `npm start` executa `scripts/garantir-electron.js` e baixa novamente antes de abrir a aplicação.
 
@@ -121,6 +134,14 @@ A tela **Notificações** é exclusiva do administrador e mostra o histórico do
 - Falhas ficam registradas com o motivo e são tentadas novamente no ciclo seguinte; não existe botão de envio ou reenvio manual.
 - Sem SMTP configurado, nenhuma notificação é registrada e a tela informa que o envio está desativado.
 
+## Lançamentos
+
+A tela **Lançamentos**, exclusiva do administrador, faz o cadastro, a edição, a consulta e a exclusão das receitas avulsas nas categorias **Aulas**, **Aluguel** e **Outros**. Os filtros combinam categoria, intervalo de datas e trecho da descrição.
+
+Toda alteração é refletida nos relatórios: `src/relatorios/RelatorioBackend.ts` soma `lancamentos` pela `data_lancamento` dentro do período escolhido. A categoria **Planos** continua sendo calculada a partir de assinaturas e pagamentos e, por isso, não é editável nesta tela.
+
+Antes dessa tela, essas três categorias dependiam apenas dos dados de demonstração; agora o gestor pode mantê-las sem acessar o banco diretamente.
+
 ## Relatórios — participação da categoria líder
 
 A tela **Relatórios** trabalha com quatro categorias de receita no período escolhido (mensal ou anual): **Planos**, **Aulas**, **Aluguel** e **Outros**. A **categoria líder** é aquela com o maior valor no período.
@@ -162,7 +183,18 @@ Origem dos valores:
 - **Planos:** soma dos valores dos planos das assinaturas não canceladas iniciadas no período, menos a soma dos pagamentos cancelados dessas assinaturas; o resultado nunca é negativo.
 - **Aulas, Aluguel e Outros:** soma dos lançamentos (`lancamentos`) de cada categoria no período.
 
-O cálculo e a formatação ficam em `src/relatorios/relatorios.ts`, nas funções `renderResumo` e `renderRanking`; a consulta ao banco está em `src/relatorios/RelatorioBackend.ts`.
+O cálculo e a formatação ficam em `src/relatorios/relatorios.ts`, nas funções `renderResumo`, `renderRanking` e `renderGrafico`; a consulta ao banco está em `src/relatorios/RelatorioBackend.ts`.
+
+### Visualização e ranking
+
+No campo **Gráfico** é possível alternar entre:
+
+- **Barras** — barras tradicionais, com a barra **Total** em destaque.
+- **Blocos** — 100 blocos em uma grade de 20 colunas por 5 linhas; cada bloco equivale a 1% da receita total e é preenchido na ordem Planos → Aulas → Aluguel → Outros. Blocos não preenchidos aparecem quando não há receita no período.
+
+A legenda do gráfico de blocos mostra, para cada categoria, o valor em reais e o percentual sobre o total. As cores são estáveis entre os dois gráficos. PDF e PNG capturam a tela como ela está, incluindo o tipo de gráfico e a visibilidade do ranking; CSV e JSON contêm apenas os dados do período.
+
+O botão **Mostrar ranking** exibe o painel com as categorias ordenadas pela receita; ao clicar novamente, o botão passa a **Ocultar ranking** e o gráfico ocupa toda a largura disponível. A largura da trilha de cada linha do ranking é relativa à categoria líder, enquanto o percentual exibido continua sendo calculado sobre a receita total.
 
 ### Exportação
 

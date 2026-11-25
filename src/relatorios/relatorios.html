@@ -182,6 +182,15 @@
     button:hover { background: var(--secundaria-hover); border-color: var(--secundaria-hover); }
     button:focus-visible { outline: 2px solid var(--secundaria-hover); outline-offset: 2px; }
 
+    button.secundario {
+      color: var(--primaria-800);
+      background: #ffffff;
+      border-color: var(--cinza-200);
+    }
+
+    button.secundario:hover { background: var(--cinza-100); border-color: var(--primaria-500); }
+    button.secundario[aria-pressed="true"] { background: var(--secundaria-suave); border-color: var(--secundaria-borda); color: #047857; }
+
     h2 {
       position: relative;
       margin: 0 0 16px;
@@ -212,6 +221,13 @@
     .eixo { fill: var(--primaria-500); font-size: 12px; }
     .barra { fill: var(--primaria-600); }
     .barra.destaque { fill: var(--secundaria); }
+    .bloco { fill: var(--cinza-200); }
+    .bloco.vazio { fill: #eef0f2; stroke: #dfe3e6; stroke-width: 1; }
+    .categoria-0 { fill: #374151; }
+    .categoria-1 { fill: #0ea5e9; }
+    .categoria-2 { fill: #10b981; }
+    .categoria-3 { fill: #f59e0b; }
+    .legenda-texto { fill: var(--primaria-700); font-size: 13px; font-weight: 600; }
     .valor { fill: var(--primaria-800); font-size: 13px; font-weight: 600; }
     .rotulo { fill: var(--primaria-700); font-size: 14px; font-weight: 600; }
 
@@ -229,7 +245,6 @@
       .painel { border: none; box-shadow: none; padding: 0; }
       * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
-  
 
     html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     ::selection { background: #d1d5db; color: #111827; }
@@ -291,7 +306,6 @@
       transform: translateY(-1px);
     }
 
-    
     .opcao,
     .opcao strong,
     .opcao em {
@@ -419,6 +433,8 @@
       align-items: start;
     }
 
+    .grafico-e-ranking.sem-ranking { grid-template-columns: minmax(0, 1fr); }
+
     .painel-interno {
       min-width: 0;
       padding: 18px;
@@ -448,7 +464,6 @@
       * { transition: none !important; animation: none !important; transform: none !important; }
     }
 
-    
     .painel { padding: 22px 24px; }
 
     .filtros {
@@ -611,6 +626,29 @@
     dialog .conteudo {
       padding: 22px 24px;
     }
+    html { scroll-behavior: smooth; }
+    body { min-height: 100vh; }
+    :where(button) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; cursor: pointer; }
+    :where(button svg) { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    :where(.painel, .cartao, .card, .opcao, .secao, .bloco, .filtros, .kpi, table, dialog) { border-radius: 14px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; overflow: hidden; }
+    :where(thead th) { letter-spacing: 0.05em; text-transform: uppercase; }
+    :where(tbody td, .vazio, .msg-info, .status) { line-height: 1.45; }
+    :where(dialog) { max-height: calc(100vh - 40px); overflow: auto; }
+    :where(.msg-erro, .erro, #status.erro) { font-weight: 600; }
+    :where(button, input, select, textarea):focus-visible { outline: 3px solid rgba(16, 185, 129, 0.35); outline-offset: 2px; }
+    .opcao:not(:disabled) em { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+    @media (max-width: 720px) {
+      :where(.painel, .filtros, dialog form, .dialogo-conteudo) { padding: 16px; }
+      :where(.tabela) { overflow-x: auto; }
+    }
+    @media print {
+      :where(header, .voltar, #sair, .filtros, .acoes, .acoes-linha) { display: none !important; }
+      :where(body, .painel, table, dialog) { background: #ffffff !important; box-shadow: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
   </style>
 </head>
 <body>
@@ -657,6 +695,13 @@
           <input id="ano" type="number" min="2000" max="2100" step="1">
         </label>
         <label class="campo">
+          <span>Gráfico</span>
+          <select id="tipo-grafico">
+            <option value="barras">Barras</option>
+            <option value="blocos">Blocos</option>
+          </select>
+        </label>
+        <label class="campo">
           <span>Formato</span>
           <select id="formato-exportacao">
             <option value="pdf">PDF</option>
@@ -665,18 +710,19 @@
             <option value="png">Imagem PNG</option>
           </select>
         </label>
+        <button id="alternar-ranking" class="secundario" type="button" aria-pressed="false">Mostrar ranking</button>
         <button id="exportar" type="button">Exportar</button>
       </div>
       <h2 id="titulo"></h2>
       <section class="resumo-relatorio" aria-label="Indicadores do período">
         <div class="kpis" id="kpis"></div>
       </section>
-      <div class="grafico-e-ranking">
+      <div class="grafico-e-ranking sem-ranking" id="area-visualizacao">
         <section class="painel-interno">
           <h3 class="modulo-titulo">Receitas por categoria</h3>
           <div id="grafico"></div>
         </section>
-        <section class="painel-interno">
+        <section class="painel-interno" id="painel-ranking" hidden>
           <h3 class="modulo-titulo">Ranking das categorias</h3>
           <div id="ranking" class="ranking"></div>
         </section>

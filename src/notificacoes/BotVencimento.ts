@@ -8,6 +8,7 @@ import {
   NotificacaoServico,
   ResultadoEnvioVencimentos
 } from './NotificacaoBackend'
+import { PagamentoRepository } from '../pagamentos/PagamentoBackend'
 
 export type ConfiguracaoVencimento = {
   diasAntes: number
@@ -61,7 +62,8 @@ export class BotVencimentoServico implements AgendadorVencimento {
 
   constructor(
     private readonly servico: NotificacaoServico = new NotificacaoServico(),
-    private readonly configuracao: ConfiguracaoVencimentoArquivo = new ConfiguracaoVencimentoArquivo()
+    private readonly configuracao: ConfiguracaoVencimentoArquivo = new ConfiguracaoVencimentoArquivo(),
+    private readonly pagamentos: PagamentoRepository = new PagamentoRepository()
   ) {
     const salva = this.configuracao.carregar()
     this.diasAntes = salva.diasAntes
@@ -116,12 +118,11 @@ export class BotVencimentoServico implements AgendadorVencimento {
 
     this.executando = true
     try {
+      await this.pagamentos.marcarAtrasados()
       const resultado = await this.servico.enviarVencimentos(this.diasAntes)
       this.ultimoResultado = resultado
-      if (resultado.configurado) {
-        this.ultimaExecucaoEm = new Date().toISOString()
-        this.salvar()
-      }
+      this.ultimaExecucaoEm = new Date().toISOString()
+      this.salvar()
     } catch (erro) {
       console.error('[bot-vencimento]', erro)
       this.ultimoResultado = {
