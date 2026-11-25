@@ -20,6 +20,12 @@ const portaServidor = (): number => {
 
 const hostServidor = (): string => (process.env.CLIMA_DECISAO_HOST ?? HOST_PADRAO).trim() || HOST_PADRAO
 
+/** Fora do Electron o arquivo pode vir do .env; no app continua usando o userData. */
+const caminhoPadraoSegredo = (): string => {
+  const configurado = (process.env.CLIMA_DECISAO_ARQUIVO ?? '').trim()
+  return configurado || join(app.getPath('userData'), 'bot-clima-decisao.json')
+}
+
 const baseUrl = (): string => {
   const configurada = (process.env.CLIMA_DECISAO_URL_BASE ?? '').trim()
   if (configurada) return configurada.replace(/\/+$/, '')
@@ -64,14 +70,14 @@ export type DecisaoRegistrada = {
 }
 
 /**
- * Guarda o segredo HMAC em um JSON no userData do Electron. O segredo não vai
- * para o banco nem para o código-fonte, e os tokens continuam válidos após
- * reiniciar o aplicativo.
+ * Guarda o segredo HMAC em um JSON no userData do Electron ou no caminho
+ * definido por CLIMA_DECISAO_ARQUIVO. O segredo não vai para o banco nem para
+ * o código-fonte, e os tokens continuam válidos após reiniciar o processo.
  */
 export class AssinadorDecisao {
   private readonly segredo: string
 
-  constructor(caminho: string = join(app.getPath('userData'), 'bot-clima-decisao.json')) {
+  constructor(caminho: string = caminhoPadraoSegredo()) {
     this.segredo = this.carregarOuCriar(caminho)
   }
 

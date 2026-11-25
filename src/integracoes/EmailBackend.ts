@@ -59,8 +59,12 @@ export class EmailServico {
 
   configurado = (): boolean => Boolean(this.host && this.usuario && this.senha && this.remetente)
 
-  remetenteFormatado = (): string =>
-    this.configurado() ? `${this.nomeRemetente} <${this.remetente}>` : ''
+  remetenteFormatado = (): string => {
+    if (!this.configurado()) return ''
+    // SMTP_FROM pode vir como "Nome <email>"; nesse caso já é o remetente final.
+    if (/<[^>]+>/.test(this.remetente)) return this.remetente
+    return `${this.nomeRemetente} <${this.remetente}>`
+  }
 
   private criarTransporte = (): Transporter => {
     const porta = Number.isFinite(this.porta) ? this.porta : 587
