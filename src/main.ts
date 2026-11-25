@@ -60,6 +60,10 @@ class Aplicacao {
 
   private readonly aulas = new JanelaApp({ pasta: 'aulas', nome: 'aulas', largura: 1280, altura: 800 })
 
+  private readonly feriados = new JanelaApp({ pasta: 'feriados', nome: 'feriados', largura: 1100, altura: 760 })
+
+  private readonly exercicios = new JanelaApp({ pasta: 'exercicios', nome: 'exercicios', largura: 1200, altura: 820 })
+
   private readonly planos = new JanelaApp({ pasta: 'planos', nome: 'planos', largura: 1280, altura: 800 })
 
   private readonly pagamentos = new JanelaApp({ pasta: 'pagamentos', nome: 'pagamentos', largura: 1280, altura: 820 })
@@ -86,6 +90,8 @@ class Aplicacao {
     this.funcionarios.fechar()
     this.alunos.fechar()
     this.aulas.fechar()
+    this.feriados.fechar()
+    this.exercicios.fechar()
     this.planos.fechar()
     this.pagamentos.fechar()
     this.visitantes.fechar()
@@ -150,6 +156,8 @@ class Aplicacao {
         funcionarios: () => this.funcionarios.abrir(),
         alunos: () => this.alunos.abrir(),
         aulas: () => this.aulas.abrir(),
+        feriados: () => this.feriados.abrir(),
+        exercicios: () => this.exercicios.abrir(),
         avaliacoes: () => this.avaliacoes.abrir(),
         planos: () => this.planos.abrir(),
         pagamentos: () => this.pagamentos.abrir(),

@@ -83,7 +83,8 @@ export class FeriadoCliente {
       const resultado: ResultadoFeriados = { ok: true, ano, feriados }
       this.cache.set(ano, { expiraEm: Date.now() + this.ttlMs, valor: resultado })
       return resultado
-    } catch {
+    } catch (erro) {
+      console.error('[brasilapi] falha ao consultar feriados:', erro)
       return { ok: false, mensagem: 'Não foi possível consultar os feriados. Verifique a conexão com a internet.' }
     }
   }
