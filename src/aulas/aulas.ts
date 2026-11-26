@@ -90,6 +90,11 @@ class AulasView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private admin = (): boolean => this.usuario?.perfil === 'admin'
 
   private gestor = (): boolean => this.usuario?.perfil === 'admin' || this.usuario?.perfil === 'instrutor'
@@ -229,7 +234,7 @@ class AulasView {
 
     if (this.gestor()) {
       const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
-      btnEditar.addEventListener('click', () => void this.abrirEdicao(aula.id))
+      btnEditar.addEventListener('click', () => void this.abrirEdicao(aula.id, btnEditar))
       const btnExcluir = this.criarBotao('Excluir', 'botao perigo pequeno')
       btnExcluir.addEventListener('click', () => this.abrirExclusao(aula))
       acoes.append(btnEditar, btnExcluir)
@@ -344,11 +349,12 @@ class AulasView {
     this.el('campo-status').classList.add('oculto')
     this.el<HTMLInputElement>('data-hora').value = this.proximoHorario()
     this.aplicarInstrutorFixo()
-    this.el<HTMLDialogElement>('dialogo-form').showModal()
+    this.abrirDialogo('dialogo-form')
     this.el<HTMLInputElement>('titulo').focus()
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const aula = (await ipcRenderer.invoke('aulas:obter', id)) as AulaDetalhe | null
       if (!aula) {
@@ -370,10 +376,12 @@ class AulasView {
       this.el<HTMLButtonElement>('salvar').textContent = 'Salvar alterações'
       this.el('campo-status').classList.remove('oculto')
       this.aplicarInstrutorFixo()
-      this.el<HTMLDialogElement>('dialogo-form').showModal()
+      this.abrirDialogo('dialogo-form')
     } catch (erro) {
       console.error(erro)
       this.statusPagina('Não foi possível carregar a aula.', true)
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -784,7 +792,7 @@ class AulasView {
     this.el<HTMLSelectElement>('remarcar-local').value = aula.local
     this.el<HTMLInputElement>('remarcar-descricao').value = aula.localDescricao ?? ''
     this.el('erro-remarcar').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-remarcar').showModal()
+    this.abrirDialogo('dialogo-remarcar')
   }
 
   private salvarRemarcar = async (evento: Event): Promise<void> => {
@@ -831,7 +839,7 @@ class AulasView {
     this.aulaParaExcluir = aula
     this.el('texto-excluir').textContent = `Deseja excluir a aula "${aula.titulo}" de ${this.dataHoraFmt(aula.dataHoraInicio)}? As inscrições vinculadas serão removidas.`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {
@@ -917,7 +925,7 @@ class AulasView {
     this.el('editar-detalhe').addEventListener('click', () => {
       if (!this.detalheAtual) return
       this.el<HTMLDialogElement>('dialogo-detalhe').close()
-      void this.abrirEdicao(this.detalheAtual.id)
+      void this.abrirEdicao(this.detalheAtual.id, this.el<HTMLButtonElement>('editar-detalhe'))
     })
     this.el('remarcar-detalhe').addEventListener('click', this.abrirRemarcar)
     this.el('inscrever').addEventListener('click', () => void this.inscreverAluno())

@@ -550,13 +550,13 @@ export class ServidorDecisaoClima {
         'Chuva prevista para sua aula ao ar livre',
         `<span class="selo">Risco de chuva</span>
          ${detalhe}
-          <p>Escolha o que deseja fazer com esta aula. Sua decisão será registrada no sistema.</p>
+          <p>Escolha o que deseja fazer com esta aula. A decisão vale para toda a turma e será registrada no sistema.</p>
          <div class="acoes">
            <form method="post" action="/clima/${id}/cancelar?t=${tokenUrl}">
-             <button type="submit" class="cancelar">Cancelar a aula</button>
+             <button type="submit" class="cancelar">Cancelar a aula para a turma</button>
            </form>
             <form method="post" action="/clima/${id}/mover?t=${tokenUrl}">
-              <button type="submit" class="mover">Mover para a área interna</button>
+              <button type="submit" class="mover">Mover a turma para a área interna</button>
             </form>
          </div>
          <p class="nota">Se você não responder, a aula permanece como está.</p>`

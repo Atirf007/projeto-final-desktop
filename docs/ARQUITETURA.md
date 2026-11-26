@@ -20,7 +20,7 @@ Scripts relevantes do `package.json`:
 - `npm test` → testes unitários com `node:test`.
 - `npm run testar-email`, `npm run testar-clima`, `npm run clima-servidor`, `npm run preparar-teste-clima`, `npm run limpar-teste-clima`.
 
-O banco usado no ambiente atual é `cl205153`, lido de `DB_NAME` no `.env`. O `.env.example` documenta as variáveis; credenciais reais não são versionadas. A aplicação **não cria bancos nem apaga dados**. Os scripts operam somente no banco configurado; `npm run limpar-teste-clima` é a única rotina de exclusão e atinge apenas os registros criados por `npm run preparar-teste-clima`, mediante confirmação.
+O banco é definido por `DB_NAME` no `.env`; o `.env.example` documenta as variáveis e credenciais reais não são versionadas. Os scripts de setup (`criar-tabelas`, `popular-tabelas`, `criar-admin`, `criar-funcionario`) não criam o banco nem removem dados fora do escopo documentado. A aplicação não implementa exclusão lógica: quando uma tela oferece **Excluir**, o registro é removido fisicamente, respeitando as chaves estrangeiras. `npm run limpar-teste-clima` remove apenas os registros criados por `npm run preparar-teste-clima`, mediante confirmação.
 
 ## 2. Banco de dados
 

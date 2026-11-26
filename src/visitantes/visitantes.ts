@@ -35,8 +35,14 @@ class VisitantesView {
   private visitantes: Visitante[] = []
   private detalheAtual: Visitante | null = null
   private visitanteParaExcluir: Visitante | null = null
+  private buscaTimer: ReturnType<typeof setTimeout> | null = null
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
+
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
 
   private admin = (): boolean => this.usuario?.perfil === 'admin'
 
@@ -155,7 +161,7 @@ class VisitantesView {
     const btnVer = this.criarBotao('Ver', 'botao secundario pequeno')
     btnVer.addEventListener('click', () => void this.abrirDetalhe(visitante.id))
     const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
-    btnEditar.addEventListener('click', () => void this.abrirEdicao(visitante.id))
+    btnEditar.addEventListener('click', () => void this.abrirEdicao(visitante.id, btnEditar))
     acoes.append(btnVer, btnEditar)
     if (this.admin()) {
       const btnExcluir = this.criarBotao('Excluir', 'botao perigo pequeno')
@@ -171,10 +177,12 @@ class VisitantesView {
   private carregar = async (): Promise<void> => {
     this.statusPagina('Carregando visitantes...')
     try {
-      const filtro: { data?: string; tipo?: TipoVisitante; status?: StatusVisitante } = {}
+      const filtro: { data?: string; tipo?: TipoVisitante; status?: StatusVisitante; busca?: string } = {}
+      const busca = this.el<HTMLInputElement>('filtro-busca').value.trim()
       const data = this.el<HTMLInputElement>('filtro-data').value
       const tipo = this.el<HTMLSelectElement>('filtro-tipo').value
       const status = this.el<HTMLSelectElement>('filtro-status').value
+      if (busca) filtro.busca = busca
       if (data) filtro.data = data
       if (tipo) filtro.tipo = tipo as TipoVisitante
       if (status) filtro.status = status as StatusVisitante
@@ -223,7 +231,7 @@ class VisitantesView {
     this.el('titulo-form').textContent = 'Novo visitante'
     this.el<HTMLButtonElement>('salvar').textContent = 'Cadastrar'
     this.el('campo-status').classList.add('oculto')
-    this.el<HTMLDialogElement>('dialogo-form').showModal()
+    this.abrirDialogo('dialogo-form')
     this.el<HTMLInputElement>('nome').focus()
   }
 
@@ -250,7 +258,8 @@ class VisitantesView {
     this.el<HTMLSelectElement>('visitante-status').value = visitante.status
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const visitante = (await ipcRenderer.invoke('visitantes:obter', id)) as Visitante | null
       if (!visitante) {
@@ -261,10 +270,12 @@ class VisitantesView {
       this.el('titulo-form').textContent = `Editar visitante — ${visitante.nome}`
       this.el<HTMLButtonElement>('salvar').textContent = 'Salvar alterações'
       this.el('campo-status').classList.remove('oculto')
-      this.el<HTMLDialogElement>('dialogo-form').showModal()
+      this.abrirDialogo('dialogo-form')
     } catch (erro) {
       console.error(erro)
       this.statusPagina('Não foi possível carregar o visitante.', true)
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -435,7 +446,7 @@ class VisitantesView {
     this.visitanteParaExcluir = visitante
     this.el('texto-excluir').textContent = `Deseja excluir o visitante "${visitante.nome}" da visita de ${this.dataBr(visitante.dataVisita)}?`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {
@@ -469,6 +480,8 @@ class VisitantesView {
   }
 
   private limparFiltros = (): void => {
+    if (this.buscaTimer) clearTimeout(this.buscaTimer)
+    this.el<HTMLInputElement>('filtro-busca').value = ''
     this.el<HTMLInputElement>('filtro-data').value = ''
     this.el<HTMLSelectElement>('filtro-tipo').value = ''
     this.el<HTMLSelectElement>('filtro-status').value = ''
@@ -503,6 +516,10 @@ class VisitantesView {
     this.el('voltar').addEventListener('click', () => void this.voltar())
     this.el('novo').addEventListener('click', this.abrirNovo)
     this.el('limpar-filtros').addEventListener('click', this.limparFiltros)
+    this.el('filtro-busca').addEventListener('input', () => {
+      if (this.buscaTimer) clearTimeout(this.buscaTimer)
+      this.buscaTimer = setTimeout(() => void this.carregar(), 300)
+    })
     this.el('filtro-data').addEventListener('change', () => void this.carregar())
     this.el('filtro-tipo').addEventListener('change', () => void this.carregar())
     this.el('filtro-status').addEventListener('change', () => void this.carregar())
@@ -516,7 +533,7 @@ class VisitantesView {
     this.el('editar-detalhe').addEventListener('click', () => {
       if (!this.detalheAtual) return
       this.el<HTMLDialogElement>('dialogo-detalhe').close()
-      void this.abrirEdicao(this.detalheAtual.id)
+      void this.abrirEdicao(this.detalheAtual.id, this.el<HTMLButtonElement>('editar-detalhe'))
     })
     this.el('marcar-compareceu').addEventListener('click', () => void this.marcarStatus('compareceu'))
     this.el('marcar-faltou').addEventListener('click', () => void this.marcarStatus('faltou'))

@@ -12,6 +12,11 @@ class ExerciciosView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private criar = (tag: string, classe?: string, texto?: string): HTMLElement => {
     const elemento = document.createElement(tag)
     if (classe) elemento.className = classe

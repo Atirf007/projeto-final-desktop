@@ -25,6 +25,11 @@ class UsuariosView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private criarBotao = (texto: string, classe: string): HTMLButtonElement => {
     const botao = document.createElement('button')
     botao.type = 'button'
@@ -66,7 +71,7 @@ class UsuariosView {
     const acoes = document.createElement('div')
     acoes.className = 'acoes-linha'
     const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
-    btnEditar.addEventListener('click', () => void this.abrirEdicao(usuario.id))
+    btnEditar.addEventListener('click', () => void this.abrirEdicao(usuario.id, btnEditar))
     const btnExcluir = this.criarBotao('Excluir', 'botao perigo pequeno')
     btnExcluir.addEventListener('click', () => this.abrirExclusao(usuario))
     acoes.append(btnEditar, btnExcluir)
@@ -133,11 +138,12 @@ class UsuariosView {
 
   private abrirFormulario = (): void => {
     this.limparFormulario()
-    this.el<HTMLDialogElement>('dialogo').showModal()
+    this.abrirDialogo('dialogo')
     this.el<HTMLInputElement>('nome').focus()
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const usuario: UsuarioLista | null = await ipcRenderer.invoke('usuarios:obter', id)
       if (!usuario) {
@@ -156,10 +162,12 @@ class UsuariosView {
       this.el('campo-senha').textContent = 'Nova senha (opcional)'
       this.el('campo-confirmacao').textContent = 'Confirmar nova senha'
       this.el('campo-ativo').classList.remove('oculto')
-      this.el<HTMLDialogElement>('dialogo').showModal()
+      this.abrirDialogo('dialogo')
       this.el<HTMLInputElement>('nome').focus()
     } catch {
       this.el('status').textContent = 'Não foi possível carregar o usuário.'
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -236,7 +244,7 @@ class UsuariosView {
     this.usuarioParaExcluir = { id: usuario.id, nome: usuario.nome }
     this.el('texto-excluir').textContent = `Deseja excluir o usuário "${usuario.nome}"? Usuários com cadastro de aluno ou instrutor não podem ser excluídos.`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {

@@ -30,6 +30,11 @@ class LancamentosView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private admin = (): boolean => this.usuario?.perfil === 'admin'
 
   private status = (mensagem: string, erro = false): void => {
@@ -151,7 +156,7 @@ class LancamentosView {
     this.el<HTMLInputElement>('valor').value = lancamento ? String(lancamento.valor) : ''
     this.el<HTMLInputElement>('data').value = lancamento?.dataLancamento ?? this.hoje()
 
-    this.el<HTMLDialogElement>('dialogo-form').showModal()
+    this.abrirDialogo('dialogo-form')
     this.el<HTMLInputElement>('descricao').focus()
   }
 
@@ -208,7 +213,7 @@ class LancamentosView {
     this.el('texto-excluir').textContent =
       `Excluir o lançamento "${lancamento.descricao || this.categorias[lancamento.categoria]}" de ${this.data(lancamento.dataLancamento)}?`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {

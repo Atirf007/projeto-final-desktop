@@ -153,18 +153,33 @@ export class PagamentoRepository {
     const condicoes: string[] = []
     const valores: unknown[] = []
 
+    if (filtro.status) {
+      condicoes.push('pg.status = ?')
+      valores.push(filtro.status)
+    }
     if (filtro.competencia) {
-      condicoes.push('competencia = ?')
+      condicoes.push('pg.competencia = ?')
       valores.push(`${filtro.competencia}-01`)
+    }
+
+    const busca = typeof filtro.busca === 'string' ? filtro.busca.trim() : ''
+    if (busca) {
+      const termo = `%${busca.replace(/[\\%_]/g, '\\$&')}%`
+      condicoes.push('(u.nome LIKE ? OR pl.nome LIKE ?)')
+      valores.push(termo, termo)
     }
 
     const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
 
     const [linhas] = await this.pool.query<RowDataPacket[]>({
-      sql: `SELECT status, COUNT(*) AS quantidade, COALESCE(SUM(valor), 0) AS total
-            FROM pagamentos
+      sql: `SELECT pg.status, COUNT(*) AS quantidade, COALESCE(SUM(pg.valor), 0) AS total
+            FROM pagamentos pg
+            INNER JOIN assinaturas a ON a.id = pg.assinatura_id
+            INNER JOIN alunos al ON al.id = a.aluno_id
+            INNER JOIN usuarios u ON u.id = al.usuario_id
+            INNER JOIN planos pl ON pl.id = a.plano_id
             ${where}
-            GROUP BY status`,
+            GROUP BY pg.status`,
       values: valores,
       timeout: TIMEOUT
     })
