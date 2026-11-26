@@ -52,6 +52,11 @@ class AlunosView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private admin = (): boolean => this.usuario?.perfil === 'admin'
 
   private cpfFmt = (cpf: string): string => {
@@ -116,7 +121,7 @@ class AlunosView {
       btnEditar.type = 'button'
       btnEditar.className = 'botao secundario pequeno'
       btnEditar.textContent = 'Editar'
-      btnEditar.addEventListener('click', () => void this.abrirEdicao(aluno.id))
+      btnEditar.addEventListener('click', () => void this.abrirEdicao(aluno.id, btnEditar))
       const btnExcluir = document.createElement('button')
       btnExcluir.type = 'button'
       btnExcluir.className = 'botao perigo pequeno'
@@ -181,7 +186,7 @@ class AlunosView {
     this.el('campo-senha').classList.remove('oculto')
     this.el('campo-nova-senha').classList.add('oculto')
     this.el('campo-ativo').classList.add('oculto')
-    this.el<HTMLDialogElement>('dialogo-form').showModal()
+    this.abrirDialogo('dialogo-form')
     this.el<HTMLInputElement>('nome').focus()
   }
 
@@ -205,7 +210,8 @@ class AlunosView {
     this.el<HTMLSelectElement>('ativo').value = String(aluno.ativo)
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const aluno: Aluno | null = await ipcRenderer.invoke('alunos:obter', id)
       if (!aluno) { this.status('Aluno não encontrado.', true); return }
@@ -215,9 +221,11 @@ class AlunosView {
       this.el('campo-senha').classList.add('oculto')
       this.el('campo-nova-senha').classList.remove('oculto')
       this.el('campo-ativo').classList.remove('oculto')
-      this.el<HTMLDialogElement>('dialogo-form').showModal()
+      this.abrirDialogo('dialogo-form')
     } catch {
       this.status('Não foi possível carregar o aluno.', true)
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -259,7 +267,7 @@ class AlunosView {
       msgCep.textContent = ''
       msgCep.className = 'msg-info'
       this.el('editar-detalhe').classList.toggle('oculto', !this.admin())
-      this.el<HTMLDialogElement>('dialogo-detalhe').showModal()
+      this.abrirDialogo('dialogo-detalhe')
     } catch {
       this.status('Não foi possível carregar o aluno.', true)
     }
@@ -369,7 +377,7 @@ class AlunosView {
     this.alunoParaExcluir = aluno
     this.el('texto-excluir').textContent = `Deseja desativar o aluno "${aluno.nome}"? O cadastro e o acesso de login serão desativados (exclusão lógica).`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {
@@ -413,7 +421,7 @@ class AlunosView {
     this.el('editar-detalhe').addEventListener('click', () => {
       if (this.detalheAtual) {
         this.el<HTMLDialogElement>('dialogo-detalhe').close()
-        void this.abrirEdicao(this.detalheAtual.id)
+        void this.abrirEdicao(this.detalheAtual.id, this.el<HTMLButtonElement>('editar-detalhe'))
       }
     })
     this.el('consultar-cep-detalhe').addEventListener('click', () => void this.consultarCepDetalhe())

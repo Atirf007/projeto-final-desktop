@@ -27,6 +27,11 @@ class InscricoesView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private botao = (texto: string, classe: string): HTMLButtonElement => {
     const elemento = document.createElement('button')
     elemento.type = 'button'
@@ -124,7 +129,7 @@ class InscricoesView {
     const acoes = document.createElement('div')
     acoes.className = 'acoes-linha'
     const editar = this.botao('Editar', 'botao secundario pequeno')
-    editar.addEventListener('click', () => void this.abrirEdicao(inscricao.id))
+    editar.addEventListener('click', () => void this.abrirEdicao(inscricao.id, editar))
     const excluir = this.botao('Excluir', 'botao perigo pequeno')
     if (inscricao.status === 'presente') {
       excluir.disabled = true
@@ -183,10 +188,11 @@ class InscricoesView {
     this.el<HTMLSelectElement>('form-aluno').disabled = edicao
     this.el<HTMLSelectElement>('form-aula').disabled = edicao
     this.el<HTMLSelectElement>('form-status').disabled = !edicao
-    this.el<HTMLDialogElement>('dialogo-formulario').showModal()
+    this.abrirDialogo('dialogo-formulario')
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const inscricao = (await ipcRenderer.invoke('inscricoes:obter', id)) as Inscricao | null
       if (!inscricao) {
@@ -196,6 +202,8 @@ class InscricoesView {
       this.abrirFormulario(inscricao)
     } catch {
       this.status('Não foi possível carregar a inscrição.', 'erro')
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -247,7 +255,7 @@ class InscricoesView {
     this.el('texto-excluir').textContent =
       `Deseja excluir a inscrição de ${inscricao.alunoNome} na aula "${inscricao.aulaTitulo}"?`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {

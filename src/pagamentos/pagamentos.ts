@@ -57,6 +57,11 @@ class PagamentosView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private admin = (): boolean => this.usuario?.perfil === 'admin'
 
   private criar = (tag: string, classe?: string, texto?: string): HTMLElement => {
@@ -212,7 +217,7 @@ class PagamentosView {
     }
 
     const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
-    btnEditar.addEventListener('click', () => void this.abrirEdicao(pagamento.id))
+    btnEditar.addEventListener('click', () => void this.abrirEdicao(pagamento.id, btnEditar))
     const btnExcluir = this.criarBotao('Excluir', 'botao perigo pequeno')
     if (pagamento.status === 'pago') {
       btnExcluir.disabled = true
@@ -322,10 +327,11 @@ class PagamentosView {
     this.el<HTMLSelectElement>('form-metodo').disabled = !edicao
     this.el<HTMLTextAreaElement>('form-observacao').value = edicao ? (pagamento.observacao ?? '') : ''
 
-    this.el<HTMLDialogElement>('dialogo-formulario').showModal()
+    this.abrirDialogo('dialogo-formulario')
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const pagamento = (await ipcRenderer.invoke('pagamentos:obter', id)) as Pagamento | null
       if (!pagamento) {
@@ -335,6 +341,8 @@ class PagamentosView {
       await this.abrirFormulario(pagamento)
     } catch {
       this.status('Não foi possível carregar o pagamento.', 'erro')
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -438,7 +446,7 @@ class PagamentosView {
     this.el<HTMLSelectElement>('validar-metodo').value = 'pix'
     this.el<HTMLTextAreaElement>('validar-observacao').value = ''
     this.el('erro-validar').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-validar').showModal()
+    this.abrirDialogo('dialogo-validar')
   }
 
   private salvarValidacao = async (evento: Event): Promise<void> => {
@@ -494,7 +502,7 @@ class PagamentosView {
     const botao = this.el<HTMLButtonElement>('confirmar-acao')
     botao.textContent = rotulo
     botao.className = perigo ? 'botao perigo' : 'botao'
-    this.el<HTMLDialogElement>('dialogo-confirmar').showModal()
+    this.abrirDialogo('dialogo-confirmar')
   }
 
   private executarConfirmacao = async (): Promise<void> => {

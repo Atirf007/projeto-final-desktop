@@ -47,6 +47,11 @@ class AvaliacoesView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private gestor = (): boolean => this.usuario?.perfil === 'admin' || this.usuario?.perfil === 'instrutor'
 
   private criar = (tag: string, classe?: string, texto?: string): HTMLElement => {
@@ -149,7 +154,7 @@ class AvaliacoesView {
     acoes.append(btnVer)
     if (avaliacao.podeEditar) {
       const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
-      btnEditar.addEventListener('click', () => void this.abrirEdicao(avaliacao.id))
+      btnEditar.addEventListener('click', () => void this.abrirEdicao(avaliacao.id, btnEditar))
       const btnExcluir = this.criarBotao('Excluir', 'botao perigo pequeno')
       btnExcluir.addEventListener('click', () => this.abrirExclusao(avaliacao))
       acoes.append(btnEditar, btnExcluir)
@@ -368,7 +373,7 @@ class AvaliacoesView {
     if (filtroAluno) this.el<HTMLSelectElement>('aluno').value = filtroAluno
     this.el('titulo-form').textContent = 'Nova avaliação'
     this.el<HTMLButtonElement>('salvar').textContent = 'Registrar'
-    this.el<HTMLDialogElement>('dialogo-form').showModal()
+    this.abrirDialogo('dialogo-form')
     this.el<HTMLSelectElement>('aluno').focus()
   }
 
@@ -400,7 +405,8 @@ class AvaliacoesView {
     this.el<HTMLTextAreaElement>('observacoes').value = avaliacao.observacoes ?? ''
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const avaliacao = (await ipcRenderer.invoke('avaliacoes:obter', id)) as Avaliacao | null
       if (!avaliacao) {
@@ -414,10 +420,12 @@ class AvaliacoesView {
       this.preencherForm(avaliacao)
       this.el('titulo-form').textContent = `Editar avaliação — ${avaliacao.alunoNome}`
       this.el<HTMLButtonElement>('salvar').textContent = 'Salvar alterações'
-      this.el<HTMLDialogElement>('dialogo-form').showModal()
+      this.abrirDialogo('dialogo-form')
     } catch (erro) {
       console.error(erro)
       this.statusPagina('Não foi possível carregar a avaliação.', true)
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -582,7 +590,7 @@ class AvaliacoesView {
     this.el('texto-excluir').textContent =
       `Deseja excluir a avaliação de ${avaliacao.alunoNome} registrada em ${this.dataBr(avaliacao.dataAvaliacao)}?`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {
@@ -663,7 +671,7 @@ class AvaliacoesView {
     this.el('editar-detalhe').addEventListener('click', () => {
       if (!this.detalheAtual) return
       this.el<HTMLDialogElement>('dialogo-detalhe').close()
-      void this.abrirEdicao(this.detalheAtual.id)
+      void this.abrirEdicao(this.detalheAtual.id, this.el<HTMLButtonElement>('editar-detalhe'))
     })
     this.el('cancelar-excluir').addEventListener('click', () =>
       this.el<HTMLDialogElement>('dialogo-excluir').close()

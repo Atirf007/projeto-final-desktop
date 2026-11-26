@@ -28,6 +28,11 @@ class PresencasView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private criar = (tag: string, classe?: string, texto?: string): HTMLElement => {
     const elemento = document.createElement(tag)
     if (classe) elemento.className = classe
@@ -141,7 +146,7 @@ class PresencasView {
 
     const acoes = this.criar('div', 'acoes-linha')
     const editar = this.botao('Editar', 'botao secundario pequeno')
-    editar.addEventListener('click', () => void this.abrirEdicao(presenca.id))
+    editar.addEventListener('click', () => void this.abrirEdicao(presenca.id, editar))
     const excluir = this.botao('Excluir', 'botao perigo pequeno')
     excluir.addEventListener('click', () => this.abrirExclusao(presenca))
     acoes.append(editar, excluir)
@@ -200,10 +205,11 @@ class PresencasView {
     this.el<HTMLSelectElement>('form-origem').value = edicao ? presenca.origem : 'aula'
     this.el<HTMLSelectElement>('form-aluno').value = edicao ? String(presenca.alunoId) : ''
     this.el<HTMLSelectElement>('form-aula').value = edicao && presenca.aulaId ? String(presenca.aulaId) : ''
-    this.el<HTMLDialogElement>('dialogo-formulario').showModal()
+    this.abrirDialogo('dialogo-formulario')
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const presenca = (await ipcRenderer.invoke('presencas:obter', id)) as Presenca | null
       if (!presenca) {
@@ -213,6 +219,8 @@ class PresencasView {
       this.abrirFormulario(presenca)
     } catch {
       this.status('Não foi possível carregar a presença.', 'erro')
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -272,7 +280,7 @@ class PresencasView {
     this.el('texto-excluir').textContent =
       `Deseja excluir a presença de ${presenca.alunoNome} em ${this.dataBr(presenca.dataPresenca)}?`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {

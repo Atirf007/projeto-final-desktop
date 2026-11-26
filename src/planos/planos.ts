@@ -59,6 +59,11 @@ class PlanosView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private admin = (): boolean => this.usuario?.perfil === 'admin'
 
   private criar = (tag: string, classe?: string, texto?: string): HTMLElement => {
@@ -211,7 +216,7 @@ class PlanosView {
     const acoes = document.createElement('div')
     acoes.className = 'acoes-linha'
     const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
-    btnEditar.addEventListener('click', () => void this.abrirEdicaoPlano(plano.id))
+    btnEditar.addEventListener('click', () => void this.abrirEdicaoPlano(plano.id, btnEditar))
     const btnDesativar = this.criarBotao('Desativar', 'botao perigo pequeno')
     btnDesativar.disabled = !plano.ativo
     btnDesativar.addEventListener('click', () => this.desativarPlano(plano))
@@ -371,11 +376,12 @@ class PlanosView {
     this.el('campo-plano-ativo').classList.add('oculto')
     this.el<HTMLSelectElement>('plano-tipo').value = 'mensal'
     this.el<HTMLInputElement>('plano-duracao').value = '1'
-    this.el<HTMLDialogElement>('dialogo-plano').showModal()
+    this.abrirDialogo('dialogo-plano')
     this.el<HTMLInputElement>('plano-nome').focus()
   }
 
-  private abrirEdicaoPlano = async (id: number): Promise<void> => {
+  private abrirEdicaoPlano = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const plano = (await ipcRenderer.invoke('planos:obter', id)) as Plano | null
       if (!plano) {
@@ -393,10 +399,12 @@ class PlanosView {
       this.el('titulo-plano').textContent = `Editar plano — ${plano.nome}`
       this.el<HTMLButtonElement>('salvar-plano').textContent = 'Salvar alterações'
       this.el('campo-plano-ativo').classList.remove('oculto')
-      this.el<HTMLDialogElement>('dialogo-plano').showModal()
+      this.abrirDialogo('dialogo-plano')
     } catch (erro) {
       console.error(erro)
       this.statusPlanos('Não foi possível carregar o plano.', true)
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -571,7 +579,7 @@ class PlanosView {
       this.atualizarPreviewAssinatura()
     }
 
-    this.el<HTMLDialogElement>('dialogo-assinatura').showModal()
+    this.abrirDialogo('dialogo-assinatura')
   }
 
   private salvarAssinatura = async (evento: Event): Promise<void> => {
@@ -622,7 +630,7 @@ class PlanosView {
     this.el<HTMLInputElement>('editar-fim').value = assinatura.dataFim
     this.el<HTMLInputElement>('editar-valor').value = assinatura.valorContratado.toFixed(2)
     this.el('erro-editar').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-editar-assinatura').showModal()
+    this.abrirDialogo('dialogo-editar-assinatura')
   }
 
   private salvarEdicaoAssinatura = async (evento: Event): Promise<void> => {
@@ -701,7 +709,7 @@ class PlanosView {
       }
     }
 
-    this.el<HTMLDialogElement>('dialogo-renovar').showModal()
+    this.abrirDialogo('dialogo-renovar')
   }
 
   private salvarRenovacao = async (evento: Event): Promise<void> => {
@@ -753,7 +761,7 @@ class PlanosView {
     const botao = this.el<HTMLButtonElement>('confirmar-acao')
     botao.textContent = rotulo
     botao.className = perigo ? 'botao perigo' : 'botao'
-    this.el<HTMLDialogElement>('dialogo-confirmar').showModal()
+    this.abrirDialogo('dialogo-confirmar')
   }
 
   private executarConfirmacao = async (): Promise<void> => {

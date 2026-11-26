@@ -50,6 +50,7 @@ export type FiltroVisitantes = {
   data?: string
   tipo?: TipoVisitante
   status?: StatusVisitante
+  busca?: string
 }
 
 export type ResultadoVisitante = { ok: true; id?: number } | { ok: false; mensagem: string }
@@ -222,6 +223,10 @@ class VisitanteValidador {
       const status = this.status(e.status)
       if (status) filtro.status = status
     }
+    if (typeof e.busca === 'string') {
+      const busca = e.busca.trim().slice(0, 120)
+      if (busca) filtro.busca = busca
+    }
     return filtro
   }
 }
@@ -267,6 +272,11 @@ class VisitanteRepository {
       condicoes.push('v.status = ?')
       valores.push(filtro.status)
     }
+    if (filtro.busca) {
+      const termo = `%${filtro.busca.replace(/[\\%_]/g, '\\$&')}%`
+      condicoes.push('(v.nome LIKE ? OR v.telefone LIKE ?)')
+      valores.push(termo, termo)
+    }
     const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
 
     const [linhas] = await this.pool.query<RowDataPacket[]>({
@@ -274,7 +284,7 @@ class VisitanteRepository {
             FROM visitantes v
             LEFT JOIN aulas a ON a.id = v.aula_id
             ${where}
-            ORDER BY v.data_visita ASC, v.nome ASC`,
+            ORDER BY v.data_visita DESC, v.nome ASC`,
       values: valores,
       timeout: TIMEOUT
     })

@@ -476,7 +476,8 @@ class AulaRepository {
   atualizarStatusInscricao = async (id: number, status: StatusInscricao): Promise<boolean> =>
     this.regras.executarTransacao(async (conexao) => {
       const [linhas] = await conexao.query<RowDataPacket[]>({
-        sql: `SELECT ia.id, ia.aula_id, ia.aluno_id, ia.status, a.capacidade_max, a.data_hora_inicio
+        sql: `SELECT ia.id, ia.aula_id, ia.aluno_id, ia.status, a.status AS aula_status,
+                     a.capacidade_max, a.data_hora_inicio
               FROM inscricoes_aula ia
               INNER JOIN aulas a ON a.id = ia.aula_id
               WHERE ia.id = ?
@@ -489,6 +490,9 @@ class AulaRepository {
       if (String(linha.status) === 'presente' && status !== 'presente') {
         throw new ErroAula('A presença já foi registrada; não é possível alterar o status desta inscrição.')
       }
+      if (status === 'presente' && String(linha.aula_status) === 'cancelada') {
+        throw new ErroAula('A aula está cancelada; não é possível registrar presença.')
+      }
       const ocupanteAtual = ['confirmada', 'presente'].includes(String(linha.status))
       const ocupara = status === 'confirmada' || status === 'presente'
       if (ocupara) {
@@ -497,6 +501,24 @@ class AulaRepository {
         await this.regras.travarAluno(conexao, alunoId)
         await this.regras.validarUmaAulaPorDia(conexao, alunoId, aulaId, dataHoraBanco(linha.data_hora_inicio).slice(0, 10))
         await this.regras.validarCapacidade(conexao, aulaId, Number(linha.capacidade_max), ocupanteAtual ? 0 : 1)
+      }
+      if (status === 'presente' && String(linha.status) !== 'presente') {
+        const alunoId = Number(linha.aluno_id)
+        const aulaId = Number(linha.aula_id)
+        const dataPresenca = dataHoraBanco(linha.data_hora_inicio).slice(0, 10)
+        try {
+          await conexao.query<ResultSetHeader>({
+            sql: `INSERT INTO presencas (aluno_id, aula_id, data_presenca, origem, criado_em)
+                  VALUES (?, ?, ?, 'aula', NOW())`,
+            values: [alunoId, aulaId, dataPresenca],
+            timeout: TIMEOUT
+          })
+        } catch (erro) {
+          if ((erro as { code?: string }).code === 'ER_DUP_ENTRY') {
+            throw new ErroAula('Este aluno já possui presença registrada nesta data. O limite é de uma aula por dia.')
+          }
+          throw erro
+        }
       }
       await conexao.query({
         sql: 'UPDATE inscricoes_aula SET status = ?, atualizado_em = NOW() WHERE id = ?',

@@ -53,6 +53,11 @@ class NotificacoesView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private tipoTexto: Record<TipoNotificacao, string> = {
     vencimento: 'Vencimento',
     chuva: 'Chuva',
@@ -175,7 +180,7 @@ class NotificacoesView {
     const btnVer = this.criarBotao('Ver', 'botao secundario pequeno')
     btnVer.addEventListener('click', () => this.abrirDetalhe(notificacao))
     const btnEditar = this.criarBotao('Editar', 'botao secundario pequeno')
-    btnEditar.addEventListener('click', () => void this.abrirEdicao(notificacao.id))
+    btnEditar.addEventListener('click', () => void this.abrirEdicao(notificacao.id, btnEditar))
     const btnExcluir = this.criarBotao('Excluir', 'botao perigo pequeno')
     btnExcluir.addEventListener('click', () => this.abrirExclusao(notificacao))
     acoes.append(btnVer, btnEditar, btnExcluir)
@@ -256,10 +261,11 @@ class NotificacoesView {
     this.el<HTMLInputElement>('form-aula-id').value = edicao && notificacao.aulaId ? String(notificacao.aulaId) : ''
     this.el<HTMLInputElement>('form-pagamento-id').value =
       edicao && notificacao.pagamentoId ? String(notificacao.pagamentoId) : ''
-    this.el<HTMLDialogElement>('dialogo-formulario').showModal()
+    this.abrirDialogo('dialogo-formulario')
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const notificacao = (await ipcRenderer.invoke('notificacoes:obter', id)) as Notificacao | null
       if (!notificacao) {
@@ -269,6 +275,8 @@ class NotificacoesView {
       this.abrirFormulario(notificacao)
     } catch {
       this.statusPagina('Não foi possível carregar a notificação.', true)
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -331,7 +339,7 @@ class NotificacoesView {
     this.el('texto-excluir').textContent =
       `Deseja excluir a notificação "${notificacao.assunto}" enviada para ${notificacao.destinatarioEmail}?`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {

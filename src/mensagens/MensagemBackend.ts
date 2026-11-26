@@ -103,13 +103,13 @@ export class MensagemServico {
     return (
       `Atenção aluno: a previsão para amanhã (${this.dataBr(previsao.data)}) indica chuva${janela} ` +
       `nas aulas ao ar livre. A aula "${aula.titulo}" de ${this.horarioAula(aula)} pode ser ` +
-      'cancelada ou transferida para a área interna, conforme sua escolha.'
+      'cancelada ou transferida para a área interna. A decisão vale para toda a turma.'
     )
   }
 
   private textoResumo = (previsao: PrevisaoClima): string =>
     `Aviso de chuva para as aulas ao ar livre de amanhã (${this.dataBr(previsao.data)}). ` +
-    'O e-mail enviado contém um link para cada aluno escolher entre cancelar a aula ou movê-la para a área interna.'
+    'O e-mail enviado contém um link para cada aluno escolher entre cancelar a aula ou movê-la para a área interna; a decisão vale para toda a turma.'
 
   private montarCorpoEmail = (previsao: PrevisaoClima, itens: AvisoPreparado[]): string => {
     const linhas = itens.map((item) => {
@@ -119,7 +119,7 @@ export class MensagemServico {
 
     return (
       `Atenção aluno: a previsão para amanhã (${this.dataBr(previsao.data)}) indica chuva nas aulas ao ar livre.\n\n` +
-      'Escolha, para cada aula abaixo, se deseja cancelar a aula ou movê-la para a área interna:\n\n' +
+      'Escolha, para cada aula abaixo, se deseja cancelar a aula ou movê-la para a área interna. A decisão vale para toda a turma:\n\n' +
       `${linhas.join('\n')}\n\n` +
       'Se você não responder, a aula permanece como está.'
     )

@@ -42,6 +42,11 @@ class FuncionariosView {
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
+  private abrirDialogo = (id: string): void => {
+    const dialogo = this.el<HTMLDialogElement>(id)
+    if (!dialogo.open) dialogo.showModal()
+  }
+
   private dataFmt = (valor?: string): string => {
     if (!valor) return '—'
     const [data, hora] = String(valor).split(/[ T]/)
@@ -88,7 +93,7 @@ class FuncionariosView {
     btnEditar.type = 'button'
     btnEditar.className = 'botao secundario pequeno'
     btnEditar.textContent = 'Editar'
-    btnEditar.addEventListener('click', () => void this.abrirEdicao(funcionario.id))
+    btnEditar.addEventListener('click', () => void this.abrirEdicao(funcionario.id, btnEditar))
 
     const btnExcluir = document.createElement('button')
     btnExcluir.type = 'button'
@@ -190,7 +195,7 @@ class FuncionariosView {
     this.el('campo-nova-senha').classList.add('oculto')
     this.el('campo-ativo').classList.add('oculto')
     this.renderModalidades([])
-    this.el<HTMLDialogElement>('dialogo-form').showModal()
+    this.abrirDialogo('dialogo-form')
     this.el<HTMLInputElement>('nome').focus()
   }
 
@@ -205,7 +210,8 @@ class FuncionariosView {
     this.renderModalidades(funcionario.modalidades.map((m) => m.id))
   }
 
-  private abrirEdicao = async (id: number): Promise<void> => {
+  private abrirEdicao = async (id: number, botao?: HTMLButtonElement): Promise<void> => {
+    if (botao) botao.disabled = true
     try {
       const funcionario: Funcionario | null = await ipcRenderer.invoke('instrutores:obter', id)
       if (!funcionario) { this.status('Funcionário não encontrado.', true); return }
@@ -215,9 +221,11 @@ class FuncionariosView {
       this.el('campo-senha').classList.add('oculto')
       this.el('campo-nova-senha').classList.remove('oculto')
       this.el('campo-ativo').classList.remove('oculto')
-      this.el<HTMLDialogElement>('dialogo-form').showModal()
+      this.abrirDialogo('dialogo-form')
     } catch {
       this.status('Não foi possível carregar o funcionário.', true)
+    } finally {
+      if (botao) botao.disabled = false
     }
   }
 
@@ -247,7 +255,7 @@ class FuncionariosView {
       this.detalheItem(dl, 'Biografia', funcionario.bio, true)
       this.detalheItem(dl, 'Cadastrado em', this.dataFmt(funcionario.criadoEm))
       this.detalheItem(dl, 'Atualizado em', this.dataFmt(funcionario.atualizadoEm))
-      this.el<HTMLDialogElement>('dialogo-detalhe').showModal()
+      this.abrirDialogo('dialogo-detalhe')
     } catch {
       this.status('Não foi possível carregar o funcionário.', true)
     }
@@ -313,7 +321,7 @@ class FuncionariosView {
     this.funcionarioParaExcluir = funcionario
     this.el('texto-excluir').textContent = `Deseja desativar o funcionário "${funcionario.nome}"? O cadastro e o acesso de login serão desativados (exclusão lógica).`
     this.el('erro-excluir').textContent = ''
-    this.el<HTMLDialogElement>('dialogo-excluir').showModal()
+    this.abrirDialogo('dialogo-excluir')
   }
 
   private confirmarExclusao = async (): Promise<void> => {
@@ -413,7 +421,7 @@ class FuncionariosView {
 
   private abrirModalidades = async (): Promise<void> => {
     this.limparFormModalidade()
-    this.el<HTMLDialogElement>('dialogo-modalidades').showModal()
+    this.abrirDialogo('dialogo-modalidades')
     await this.recarregarModalidades()
   }
 
@@ -489,7 +497,7 @@ class FuncionariosView {
     this.el('editar-detalhe').addEventListener('click', () => {
       if (this.detalheAtual) {
         this.el<HTMLDialogElement>('dialogo-detalhe').close()
-        void this.abrirEdicao(this.detalheAtual.id)
+        void this.abrirEdicao(this.detalheAtual.id, this.el<HTMLButtonElement>('editar-detalhe'))
       }
     })
     this.el('cancelar-excluir').addEventListener('click', () => this.el<HTMLDialogElement>('dialogo-excluir').close())
