@@ -9,6 +9,7 @@
 - Telas: **HTML + CSS no próprio `.html`** e TypeScript compilado como preload de cada janela. Não há framework de UI nem bundler.
 - Banco: **MySQL** acessado com `mysql2/promise`. Configuração em `.env` via `dotenv`.
 - E-mail: **Nodemailer**. Utilitários de linha de comando: `tsx`.
+- Testes unitários: **`node:test`**, executados por `tsx`, sem depender de MySQL.
 
 Scripts relevantes do `package.json`:
 
@@ -16,6 +17,7 @@ Scripts relevantes do `package.json`:
 - `npm run build` → `tsc -p tsconfig.build.json` e cópia dos arquivos não-`.ts` de `src/` para `dist/`.
 - `npm start` → build e `electron .`.
 - `npm run criar-tabelas`, `npm run popular-tabelas`, `npm run criar-admin`, `npm run criar-funcionario`.
+- `npm test` → testes unitários com `node:test`.
 - `npm run testar-email`, `npm run testar-clima`, `npm run clima-servidor`, `npm run preparar-teste-clima`, `npm run limpar-teste-clima`.
 
 O banco usado no ambiente atual é `cl205153`, lido de `DB_NAME` no `.env`. O `.env.example` documenta as variáveis; credenciais reais não são versionadas. A aplicação **não cria bancos nem apaga dados**. Os scripts operam somente no banco configurado; `npm run limpar-teste-clima` é a única rotina de exclusão e atinge apenas os registros criados por `npm run preparar-teste-clima`, mediante confirmação.
@@ -34,7 +36,7 @@ O `database/schema.sql` define **15 tabelas**:
 - Operação de aulas: `aulas`, `inscricoes_aula`, `presencas`, `visitantes`.
 - Acompanhamento e comunicação: `avaliacoes`, `notificacoes`.
 
-Os relacionamentos são chaves estrangeiras reais, com `ON DELETE` / `ON UPDATE` definidos no schema. Exemplos: `presencas.aluno_id → alunos.id`, `presencas.aula_id → aulas.id`, `inscricoes_aula.aluno_id → alunos.id`, `aulas.instrutor_id → instrutores.id`, `aulas.modalidade_id → modalidades.id`.
+Os relacionamentos são chaves estrangeiras reais, com `ON DELETE` definido no schema; não há cláusula `ON UPDATE` nas chaves estrangeiras. Exemplos: `presencas.aluno_id → alunos.id`, `presencas.aula_id → aulas.id`, `inscricoes_aula.aluno_id → alunos.id`, `aulas.instrutor_id → instrutores.id`, `aulas.modalidade_id → modalidades.id`.
 
 O `database/seed.sql` contém os dados iniciais e é aplicado por `npm run popular-tabelas`. Os usuários iniciais também podem ser criados com `npm run criar-admin` e `npm run criar-funcionario`.
 
@@ -113,30 +115,32 @@ Implementada em `src/autenticacao/AutenticacaoBackend.ts`:
 - `Senha.gerar` usa `crypto.scrypt` com salt aleatório de **16 bytes** e `keylen` **64**.
 - Não há parâmetros `N`, `r` ou `p` explícitos no código; valem os padrões do Node.
 - Formato armazenado: `scrypt:<salt_em_hex>:<hash_em_hex>`.
-- `Senha.verificar` valida o prefixo, reconstrói o salt e usa `timingSafeEqual`.
+- `Senha.verificar` exige exatamente `scrypt:<salt>:<hash>`, com salt de 32 caracteres hex e hash de 128 caracteres hex, antes de usar `timingSafeEqual`.
 - Para e-mail inexistente, o serviço deriva um hash falso para reduzir diferença de tempo.
 - `LimitadorTentativas` bloqueia após **5 falhas por 5 minutos** por e-mail normalizado; a mensagem ao usuário é genérica: `E-mail ou senha inválidos.`
 - O login também tem timeout de 15 s e mensagens específicas para falhas de conexão com o MySQL.
 
 ## 7. Regras de negócio de aulas
 
-Os helpers compartilhados estão em `src/aulas/RegrasAula.ts`:
+As regras compartilhadas estão na classe `RegrasAulaService` (`src/aulas/RegrasAula.ts`), com o pool injetado no construtor:
 
 - `executarTransacao` abre conexão do pool, inicia transação, faz commit/rollback e libera a conexão.
 - `travarAula` e `travarAluno` usam `SELECT ... FOR UPDATE`.
-- `validarUmaAulaPorDia` bloqueia nova inscrição confirmada no mesmo dia.
+- `validarUmaAulaPorDia` bloqueia inscrição ou presença em outra aula no mesmo dia; também aceita ignorar a própria presença em edição.
 - `contarOcupacao` soma `inscricoes_aula` com status `confirmada`/`presente` e `visitantes` com status `agendado`/`compareceu`.
 - `validarCapacidade` impede inscrição, visita ou redução de `capacidade_max` abaixo da ocupação atual.
 
-`AulaRepository` (`src/aulas/AulaBackend.ts`) aplica essas regras em `criar`, `atualizar`, `remarcar`, `inscrever`, `cancelarInscricao` e `atualizarStatusInscricao`. Status já registrado como `presente` não pode ser alterado. Mensagens de erro incluem:
+`AulaRepository` (`src/aulas/AulaBackend.ts`) aplica essas regras em `criar`, `atualizar`, `remarcar`, `inscrever`, `cancelarInscricao`, `excluirInscricao`, `marcarPresenca` e `atualizarStatusInscricao`. Status já registrado como `presente` não pode ser alterado. Mensagens de erro incluem:
 
-- `O aluno já possui inscrição em outra aula nesta data. O limite é de uma aula por dia.`
+- `O aluno já possui aula ou presença registrada nesta data. O limite é de uma aula por dia.`
 - `Aula lotada. Não há vagas disponíveis.`
 - `A presença já foi registrada; não é possível alterar o status desta inscrição.`
 
-`VisitanteRepository` (`src/visitantes/VisitanteBackend.ts`) valida capacidade em `criar` e `atualizar` dentro da mesma transação. Visitantes não têm `aluno_id`, portanto a regra de uma aula por dia se aplica às inscrições de alunos, não a visitantes.
+`VisitanteRepository` (`src/visitantes/VisitanteBackend.ts`) valida capacidade em `criar` e `atualizar` dentro da mesma transação. Visitantes não têm `aluno_id`, portanto a regra de uma aula por dia se aplica às inscrições e presenças de alunos, não a visitantes.
 
-Presenças também são protegidas pelo índice único `uk_aluno_data` (`aluno_id`, `data_presenca`) no schema.
+`PresencaRepository` (`src/presencas/PresencaBackend.ts`) usa o mesmo serviço em `criar` e `atualizar`, dentro de transação, antes de gravar ou alterar a presença. O índice único `uk_aluno_data` (`aluno_id`, `data_presenca`) permanece como proteção no banco.
+
+`BotVencimentoServico` (`src/notificacoes/BotVencimento.ts`) marca atrasos, envia lembretes e registra no máximo uma notificação `geral`/`sistema` por dia para cada administrador, com o resumo de inadimplência. O assunto inclui a data (`Alerta de inadimplência — AAAA-MM-DD`) e o índice único `uk_notificacao_alerta_inadimplencia` (`usuario_id`, `tipo`, `canal`, `assunto`) impede duplicatas. `RegrasInadimplencia` usa janela histórica de **30 dias** para planos mensais/trimestrais e **120 dias** para semestrais/anuais.
 
 ## 8. Bot de clima e decisão do aluno
 
@@ -145,7 +149,7 @@ Fluxo implementado:
 1. `BotClimaServico` consulta a previsão e registra avisos de chuva para aulas externas do dia seguinte.
 2. `AulasAmanha` seleciona aulas `local = 'externa'`, data de amanhã e status `agendada`/`confirmada`.
 3. `DestinatariosAlunos` seleciona alunos com inscrição `confirmada` ou `presente`, `ativo = 1` e e-mail válido.
-4. `MensagemServico` envia o e-mail com um link assinado por `AssinadorDecisao` (HMAC, validade de 7 dias).
+4. `MensagemServico` envia o e-mail com um link assinado por `AssinadorDecisao` (HMAC, validade de 2 dias).
 5. `ServidorDecisaoClima` escuta `CLIMA_DECISAO_HOST`/`CLIMA_DECISAO_PORTA` (padrão `127.0.0.1:39517`) e serve `GET /clima/:id` e `POST /clima/:id/(cancelar|mover)?t=token`.
 
 Em `src/mensagens/DecisaoClima.ts`, `registrarDecisao` roda em transação:
@@ -167,7 +171,7 @@ UPDATE aulas
  WHERE id = ?
 ```
 
-A data e o horário são mantidos. A página do link mostra o local atual, os botões `Cancelar a aula` e `Mover para a área interna` e as confirmações `A aula foi cancelada.` ou `A aula foi movida para a área interna.` A decisão é única por aluno e turma: uma resposta registrada impede uma nova resposta; aulas canceladas ou já internas recebem essa informação, sem duplicar registros e sem excluir linhas.
+A data e o horário são mantidos. A página do link mostra o local atual, os botões `Cancelar a aula` e `Mover para a área interna` e as confirmações `A aula foi cancelada.` ou `A aula foi movida para a área interna.` A decisão é única por aluno e turma: uma resposta registrada impede uma nova resposta; aulas canceladas ou já internas recebem essa informação, sem duplicar registros e sem excluir linhas. O índice único `uk_notificacao_decisao_clima` (`tipo`, `canal`, `status`, `aula_id`, `usuario_id`, `assunto`) reforça o dedupe no banco; uma colisão concorrente é tratada como decisão já registrada, com rollback da alteração da aula.
 
 ## 9. Integrações externas
 
