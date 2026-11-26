@@ -19,6 +19,14 @@ ON DUPLICATE KEY UPDATE
   ativo = VALUES(ativo), ultimo_login = VALUES(ultimo_login),
   criado_em = VALUES(criado_em), atualizado_em = VALUES(atualizado_em);
 
+INSERT INTO `usuarios`
+  (`nome`, `email`, `senha_hash`, `perfil`, `ativo`, `ultimo_login`, `criado_em`, `atualizado_em`)
+VALUES
+  ('Administrador da Academia', 'admin@cotil.unicamp.br', 'scrypt:ba9133230150da8bcf64e09872dbace3:62a263da48c1d6ff8af7e4d1cd1010ae035cc4a561dfb287646786b246ed33dd861c7817165c1befa8c02d513c6b048910f36f97adc14b29593b0e6d418082a4', 'admin', 1, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 400 DAY), NOW())
+ON DUPLICATE KEY UPDATE
+  nome = VALUES(nome), senha_hash = VALUES(senha_hash), perfil = VALUES(perfil),
+  ativo = VALUES(ativo), ultimo_login = VALUES(ultimo_login), atualizado_em = VALUES(atualizado_em);
+
 INSERT INTO `alunos`
   (`id`, `usuario_id`, `cpf`, `data_nascimento`, `telefone`, `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`, `contato_emergencia`, `observacoes_saude`, `ativo`, `criado_em`, `atualizado_em`)
 VALUES
@@ -215,7 +223,8 @@ INSERT INTO `lancamentos` (`id`, `categoria`, `descricao`, `valor`, `data_lancam
   (3, 'aluguel', 'Aluguel do espaço — DEMO', 1200.00, DATE_FORMAT(CURDATE(), '%Y-%m-10')),
   (4, 'outros', 'Venda de materiais — DEMO', 340.00, DATE_FORMAT(CURDATE(), '%Y-%m-22')),
   (5, 'aula', 'Receita de aulas — DEMO', 1500.00, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-12')),
-  (6, 'aluguel', 'Aluguel do espaço — DEMO', 1200.00, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-10'))
+  (6, 'aluguel', 'Aluguel do espaço — DEMO', 1200.00, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-10')),
+  (8, 'outros', 'Venda de materiais — DEMO', 210.00, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m-20'))
 ON DUPLICATE KEY UPDATE
   categoria = VALUES(categoria), descricao = VALUES(descricao), valor = VALUES(valor),
   data_lancamento = VALUES(data_lancamento);

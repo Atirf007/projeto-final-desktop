@@ -1,5 +1,7 @@
 import { ipcRenderer } from 'electron'
 
+type UsuarioSessao = { id: number; nome: string; perfil: 'admin' | 'instrutor' | 'aluno' }
+
 type Categoria = 'aula' | 'aluguel' | 'outros'
 
 type Lancamento = {
@@ -13,6 +15,7 @@ type Lancamento = {
 type Resultado = { ok: true; id?: number } | { ok: false; mensagem: string }
 
 class LancamentosView {
+  private usuario: UsuarioSessao | null = null
   private editandoId: number | null = null
   private excluindoId: number | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
@@ -26,6 +29,8 @@ class LancamentosView {
   private readonly moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
+
+  private admin = (): boolean => this.usuario?.perfil === 'admin'
 
   private status = (mensagem: string, erro = false): void => {
     const elemento = this.el('status')
@@ -240,8 +245,21 @@ class LancamentosView {
     }
   }
 
-  iniciar = (): void => {
+  iniciar = async (): Promise<void> => {
+    try {
+      this.usuario = (await ipcRenderer.invoke('auth:me')) as UsuarioSessao | null
+    } catch {
+      this.usuario = null
+    }
+
     this.el('voltar').addEventListener('click', () => void this.voltar())
+
+    if (!this.admin()) {
+      this.el('painel-lancamentos').hidden = true
+      this.el('acesso-negado').hidden = false
+      return
+    }
+
     this.el('novo').addEventListener('click', () => this.abrirFormulario())
     this.el('filtro-categoria').addEventListener('change', () => void this.carregar())
     this.el('filtro-inicio').addEventListener('change', () => void this.carregar())
@@ -255,8 +273,10 @@ class LancamentosView {
     })
     this.el('confirmar-excluir').addEventListener('click', () => void this.confirmarExclusao())
 
-    void this.carregar()
+    await this.carregar()
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => new LancamentosView().iniciar())
+window.addEventListener('DOMContentLoaded', () => {
+  void new LancamentosView().iniciar()
+})
