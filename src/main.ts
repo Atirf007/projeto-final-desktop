@@ -1,4 +1,5 @@
 import { app, BrowserWindow, session } from 'electron'
+import { AssiduidadeIpc } from './assiduidade/AssiduidadeBackend'
 import { JanelaApp } from './JanelaApp'
 import { Sessao } from './Sessao'
 import { AlunoIpc } from './alunos/AlunoBackend'
@@ -25,6 +26,7 @@ import { VisitanteIpc } from './visitantes/VisitanteBackend'
 
 type Modulo =
   | 'relatorios'
+  | 'assiduidade'
   | 'usuarios'
   | 'funcionarios'
   | 'alunos'
@@ -86,6 +88,7 @@ class Aplicacao {
 
     this.modulos = {
       relatorios: criarModulo('relatorios', 1000, 700),
+      assiduidade: criarModulo('assiduidade', 1280, 860),
       usuarios: criarModulo('usuarios', 1000, 700),
       funcionarios: criarModulo('funcionarios', 1200, 760),
       alunos: criarModulo('alunos', 1200, 760),
@@ -188,6 +191,7 @@ class Aplicacao {
     new FuncionarioIpc(this.sessao).registrar()
     new ModalidadeIpc(this.sessao).registrar()
     new RelatorioIpc(this.sessao).registrar()
+    new AssiduidadeIpc(this.sessao).registrar()
     new UsuarioIpc(this.sessao).registrar()
 
     const telas: Record<string, () => void> = {}
