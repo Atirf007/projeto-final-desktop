@@ -3,6 +3,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
 import { Sessao } from '../Sessao'
+import { ErroAula, RegrasAulaService } from '../aulas/RegrasAula'
 
 export type OrigemPresenca = 'aula' | 'livre' | 'experimental'
 
@@ -114,6 +115,8 @@ const mapear = (linha: RowDataPacket): Presenca => ({
 
 class PresencaRepository {
   private readonly pool = Banco.pool
+
+  constructor(private readonly regras: RegrasAulaService = new RegrasAulaService(Banco.pool)) {}
 
   alunoIdPorUsuario = async (usuarioId: number): Promise<number | null> => {
     const [linhas] = await this.pool.query<RowDataPacket[]>({
@@ -230,26 +233,51 @@ class PresencaRepository {
     return linhas.length ? mapear(linhas[0]) : null
   }
 
-  criar = async (dados: PresencaInput): Promise<number> => {
-    const [resultado] = await this.pool.query<ResultSetHeader>({
-      sql: `INSERT INTO presencas (aluno_id, aula_id, data_presenca, origem, criado_em)
-            VALUES (?, ?, ?, ?, NOW())`,
-      values: [dados.alunoId, dados.aulaId ?? null, dados.dataPresenca, dados.origem],
-      timeout: TIMEOUT
-    })
-    return Number(resultado.insertId)
-  }
+  criar = async (dados: PresencaInput): Promise<number> =>
+    this.regras.executarTransacao(async (conexao) => {
+      const aluno = await this.regras.travarAluno(conexao, dados.alunoId)
+      if (!aluno) throw new ErroAula('Aluno não encontrado.')
+      if (!aluno.ativo) throw new ErroAula('O aluno está inativo e não pode receber presença.')
+      await this.regras.validarUmaAulaPorDia(conexao, dados.alunoId, dados.aulaId ?? 0, dados.dataPresenca)
 
-  atualizar = async (dados: PresencaInput): Promise<boolean> => {
-    const [resultado] = await this.pool.query<ResultSetHeader>({
-      sql: `UPDATE presencas
-            SET aluno_id = ?, aula_id = ?, data_presenca = ?, origem = ?
-            WHERE id = ?`,
-      values: [dados.alunoId, dados.aulaId ?? null, dados.dataPresenca, dados.origem, dados.id],
-      timeout: TIMEOUT
+      const [resultado] = await conexao.query<ResultSetHeader>({
+        sql: `INSERT INTO presencas (aluno_id, aula_id, data_presenca, origem, criado_em)
+              VALUES (?, ?, ?, ?, NOW())`,
+        values: [dados.alunoId, dados.aulaId ?? null, dados.dataPresenca, dados.origem],
+        timeout: TIMEOUT
+      })
+      return Number(resultado.insertId)
     })
-    return resultado.affectedRows > 0
-  }
+
+  atualizar = async (dados: PresencaInput): Promise<boolean> =>
+    this.regras.executarTransacao(async (conexao) => {
+      const [existentes] = await conexao.query<RowDataPacket[]>({
+        sql: 'SELECT id FROM presencas WHERE id = ? LIMIT 1 FOR UPDATE',
+        values: [dados.id],
+        timeout: TIMEOUT
+      })
+      if (!existentes.length) return false
+
+      const aluno = await this.regras.travarAluno(conexao, dados.alunoId)
+      if (!aluno) throw new ErroAula('Aluno não encontrado.')
+      if (!aluno.ativo) throw new ErroAula('O aluno está inativo e não pode receber presença.')
+      await this.regras.validarUmaAulaPorDia(
+        conexao,
+        dados.alunoId,
+        dados.aulaId ?? 0,
+        dados.dataPresenca,
+        Number(existentes[0].id)
+      )
+
+      const [resultado] = await conexao.query<ResultSetHeader>({
+        sql: `UPDATE presencas
+              SET aluno_id = ?, aula_id = ?, data_presenca = ?, origem = ?
+              WHERE id = ?`,
+        values: [dados.alunoId, dados.aulaId ?? null, dados.dataPresenca, dados.origem, dados.id],
+        timeout: TIMEOUT
+      })
+      return resultado.affectedRows > 0
+    })
 
   excluir = async (id: number): Promise<boolean> => {
     const [resultado] = await this.pool.query<ResultSetHeader>({
@@ -305,6 +333,7 @@ export class PresencaCrudIpc {
   }
 
   private erro = (contexto: string, erro: unknown, padrao: string): ResultadoPresenca => {
+    if (erro instanceof ErroAula) return { ok: false, mensagem: erro.message }
     if (erro instanceof Error && erro.message === 'Acesso negado') {
       return { ok: false, mensagem: 'Acesso negado para esta operação.' }
     }
