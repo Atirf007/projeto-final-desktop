@@ -3,8 +3,14 @@ import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
 import { readFileSync, writeFileSync } from 'fs'
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http'
 import { join } from 'path'
-import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
+import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
+import {
+  executarTransacao,
+  travarAula,
+  validarAlunosDaAula,
+  validarCapacidade
+} from '../aulas/RegrasAula'
 
 const TIMEOUT = 10000
 const VALIDADE_TOKEN_MS = 7 * 24 * 60 * 60 * 1000
@@ -63,15 +69,16 @@ export type AvisoDecisao = {
   inscricaoStatus: string
 }
 
+type AcaoDecisao = 'cancelar' | 'mover'
+type EstadoAula = 'disponivel' | 'cancelada' | 'movida' | 'indisponivel'
+
 export type DecisaoRegistrada = {
-  acao: 'cancelar' | 'mover'
+  acao: AcaoDecisao
   assunto: string
   mensagem: string
   criadoEm: string
 }
 
-type AcaoDecisao = DecisaoRegistrada['acao']
-type EstadoAula = 'disponivel' | 'cancelada' | 'movida' | 'indisponivel'
 type ResultadoDecisao = {
   registrada: boolean
   estado: EstadoAula
@@ -219,7 +226,7 @@ export class DecisaoClimaRepositorio {
     }
   }
 
-  obterDecisao = async (aulaId: number): Promise<DecisaoRegistrada | null> => {
+  obterDecisao = async (aulaId: number, usuarioId: number): Promise<DecisaoRegistrada | null> => {
     const [linhas] = await this.pool.query<RowDataPacket[]>({
       sql: `SELECT assunto, mensagem, criado_em
               FROM notificacoes
@@ -227,30 +234,53 @@ export class DecisaoClimaRepositorio {
                AND canal = 'sistema'
                AND status = 'enviado'
                AND aula_id = ?
+               AND usuario_id = ?
                AND assunto IN (?, ?)
              ORDER BY id DESC
              LIMIT 1`,
-      values: [aulaId, ASSUNTO_CANCELAR, ASSUNTO_MOVER],
+      values: [aulaId, usuarioId, ASSUNTO_CANCELAR, ASSUNTO_MOVER],
       timeout: TIMEOUT
     })
 
     return this.mapearDecisao(linhas[0])
   }
 
-  registrarDecisao = async (aviso: AvisoDecisao, acao: AcaoDecisao): Promise<ResultadoDecisao> => {
-    const conexao = await this.pool.getConnection()
-    try {
-      await conexao.beginTransaction()
+  private moverParaAreaInterna = async (conexao: PoolConnection, aulaId: number): Promise<void> => {
+    const aula = await travarAula(conexao, aulaId)
+    if (aula.status === 'cancelada' || aula.status === 'concluida') {
+      throw new Error('Esta aula não pode ser transferida para a área interna.')
+    }
+    await validarCapacidade(conexao, aulaId, aula.capacidadeMax)
+    await validarAlunosDaAula(conexao, aulaId, aula.dataHoraInicio.slice(0, 10))
+    await conexao.query({
+      sql: `UPDATE aulas
+            SET local = 'interna', local_descricao = NULL, status = 'remarcada', atualizado_em = NOW()
+            WHERE id = ?`,
+      values: [aulaId],
+      timeout: TIMEOUT
+    })
+  }
 
+  private cancelarAula = async (conexao: PoolConnection, aulaId: number): Promise<void> => {
+    const aula = await travarAula(conexao, aulaId)
+    await validarAlunosDaAula(conexao, aulaId, aula.dataHoraInicio.slice(0, 10))
+    await conexao.query({
+      sql: `UPDATE aulas
+            SET status = 'cancelada', atualizado_em = NOW()
+            WHERE id = ?`,
+      values: [aulaId],
+      timeout: TIMEOUT
+    })
+  }
+
+  registrarDecisao = async (aviso: AvisoDecisao, acao: AcaoDecisao): Promise<ResultadoDecisao> =>
+    executarTransacao(this.pool, async (conexao) => {
       const [aulas] = await conexao.query<RowDataPacket[]>({
         sql: 'SELECT local, status FROM aulas WHERE id = ? LIMIT 1 FOR UPDATE',
         values: [aviso.aulaId],
         timeout: TIMEOUT
       })
-      if (!aulas.length) {
-        await conexao.rollback()
-        return { registrada: false, estado: 'indisponivel', decisao: null }
-      }
+      if (!aulas.length) return { registrada: false, estado: 'indisponivel', decisao: null }
 
       const [inscricoes] = await conexao.query<RowDataPacket[]>({
         sql: `SELECT ia.status
@@ -268,23 +298,7 @@ export class DecisaoClimaRepositorio {
         aulaStatus: String(aulas[0].status ?? ''),
         inscricaoStatus: String(inscricoes[0]?.status ?? '')
       })
-      if (estado !== 'disponivel') {
-        const [anteriores] = await conexao.query<RowDataPacket[]>({
-          sql: `SELECT assunto, mensagem, criado_em
-                  FROM notificacoes
-                 WHERE tipo = 'chuva'
-                   AND canal = 'sistema'
-                   AND status = 'enviado'
-                   AND aula_id = ?
-                   AND assunto IN (?, ?)
-                 ORDER BY id DESC
-                 LIMIT 1`,
-          values: [aviso.aulaId, ASSUNTO_CANCELAR, ASSUNTO_MOVER],
-          timeout: TIMEOUT
-        })
-        await conexao.rollback()
-        return { registrada: false, estado, decisao: this.mapearDecisao(anteriores[0]) }
-      }
+      if (estado !== 'disponivel') return { registrada: false, estado, decisao: null }
 
       const [anteriores] = await conexao.query<RowDataPacket[]>({
         sql: `SELECT assunto, mensagem, criado_em
@@ -293,37 +307,18 @@ export class DecisaoClimaRepositorio {
                  AND canal = 'sistema'
                  AND status = 'enviado'
                  AND aula_id = ?
+                 AND usuario_id = ?
                  AND assunto IN (?, ?)
                ORDER BY id DESC
                LIMIT 1 FOR UPDATE`,
-        values: [aviso.aulaId, ASSUNTO_CANCELAR, ASSUNTO_MOVER],
+        values: [aviso.aulaId, aviso.usuarioId, ASSUNTO_CANCELAR, ASSUNTO_MOVER],
         timeout: TIMEOUT
       })
       const existente = this.mapearDecisao(anteriores[0])
-      if (existente) {
-        await conexao.rollback()
-        return { registrada: false, estado, decisao: existente }
-      }
+      if (existente) return { registrada: false, estado, decisao: existente }
 
-      const sqlAula =
-        acao === 'cancelar'
-          ? `UPDATE aulas
-                SET status = 'cancelada', atualizado_em = NOW()
-              WHERE id = ? AND local = 'externa'
-                AND status IN ('agendada', 'confirmada', 'remarcada')`
-          : `UPDATE aulas
-                SET local = 'interna', atualizado_em = NOW()
-              WHERE id = ? AND local = 'externa'
-                AND status IN ('agendada', 'confirmada', 'remarcada')`
-      const [atualizacao] = await conexao.query<ResultSetHeader>({
-        sql: sqlAula,
-        values: [aviso.aulaId],
-        timeout: TIMEOUT
-      })
-      if (atualizacao.affectedRows !== 1) {
-        await conexao.rollback()
-        return { registrada: false, estado: 'indisponivel', decisao: null }
-      }
+      if (acao === 'cancelar') await this.cancelarAula(conexao, aviso.aulaId)
+      else await this.moverParaAreaInterna(conexao, aviso.aulaId)
 
       const assunto = acao === 'cancelar' ? ASSUNTO_CANCELAR : ASSUNTO_MOVER
       const quando = dataHoraBr(aviso.dataHoraInicio)
@@ -332,7 +327,7 @@ export class DecisaoClimaRepositorio {
           ? `Aluno cancelou a aula "${aviso.titulo}" de ${quando}.`
           : `Aluno moveu a aula "${aviso.titulo}" de ${quando} para a área interna.`
 
-      const [insercao] = await conexao.query<ResultSetHeader>({
+      const [resultado] = await conexao.query<ResultSetHeader>({
         sql: `INSERT INTO notificacoes
           (usuario_id, aula_id, destinatario_email, tipo, canal, assunto, mensagem, status, erro, criado_em, enviado_em)
           SELECT ?, ?, ?, 'chuva', 'sistema', ?, ?, 'enviado', NULL, NOW(), NOW()
@@ -343,6 +338,7 @@ export class DecisaoClimaRepositorio {
                AND n.canal = 'sistema'
                AND n.status = 'enviado'
                AND n.aula_id = ?
+               AND n.usuario_id = ?
                AND n.assunto IN (?, ?)
           )`,
         values: [
@@ -352,29 +348,23 @@ export class DecisaoClimaRepositorio {
           assunto,
           mensagem,
           aviso.aulaId,
+          aviso.usuarioId,
           ASSUNTO_CANCELAR,
           ASSUNTO_MOVER
         ],
         timeout: TIMEOUT
       })
-      if (insercao.affectedRows !== 1) {
-        await conexao.rollback()
+
+      if (resultado.affectedRows !== 1) {
         return { registrada: false, estado, decisao: existente }
       }
 
-      await conexao.commit()
       return {
         registrada: true,
         estado,
         decisao: { acao, assunto, mensagem, criadoEm: new Date().toISOString() }
       }
-    } catch (erro) {
-      await conexao.rollback().catch(() => undefined)
-      throw erro
-    } finally {
-      conexao.release()
-    }
-  }
+    })
 }
 
 type Resposta = {
@@ -440,8 +430,8 @@ export class ServidorDecisaoClima {
     .selo { display: inline-block; padding: 3px 10px; border-radius: 999px; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; font-size: 12px; font-weight: 700; }
     .acoes { display: grid; gap: 10px; margin-top: 20px; }
     button { padding: 12px 16px; font: inherit; font-weight: 700; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer; }
-    .mover { background: #10b981; border-color: #10b981; color: #fff; }
     .cancelar { background: #fff; color: #b91c1c; border-color: #fecaca; }
+    .mover { background: #10b981; border-color: #10b981; color: #fff; }
     .nota { margin-top: 16px; font-size: 12px; color: #6b7280; }
     .erro { color: #b91c1c; font-weight: 600; }
   </style>
@@ -489,7 +479,7 @@ export class ServidorDecisaoClima {
       }
 
       if (requisicao.method === 'POST' && (acao === 'cancelar' || acao === 'mover')) {
-        this.responder(resposta, await this.decidir(id, acao))
+        this.responder(resposta, await this.decidir(id, token, acao))
         return
       }
 
@@ -520,14 +510,15 @@ export class ServidorDecisaoClima {
       return { ...this.paginaErro('Este aviso não está mais disponível.'), status: 404 }
     }
 
+    const localAtual = aviso.local === 'interna' ? 'área interna' : 'área externa'
     const detalhe = `<p><strong>${escaparHtml(aviso.titulo)}</strong><br>${escaparHtml(
       dataHoraBr(aviso.dataHoraInicio)
-    )}</p>`
+    )}</p><p>Local atual: ${escaparHtml(localAtual)}.</p>`
 
     const estado = estadoDaAula(aviso)
     if (estado !== 'disponivel') return this.paginaIndisponivel(estado, detalhe)
 
-    const decisao = await this.repositorio.obterDecisao(aviso.aulaId)
+    const decisao = await this.repositorio.obterDecisao(aviso.aulaId, aviso.usuarioId)
     if (decisao) {
       return {
         status: 200,
@@ -550,16 +541,16 @@ export class ServidorDecisaoClima {
            <form method="post" action="/clima/${id}/cancelar?t=${tokenUrl}">
              <button type="submit" class="cancelar">Cancelar a aula</button>
            </form>
-           <form method="post" action="/clima/${id}/mover?t=${tokenUrl}">
-             <button type="submit" class="mover">Mover para a área interna</button>
-           </form>
+            <form method="post" action="/clima/${id}/mover?t=${tokenUrl}">
+              <button type="submit" class="mover">Mover para a área interna</button>
+            </form>
          </div>
          <p class="nota">Se você não responder, a aula permanece como está.</p>`
       )
     }
   }
 
-  private decidir = async (id: number, acao: AcaoDecisao): Promise<Resposta> => {
+  private decidir = async (id: number, token: string, acao: AcaoDecisao): Promise<Resposta> => {
     const aviso = await this.repositorio.obterAviso(id)
     if (!aviso) {
       return { ...this.paginaErro('Este aviso não está mais disponível.'), status: 404 }
@@ -572,7 +563,7 @@ export class ServidorDecisaoClima {
     if (!resultado.registrada) {
       if (resultado.estado !== 'disponivel') return this.paginaIndisponivel(resultado.estado)
 
-      const decisao = resultado.decisao ?? (await this.repositorio.obterDecisao(aviso.aulaId))
+      const decisao = resultado.decisao ?? (await this.repositorio.obterDecisao(aviso.aulaId, aviso.usuarioId))
       return {
         status: 200,
         html: this.pagina(
@@ -582,8 +573,7 @@ export class ServidorDecisaoClima {
       }
     }
 
-    const mensagem =
-      acao === 'cancelar' ? 'A aula foi cancelada.' : 'A aula foi movida para a área interna.'
+    const mensagem = acao === 'cancelar' ? 'A aula foi cancelada.' : 'A aula foi movida para a área interna.'
     return {
       status: 200,
       html: this.pagina('Decisão registrada', `<p>${escaparHtml(mensagem)}</p>`)

@@ -66,7 +66,7 @@ A tela **Gerenciar Bot** consulta a previsão do tempo para o dia seguinte usand
 - Ao ativar o bot, ele verifica a previsão no intervalo escolhido (5 minutos a 24 horas) e também faz uma verificação ao iniciar a aplicação.
 - Se houver previsão de chuva, o bot envia e-mail para todos os alunos ativos com e-mail cadastrado e também exibe uma notificação do sistema avisando do risco.
 - O e-mail inclui um link de decisão para o aluno escolher entre cancelar a aula e movê-la para a área interna; a resposta é validada e registrada pelo servidor local do bot.
-- Cancelar muda o status da aula para `cancelada`; mover muda o local para `interna`. A decisão é única por turma, aulas já canceladas ou movidas não aceitam nova resposta e nenhum dado é excluído.
+- Cancelar muda o status da aula para `cancelada`; mover muda o local para `interna`. A decisão é única por aluno e turma, aulas já canceladas ou movidas não aceitam nova resposta e nenhum dado é excluído.
 - Sem previsão de chuva, nenhuma mensagem é enviada.
 - A tela também permite verificar o clima manualmente e mostra o histórico de avisos enviados, com a quantidade de e-mails entregues e eventuais falhas.
 
