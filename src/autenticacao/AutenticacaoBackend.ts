@@ -24,8 +24,11 @@ export class Senha {
 
   verificar = async (senha: string, armazenado: string): Promise<boolean> => {
     try {
-      const [algoritmo, salHex, hashHex] = armazenado.split(':')
-      if (algoritmo !== 'scrypt' || !salHex || !hashHex) return false
+      const partes = armazenado.split(':')
+      if (partes.length !== 3) return false
+      const [algoritmo, salHex, hashHex] = partes
+      if (algoritmo !== 'scrypt') return false
+      if (!/^[0-9a-f]{32}$/i.test(salHex) || !/^[0-9a-f]{128}$/i.test(hashHex)) return false
 
       const esperado = Buffer.from(hashHex, 'hex')
       const calculado = await this.derivar(senha, Buffer.from(salHex, 'hex'), esperado.length)
@@ -190,6 +193,7 @@ export class AutenticacaoIpc {
     registrarCanal('auth:me', () => this.sessao.usuario())
 
     registrarCanal('auth:sair', () => {
+      this.sessao.exigir()
       this.sessao.encerrar()
       setImmediate(this.aoSair)
     })
