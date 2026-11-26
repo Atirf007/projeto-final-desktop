@@ -567,6 +567,43 @@
     :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
     :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
     :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
+    #bloco-clima {
+      padding: var(--esp-4);
+      color: var(--cinza-800);
+      background: var(--verde-50);
+      border: 1px solid var(--verde-200);
+      border-left: 5px solid var(--verde-500);
+      border-radius: var(--raio-card);
+    }
+    #bloco-clima h3 { margin: 0 0 var(--esp-2); color: var(--verde-700); }
+    #bloco-clima .msg-info {
+      margin: 0;
+      color: var(--cinza-700);
+      background: var(--branco);
+      border: 1px solid var(--verde-200);
+      border-radius: var(--raio-controle);
+    }
+    #bloco-clima .msg-info.aviso {
+      color: var(--alerta);
+      background: var(--alerta-suave);
+      border-color: var(--alerta-borda);
+      border-left: 4px solid var(--alerta);
+      font-weight: 600;
+    }
+    #bloco-clima .msg-info.aviso::before { content: "⚠ "; }
+    #bloco-clima .msg-info.sucesso {
+      color: var(--verde-700);
+      background: var(--verde-50);
+      border-color: var(--verde-200);
+      border-left: 4px solid var(--verde-600);
+    }
+    #bloco-clima .msg-info.sucesso::before { content: "✓ "; }
+    #bloco-clima .msg-info.erro {
+      color: var(--erro);
+      background: var(--erro-suave);
+      border-color: var(--erro-borda);
+      border-left: 4px solid var(--erro);
+    }
   </style>
 </head>
 <body>

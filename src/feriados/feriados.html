@@ -110,15 +110,24 @@
     .col-data small { display: block; font-size: 12px; color: var(--primaria-500); text-transform: capitalize; }
     .col-nome { font-weight: 600; color: var(--primaria-800); }
     .selo { display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 999px; white-space: nowrap; color: var(--primaria-600); background: var(--cinza-100); }
-    .selo.nacional { color: var(--secundaria-hover); background: var(--secundaria-suave); border: 1px solid var(--secundaria-borda); }
     .vazio { padding: 20px 14px; text-align: center; color: var(--primaria-500); font-size: 13px; }
     #resumo { margin: 16px 0 0; font-size: 13px; font-weight: 600; color: var(--primaria-600); }
     #status { margin: 6px 0 0; font-size: 13px; color: var(--primaria-500); min-height: 20px; }
     #status.erro { color: var(--erro); }
     .resultado { margin-top: 16px; padding: 14px 16px; font-size: 14px; color: var(--primaria-600); background: var(--bg-pagina); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); }
-    .resultado.encontrado { color: var(--secundaria-hover); background: var(--secundaria-suave); border-color: var(--secundaria-borda); font-weight: 600; }
-    .resultado.erro { color: var(--erro); background: #fef2f2; }
+    .resultado.erro { color: var(--erro); background: var(--erro-suave); }
     @media (max-width: 720px) { main { padding: 20px; } .filtros { align-items: stretch; } }
+    .resultado.encontrado {
+      padding: var(--esp-4);
+      color: var(--alerta);
+      background: var(--alerta-suave);
+      border: 1px solid var(--alerta-borda);
+      border-left: 5px solid var(--alerta);
+      border-radius: var(--raio-controle);
+      font-weight: 700;
+    }
+    .resultado.encontrado::before { content: "📅 "; }
+    .selo.nacional { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
   </style>
 </head>
 <body>

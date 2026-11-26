@@ -828,6 +828,20 @@
     :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
     :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
     :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
+    .alerta-inadimplencia {
+      padding: 16px 18px;
+      color: var(--erro);
+      background: var(--erro-suave);
+      border: 1px solid var(--erro-borda);
+      border-left: 6px solid var(--erro);
+      box-shadow: 0 8px 20px -14px rgba(185, 28, 28, 0.75);
+    }
+    .alerta-topo strong { color: var(--erro); }
+    .alerta-topo strong::before { content: "⚠ "; }
+    .alerta-topo span { color: var(--cinza-700); }
+    .alerta-inadimplencia summary { color: var(--erro); }
+    .alerta-inadimplencia summary:focus-visible { outline: 3px solid var(--erro); outline-offset: 3px; border-radius: 4px; }
+    .alerta-inadimplencia li { margin-top: var(--esp-1); color: var(--cinza-700); }
   </style>
 </head>
 <body>
