@@ -351,6 +351,23 @@
 
     #status { margin: 16px 0 0; font-size: 13px; color: var(--erro); }
 
+    .alerta-inadimplencia {
+      margin-bottom: 20px;
+      padding: 14px 16px;
+      color: #7c2d12;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-left: 4px solid #ea580c;
+      border-radius: 12px;
+    }
+
+    .alerta-topo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; }
+    .alerta-topo strong { font-size: 14px; color: #9a3412; }
+    .alerta-topo span { font-size: 12px; color: #7c2d12; }
+    .alerta-inadimplencia details { margin-top: 8px; }
+    .alerta-inadimplencia summary { font-size: 12px; font-weight: 700; color: #9a3412; cursor: pointer; }
+    .alerta-inadimplencia ul { margin: 8px 0 0; padding-left: 20px; font-size: 12px; }
+
     @media (max-width: 720px) {
       main { padding: 20px; }
       .conta { margin-left: 0; width: 100%; justify-content: space-between; }
@@ -868,6 +885,7 @@
         <span>módulos disponíveis</span>
       </div>
     </section>
+    <section id="alerta-inadimplencia" class="alerta-inadimplencia" hidden></section>
     <section id="opcoes"></section>
     <p id="status" role="alert"></p>
   </main>

@@ -7,6 +7,7 @@ import { AulaIpc } from './aulas/AulaBackend'
 import { AvaliacaoIpc } from './avaliacoes/AvaliacaoBackend'
 import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/AutenticacaoBackend'
 import { FuncionarioIpc, ModalidadeIpc } from './funcionarios/FuncionarioBackend'
+import { InadimplenciaIpc } from './inadimplencia/InadimplenciaBackend'
 import { LancamentoIpc } from './lancamentos/LancamentoBackend'
 import { CepIpc } from './integracoes/CepBackend'
 import { ClimaIpc } from './integracoes/ClimaBackend'
@@ -185,6 +186,7 @@ class Aplicacao {
     new PlanoIpc(this.sessao).registrar()
     new AssinaturaIpc(this.sessao).registrar()
     new PagamentoIpc(this.sessao).registrar()
+    new InadimplenciaIpc(this.sessao).registrar()
     new LancamentoIpc(this.sessao).registrar()
     new VisitanteIpc(this.sessao).registrar()
     new NotificacaoIpc(this.sessao, botVencimento, notificacaoServico).registrar()
