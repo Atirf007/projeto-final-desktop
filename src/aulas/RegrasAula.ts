@@ -110,6 +110,9 @@ export class RegrasAulaService {
     const nome = normalizarTexto(dados.nome)
     const telefone = normalizarTelefone(dados.telefone)
     const email = normalizarTexto(dados.email ?? '')
+    const temTelefone = telefone.length > 0
+    const temEmail = email.length > 0
+    const usarNome = !temTelefone && !temEmail
     const ignorar = dados.ignorarVisitanteId ?? 0
     const aulaId = dados.aulaId ?? 0
 
@@ -118,13 +121,23 @@ export class RegrasAulaService {
               FROM visitantes v
              WHERE v.data_visita = ?
                AND v.id <> ?
+               AND v.status <> 'cancelado'
                AND (
-                 REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(v.telefone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '') = ?
-                 OR (v.email IS NOT NULL AND LOWER(TRIM(v.email)) = ?)
-                 OR LOWER(TRIM(v.nome)) = ?
+                 (? = 1 AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(v.telefone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '') = ?)
+                 OR (? = 1 AND v.email IS NOT NULL AND LOWER(TRIM(v.email)) = ?)
+                 OR (? = 1 AND LOWER(TRIM(v.nome)) = ?)
                )
              LIMIT 1`,
-      values: [dados.dataVisita, ignorar, telefone, email, nome],
+      values: [
+        dados.dataVisita,
+        ignorar,
+        temTelefone ? 1 : 0,
+        telefone,
+        temEmail ? 1 : 0,
+        email,
+        usarNome ? 1 : 0,
+        nome
+      ],
       timeout: TIMEOUT
     })
     if (duplicados.length) throw new ErroAula(MENSAGEM_VISITANTE_DIA)
@@ -135,12 +148,12 @@ export class RegrasAulaService {
               INNER JOIN usuarios u ON u.id = al.usuario_id
              WHERE al.ativo = 1
                AND (
-                 REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(al.telefone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '') = ?
-                 OR LOWER(TRIM(u.email)) = ?
-                 OR LOWER(TRIM(u.nome)) = ?
+                 (? = 1 AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(al.telefone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '') = ?)
+                 OR (? = 1 AND LOWER(TRIM(u.email)) = ?)
+                 OR (? = 1 AND LOWER(TRIM(u.nome)) = ?)
                )
              LIMIT 10`,
-      values: [telefone, email, nome],
+      values: [temTelefone ? 1 : 0, telefone, temEmail ? 1 : 0, email, usarNome ? 1 : 0, nome],
       timeout: TIMEOUT
     })
 
