@@ -14,7 +14,14 @@ export class BancoErros {
       if (/planos\.nome/i.test(detalhe)) return 'Já existe um plano com este nome.'
       if (/alunos\.usuario_id|usuario_id/i.test(detalhe)) return 'Este usuário já está vinculado a um aluno.'
       if (/usuarios\.email|\bemail\b/i.test(detalhe)) return 'Já existe um usuário com este e-mail.'
+      if (/assinatura_competencia|pagamentos/i.test(detalhe)) return 'Já existe um pagamento para esta assinatura e competência.'
+      if (/uk_aluno_data|presencas/i.test(detalhe)) return 'Já existe uma presença registrada para este aluno nesta data.'
+      if (/uk_aula_aluno|inscricoes_aula/i.test(detalhe)) return 'Este aluno já está inscrito nesta aula.'
       return 'Já existe um registro com estes dados.'
+    }
+
+    if (codigo === 'ER_NO_REFERENCED_ROW_2' || codigo === 'ER_NO_REFERENCED_ROW') {
+      return 'O registro vinculado não foi encontrado. Verifique a seleção e tente novamente.'
     }
 
     if (codigo === 'ER_RECORD_FILE_FULL' || /is full/i.test(detalhe)) {

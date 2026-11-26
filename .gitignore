@@ -1,12 +1,50 @@
-node_modules
-dist
-electron-dist
-electron-win32-x64.zip
+# Dependências
+node_modules/
+
+# Build e artefatos empacotados
+dist/
+build/
+out/
+release/
+electron-dist/
+*.tsbuildinfo
+*.zip
+
+# Variáveis de ambiente e segredos
+# Ignora .env e variantes (.env.local, .env.save, .env.production etc.),
+# mas mantém o modelo versionado .env.example.
 .env
-.env.local
-.env.*.local
-.env.development
-.env.production
-.env.test
-.env.staging
-.env.save
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Logs e cobertura de testes
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temporários de merge/edição
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# Dumps e backups de banco (o schema versionado database/schema.sql é mantido)
+*.dump
+*.sql.gz
+dump-*.sql
+backup-*.sql
+*-backup.sql

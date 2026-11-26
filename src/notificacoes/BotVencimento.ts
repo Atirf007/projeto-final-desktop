@@ -121,8 +121,10 @@ export class BotVencimentoServico implements AgendadorVencimento {
       await this.pagamentos.marcarAtrasados()
       const resultado = await this.servico.enviarVencimentos(this.diasAntes)
       this.ultimoResultado = resultado
-      this.ultimaExecucaoEm = new Date().toISOString()
-      this.salvar()
+      if (resultado.configurado) {
+        this.ultimaExecucaoEm = new Date().toISOString()
+        this.salvar()
+      }
     } catch (erro) {
       console.error('[bot-vencimento]', erro)
       this.ultimoResultado = {

@@ -83,7 +83,8 @@ export class FeriadoCliente {
       const resultado: ResultadoFeriados = { ok: true, ano, feriados }
       this.cache.set(ano, { expiraEm: Date.now() + this.ttlMs, valor: resultado })
       return resultado
-    } catch {
+    } catch (erro) {
+      console.error('[brasilapi] falha ao consultar feriados:', erro)
       return { ok: false, mensagem: 'Não foi possível consultar os feriados. Verifique a conexão com a internet.' }
     }
   }
@@ -114,7 +115,7 @@ export class FeriadosIpc {
     })
 
     registrarCanal('feriados:verificar', async (_evento, entrada: unknown): Promise<ResultadoFeriado> => {
-      this.sessao.exigir(['admin', 'instrutor'])
+      this.sessao.exigir()
       const data = typeof entrada === 'object' && entrada !== null ? (entrada as { data?: unknown }).data : entrada
       if (typeof data !== 'string') return { ok: false, mensagem: 'Informe a data.' }
       return this.cliente.verificar(data)

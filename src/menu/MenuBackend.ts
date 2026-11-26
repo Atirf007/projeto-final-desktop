@@ -6,18 +6,23 @@ type Opcao = { id: string; titulo: string; descricao: string; grupo: string; per
 
 export class MenuIpc {
   private readonly opcoes: Opcao[] = [
-    { id: 'usuarios', titulo: 'Usuários', descricao: 'Cadastro e consulta de usuários', grupo: 'Cadastros', perfis: ['admin'] },
+    { id: 'relatorios', titulo: 'Relatórios', descricao: 'Receitas por categoria, mensal e anual', grupo: 'Ferramentas', perfis: ['admin'] },
+    { id: 'bot', titulo: 'Gerenciar Bot', descricao: 'Automação de avisos por clima', grupo: 'Ferramentas', perfis: ['admin', 'instrutor'] },
     { id: 'funcionarios', titulo: 'Funcionários', descricao: 'Instrutores e equipe', grupo: 'Cadastros', perfis: ['admin'] },
     { id: 'alunos', titulo: 'Alunos', descricao: 'Cadastro e consulta de alunos', grupo: 'Cadastros', perfis: ['admin', 'instrutor'] },
-    { id: 'planos', titulo: 'Planos e assinaturas', descricao: 'Planos contratados pelos alunos', grupo: 'Cadastros', perfis: ['admin'] },
-    { id: 'aulas', titulo: 'Aulas', descricao: 'Agenda, inscrições e presenças', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
+    { id: 'aulas', titulo: 'Aulas', descricao: 'Agenda, inscrições e presenças', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor', 'aluno'] },
+    { id: 'presencas', titulo: 'Presenças', descricao: 'Registros de presença dos alunos', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
+    { id: 'inscricoes', titulo: 'Inscrições', descricao: 'Inscrições nas aulas e status', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
+    { id: 'feriados', titulo: 'Feriados', descricao: 'Calendário nacional da BrasilAPI', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
+    { id: 'exercicios', titulo: 'Biblioteca de exercícios', descricao: 'Catálogo Wger para treinos', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
     { id: 'avaliacoes', titulo: 'Avaliações físicas', descricao: 'Medidas, histórico e evolução dos alunos', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
+    { id: 'planos', titulo: 'Planos e assinaturas', descricao: 'Planos contratados pelos alunos', grupo: 'Cadastros', perfis: ['admin'] },
+    { id: 'pagamentos', titulo: 'Pagamentos', descricao: 'Mensalidades e cobranças', grupo: 'Cadastros', perfis: ['admin'] },
+    { id: 'lancamentos', titulo: 'Lançamentos', descricao: 'Receitas avulsas por categoria', grupo: 'Ferramentas', perfis: ['admin'] },
     { id: 'visitantes', titulo: 'Visitantes', descricao: 'Aulas experimentais e visitas', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
-    { id: 'pagamentos', titulo: 'Pagamentos', descricao: 'Mensalidades e cobranças', grupo: 'Rotina da academia', perfis: ['admin'] },
-    { id: 'lancamentos', titulo: 'Lançamentos', descricao: 'Receitas avulsas de aulas, aluguel e outros', grupo: 'Ferramentas', perfis: ['admin'] },
-    { id: 'relatorios', titulo: 'Relatórios', descricao: 'Receitas por categoria, mensal e anual', grupo: 'Ferramentas', perfis: ['admin'] },
     { id: 'notificacoes', titulo: 'Notificações', descricao: 'Histórico dos lembretes de vencimento', grupo: 'Ferramentas', perfis: ['admin'] },
-    { id: 'bot', titulo: 'Gerenciar Bot', descricao: 'Automação de avisos por clima', grupo: 'Ferramentas', perfis: ['admin'] }
+    { id: 'portal', titulo: 'Meu painel', descricao: 'Minhas medidas, frequência e avisos', grupo: 'Área do aluno', perfis: ['aluno'] },
+    { id: 'usuarios', titulo: 'Usuários', descricao: 'Cadastro e consulta de usuários', grupo: 'Cadastros', perfis: ['admin'] }
   ]
 
   constructor(
@@ -28,7 +33,7 @@ export class MenuIpc {
 
   registrar = (): void => {
     registrarCanal('menu:carregar', () => {
-      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      const usuario = this.sessao.exigir()
 
       return {
         nome: usuario.nome,
@@ -40,7 +45,7 @@ export class MenuIpc {
     })
 
     registrarCanal('menu:abrir', (_evento, id: unknown): boolean => {
-      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      const usuario = this.sessao.exigir()
       const opcao = this.opcoes.find((item) => item.id === id)
       if (!opcao || !opcao.perfis.includes(usuario.perfil)) throw new Error('Acesso negado')
 
@@ -52,7 +57,7 @@ export class MenuIpc {
     })
 
     registrarCanal('menu:voltar', (evento): void => {
-      this.sessao.exigir(['admin', 'instrutor'])
+      this.sessao.exigir()
 
       const origem = BrowserWindow.fromWebContents(evento.sender)
       setImmediate(() => this.aoVoltar(origem))

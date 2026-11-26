@@ -31,6 +31,22 @@ export type FiltroNotificacoes = {
   busca?: string
 }
 
+export type NotificacaoInput = {
+  id?: number
+  usuarioId?: number | null
+  aulaId?: number | null
+  pagamentoId?: number | null
+  destinatarioEmail: string
+  tipo: TipoNotificacao
+  canal: 'email' | 'sistema'
+  assunto: string
+  mensagem: string
+  status: StatusNotificacao
+  erro?: string | null
+}
+
+export type ResultadoNotificacao = { ok: true; id: number } | { ok: false; mensagem: string }
+
 export type FalhaNotificacao = {
   notificacaoId: number
   email: string
@@ -169,7 +185,7 @@ class NotificacaoRepository {
     destinatarioEmail: string
     assunto: string
     mensagem: string
-    canal: 'email' | 'sistema'
+    canal?: 'email' | 'sistema'
     statusInicial?: StatusNotificacao
   }): Promise<number> => {
     const [resultado] = await this.pool.query<ResultSetHeader>({
@@ -180,7 +196,7 @@ class NotificacaoRepository {
         dados.usuarioId,
         dados.pagamentoId,
         dados.destinatarioEmail,
-        dados.canal,
+        dados.canal ?? 'email',
         dados.assunto,
         dados.mensagem,
         dados.statusInicial ?? 'pendente'
@@ -198,6 +214,61 @@ class NotificacaoRepository {
       values: [status, erro ? erro.slice(0, 255) : null, status, id],
       timeout: TIMEOUT
     })
+  }
+
+  criarManual = async (dados: NotificacaoInput): Promise<number> => {
+    const [resultado] = await this.pool.query<ResultSetHeader>({
+      sql: `INSERT INTO notificacoes
+            (usuario_id, aula_id, pagamento_id, destinatario_email, tipo, canal,
+             assunto, mensagem, status, erro, enviado_em, criado_em)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'enviado' THEN NOW() ELSE NULL END, NOW())`,
+      values: [
+        dados.usuarioId ?? null,
+        dados.aulaId ?? null,
+        dados.pagamentoId ?? null,
+        dados.destinatarioEmail,
+        dados.tipo,
+        dados.canal,
+        dados.assunto,
+        dados.mensagem,
+        dados.status,
+        dados.erro ?? null,
+        dados.status
+      ],
+      timeout: TIMEOUT
+    })
+    return Number(resultado.insertId)
+  }
+
+  atualizarManual = async (dados: NotificacaoInput): Promise<boolean> => {
+    const [resultado] = await this.pool.query<ResultSetHeader>({
+      sql: `UPDATE notificacoes
+            SET usuario_id = ?, aula_id = ?, pagamento_id = ?, destinatario_email = ?,
+                tipo = ?, canal = ?, assunto = ?, mensagem = ?, status = ?, erro = ?,
+                enviado_em = CASE
+                  WHEN ? = 'enviado' AND enviado_em IS NULL THEN NOW()
+                  WHEN ? = 'enviado' THEN enviado_em
+                  ELSE NULL
+                END
+            WHERE id = ?`,
+      values: [
+        dados.usuarioId ?? null,
+        dados.aulaId ?? null,
+        dados.pagamentoId ?? null,
+        dados.destinatarioEmail,
+        dados.tipo,
+        dados.canal,
+        dados.assunto,
+        dados.mensagem,
+        dados.status,
+        dados.erro ?? null,
+        dados.status,
+        dados.status,
+        dados.id
+      ],
+      timeout: TIMEOUT
+    })
+    return resultado.affectedRows > 0
   }
 
   obter = async (id: number): Promise<Notificacao | null> => {
@@ -314,6 +385,12 @@ export class NotificacaoServico {
 
   excluir = async (id: number): Promise<boolean> => this.repositorio.excluir(id)
 
+  obter = async (id: number): Promise<Notificacao | null> => this.repositorio.obter(id)
+
+  criarManual = async (dados: NotificacaoInput): Promise<number> => this.repositorio.criarManual(dados)
+
+  atualizarManual = async (dados: NotificacaoInput): Promise<boolean> => this.repositorio.atualizarManual(dados)
+
   enviarVencimentos = async (diasAntes = DIAS_ANTES_PADRAO): Promise<ResultadoEnvioVencimentos> => {
     const dias = Math.min(60, Math.max(1, Math.round(diasAntes)))
     const emailConfigurado = this.email.configurado()
@@ -332,6 +409,7 @@ export class NotificacaoServico {
       }
 
       const destinatario = emailValido ? email : 'Aviso interno'
+
       const competencia = competenciaBr(pagamento.competencia)
       const assunto = `Lembrete de vencimento — ${pagamento.planoNome} (${competencia})`
       const situacao = pagamento.statusPagamento === 'atrasado' ? 'em atraso' : 'em aberto'
@@ -416,6 +494,73 @@ class NotificacaoValidador {
     return filtro
   }
 
+  private canal(valor: unknown): 'email' | 'sistema' | null {
+    return valor === 'email' || valor === 'sistema' ? valor : null
+  }
+
+  validar(entrada: unknown): { ok: true; dados: NotificacaoInput } | { ok: false; mensagem: string } {
+    if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
+    const e = entrada as Record<string, unknown>
+
+    let id: number | undefined
+    if (e.id !== undefined) {
+      const idValido = this.id(e.id)
+      if (idValido === null) return { ok: false, mensagem: 'Notificação inválida.' }
+      id = idValido
+    }
+
+    const opcional = (valor: unknown): number | null | undefined => {
+      if (valor === undefined || valor === null || valor === '') return null
+      return this.id(valor)
+    }
+    const usuarioId = opcional(e.usuarioId)
+    const aulaId = opcional(e.aulaId)
+    const pagamentoId = opcional(e.pagamentoId)
+    if ([usuarioId, aulaId, pagamentoId].some((valor) => valor !== null && !this.id(valor))) {
+      return { ok: false, mensagem: 'Referência inválida.' }
+    }
+
+    const destinatarioEmail = typeof e.destinatarioEmail === 'string' ? e.destinatarioEmail.trim().toLowerCase() : ''
+    if (!EMAIL_VALIDO.test(destinatarioEmail) || destinatarioEmail.length > 160) {
+      return { ok: false, mensagem: 'Informe um e-mail válido.' }
+    }
+    if (typeof e.tipo !== 'string' || !TIPOS.includes(e.tipo as TipoNotificacao)) {
+      return { ok: false, mensagem: 'Selecione um tipo válido.' }
+    }
+    const canal = this.canal(e.canal)
+    if (!canal) return { ok: false, mensagem: 'Selecione um canal válido.' }
+
+    const assunto = typeof e.assunto === 'string' ? e.assunto.trim() : ''
+    if (assunto.length < 3 || assunto.length > 160) {
+      return { ok: false, mensagem: 'Informe um assunto com 3 a 160 caracteres.' }
+    }
+    const mensagem = typeof e.mensagem === 'string' ? e.mensagem.trim() : ''
+    if (!mensagem || mensagem.length > 4000) {
+      return { ok: false, mensagem: 'Informe a mensagem com até 4000 caracteres.' }
+    }
+    if (typeof e.status !== 'string' || !STATUS.includes(e.status as StatusNotificacao)) {
+      return { ok: false, mensagem: 'Selecione um status válido.' }
+    }
+    const erro = typeof e.erro === 'string' ? e.erro.trim().slice(0, 255) || null : null
+
+    return {
+      ok: true,
+      dados: {
+        id,
+        usuarioId,
+        aulaId,
+        pagamentoId,
+        destinatarioEmail,
+        tipo: e.tipo as TipoNotificacao,
+        canal,
+        assunto,
+        mensagem,
+        status: e.status as StatusNotificacao,
+        erro
+      }
+    }
+  }
+
   idValido(valor: unknown): number | null {
     return this.id(valor)
   }
@@ -435,10 +580,48 @@ export class NotificacaoIpc {
     return { ok: false, mensagem: BancoErros.mensagem(erro, padrao) }
   }
 
+  private erroCadastro = (contexto: string, erro: unknown, padrao: string): ResultadoNotificacao => {
+    console.error(`[${contexto}]`, erro)
+    return { ok: false, mensagem: BancoErros.mensagem(erro, padrao) }
+  }
+
   registrar = (): void => {
     registrarCanal('notificacoes:listar', async (_evento, entrada: unknown): Promise<Notificacao[]> => {
       this.sessao.exigir(['admin'])
       return this.servico.listar(this.validador.filtro(entrada))
+    })
+
+    registrarCanal('notificacoes:obter', async (_evento, entrada: unknown): Promise<Notificacao | null> => {
+      this.sessao.exigir(['admin'])
+      const id = this.validador.idValido(entrada)
+      if (id === null) throw new Error('Notificação inválida.')
+      return this.servico.obter(id)
+    })
+
+    registrarCanal('notificacoes:criar', async (_evento, entrada: unknown): Promise<ResultadoNotificacao> => {
+      this.sessao.exigir(['admin'])
+      const v = this.validador.validar(entrada)
+      if (!v.ok) return v
+      try {
+        const id = await this.servico.criarManual(v.dados)
+        return { ok: true, id }
+      } catch (erro) {
+        return this.erroCadastro('notificacoes:criar', erro, 'Não foi possível criar a notificação.')
+      }
+    })
+
+    registrarCanal('notificacoes:atualizar', async (_evento, entrada: unknown): Promise<ResultadoNotificacao> => {
+      this.sessao.exigir(['admin'])
+      const v = this.validador.validar(entrada)
+      if (!v.ok) return v
+      if (v.dados.id === undefined) return { ok: false, mensagem: 'Notificação inválida.' }
+      try {
+        const ok = await this.servico.atualizarManual(v.dados)
+        if (!ok) return { ok: false, mensagem: 'Notificação não encontrada.' }
+        return { ok: true, id: v.dados.id }
+      } catch (erro) {
+        return this.erroCadastro('notificacoes:atualizar', erro, 'Não foi possível atualizar a notificação.')
+      }
     })
 
     registrarCanal('notificacoes:minhas', async (): Promise<Notificacao[]> => {

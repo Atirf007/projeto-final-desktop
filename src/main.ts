@@ -12,12 +12,13 @@ import { ClimaIpc } from './integracoes/ClimaBackend'
 import { FeriadosIpc } from './integracoes/FeriadosBackend'
 import { WgerIpc } from './integracoes/WgerBackend'
 import { BotClimaIpc, BotClimaServico } from './mensagens/BotClima'
+import { ServidorDecisaoClima } from './mensagens/DecisaoClima'
 import { MenuIpc } from './menu/MenuBackend'
 import { BotVencimentoServico } from './notificacoes/BotVencimento'
 import { NotificacaoIpc, NotificacaoServico } from './notificacoes/NotificacaoBackend'
 import { PagamentoIpc } from './pagamentos/PagamentoBackend'
 import { AssinaturaIpc, PlanoIpc } from './planos/PlanosBackend'
-import { PresencaResumoIpc } from './presencas/PresencaBackend'
+import { PresencaCrudIpc, PresencaResumoIpc } from './presencas/PresencaBackend'
 import { RelatorioIpc } from './relatorios/RelatorioBackend'
 import { UsuarioIpc } from './usuarios/UsuarioBackend'
 import { VisitanteIpc } from './visitantes/VisitanteBackend'
@@ -34,6 +35,10 @@ type Modulo =
   | 'visitantes'
   | 'avaliacoes'
   | 'notificacoes'
+  | 'presencas'
+  | 'inscricoes'
+  | 'feriados'
+  | 'exercicios'
   | 'portal'
   | 'bot'
 
@@ -41,7 +46,7 @@ const CSP = [
   "default-src 'none'",
   "script-src 'none'",
   "style-src 'unsafe-inline'",
-  "img-src 'self' data: file:",
+  "img-src 'self' data: file: https://wger.de",
   "font-src 'self'",
   "connect-src 'none'",
   "media-src 'none'",
@@ -91,6 +96,10 @@ class Aplicacao {
       visitantes: criarModulo('visitantes', 1280, 800),
       avaliacoes: criarModulo('avaliacoes', 1280, 820),
       notificacoes: criarModulo('notificacoes', 1280, 820),
+      presencas: criarModulo('presencas', 1280, 800),
+      inscricoes: criarModulo('inscricoes', 1280, 800),
+      feriados: criarModulo('feriados', 1100, 760),
+      exercicios: criarModulo('exercicios', 1200, 820),
       portal: criarModulo('portal', 1280, 900),
       bot: criarModulo('mensagens', 1000, 820)
     }
@@ -155,6 +164,7 @@ class Aplicacao {
 
   private registrarIpc = (
     botClima: BotClimaServico,
+    decisaoClima: ServidorDecisaoClima,
     notificacaoServico: NotificacaoServico,
     botVencimento: BotVencimentoServico
   ): void => {
@@ -168,6 +178,7 @@ class Aplicacao {
     new AulaIpc(this.sessao).registrar()
     new AvaliacaoIpc(this.sessao).registrar()
     new PresencaResumoIpc(this.sessao).registrar()
+    new PresencaCrudIpc(this.sessao).registrar()
     new PlanoIpc(this.sessao).registrar()
     new AssinaturaIpc(this.sessao).registrar()
     new PagamentoIpc(this.sessao).registrar()
@@ -193,16 +204,19 @@ class Aplicacao {
       this.configurarSeguranca()
 
       const botClima = new BotClimaServico()
+      const decisaoClima = new ServidorDecisaoClima()
       const notificacaoServico = new NotificacaoServico()
       const botVencimento = new BotVencimentoServico(notificacaoServico)
 
-      this.registrarIpc(botClima, notificacaoServico, botVencimento)
+      this.registrarIpc(botClima, decisaoClima, notificacaoServico, botVencimento)
       this.abrirInicial()
       botClima.iniciar()
+      decisaoClima.iniciar()
       botVencimento.iniciar()
 
       app.on('before-quit', () => {
         botClima.encerrar()
+        decisaoClima.encerrar()
         botVencimento.encerrar()
       })
       app.on('activate', this.abrirInicial)

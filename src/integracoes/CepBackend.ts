@@ -69,7 +69,7 @@ export class CepIpc {
 
   registrar = (): void => {
     registrarCanal('cep:buscar', async (_evento, entrada: unknown): Promise<ResultadoCep> => {
-      this.sessao.exigir(['admin', 'instrutor'])
+      this.sessao.exigir(['admin', 'instrutor', 'aluno'])
       const cep = typeof entrada === 'string' ? entrada : (entrada as { cep?: unknown } | null)?.cep
       if (typeof cep !== 'string') return { ok: false, mensagem: 'Informe o CEP.' }
       return this.cliente.buscar(cep)

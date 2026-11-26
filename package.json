@@ -13,7 +13,11 @@
     "criar-admin": "tsx scripts/criar-admin.ts",
     "criar-funcionario": "tsx scripts/criar-funcionario.ts",
     "start": "npm run build && electron .",
-    "testar-email": "npm run build && tsx scripts/testar-email.ts"
+    "testar-email": "npm run build && tsx scripts/testar-email.ts",
+    "testar-clima": "tsx scripts/testar-clima.ts",
+    "clima-servidor": "tsx scripts/clima-servidor.ts",
+    "preparar-teste-clima": "tsx scripts/preparar-teste-clima.ts",
+    "limpar-teste-clima": "tsx scripts/limpar-teste-clima.ts"
   },
   "dependencies": {
     "dotenv": "^18.0.9",

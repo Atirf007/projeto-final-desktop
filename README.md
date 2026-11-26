@@ -35,9 +35,9 @@ O seed é idempotente: pode ser reaplicado sem duplicar registros; ele atualiza 
 | Funcionário (`instrutor`) | `funcionario@cl205172.com` | `Funcionario@123456` |
 | Alunos | `aluno1@exemplo.com` a `aluno4@exemplo.com` | `Aluno@123456` |
 
-As senhas são gravadas como hash `scrypt`, no formato `scrypt:<sal>:<hash>`, compatível com `Senha.gerar` em `src/autenticacao/AutenticacaoBackend.ts`. O perfil **aluno** não entra no desktop; os usuários-aluno existem para popular assinaturas, presenças, avaliações e notificações de exemplo. Detalhes em `database/README.md`.
+As senhas são gravadas como hash `scrypt`, no formato `scrypt:<sal>:<hash>`, compatível com `Senha.gerar` em `src/autenticacao/AutenticacaoBackend.ts`. Os usuários-aluno entram no app em **Aulas** (para consultar a agenda e gerenciar apenas a própria reserva) e no **Meu painel**, sem acesso às telas de gestão. Detalhes em `database/README.md`.
 
-O `npm install` baixa o binário do Electron automaticamente. Caso o binário esteja ausente ou corrompido, o `npm start` executa `scripts/garantir-electron.js` e baixa novamente antes de abrir a aplicação.
+O `npm install` baixa o binário do Electron automaticamente. Caso o binário esteja ausente ou corrompido, o `npm start` executa `scripts/garantir-electron` e baixa novamente antes de abrir a aplicação.
 
 ## Tela inicial
 
@@ -53,9 +53,9 @@ O primeiro administrador precisa existir na tabela `usuarios`. A senha é guarda
 
 ## Permissões
 
-- **Administrador:** acessa todas as telas, incluindo Gerenciar Bot, Relatórios e Funcionários.
-- **Funcionário (`instrutor`):** acessa as telas de rotina (Alunos, Aulas, Avaliações e Visitantes); não acessa Gerenciar Bot, Relatórios, Funcionários, Usuários, Planos, Pagamentos, Notificações nem Meu painel.
-- **Aluno:** não entra no sistema — o login é recusado mesmo com e-mail e senha corretos.
+- **Administrador:** acessa todas as telas, incluindo Gerenciar Bot, Relatórios, Funcionários e Lançamentos.
+- **Funcionário (`instrutor`):** acessa as telas de rotina (Alunos, Aulas, Avaliações e Visitantes); não acessa Gerenciar Bot, Relatórios, Funcionários, Usuários, Planos, Pagamentos, Notificações nem Lançamentos.
+- **Aluno:** consulta a agenda em **Aulas**, inscreve-se ou cancela somente a própria reserva, e usa o **Meu painel** para consulta.
 
 As regras são aplicadas também nos canais IPC, no processo principal — esconder o botão no menu não é a única proteção.
 
@@ -65,6 +65,7 @@ A tela **Gerenciar Bot** consulta a previsão do tempo para o dia seguinte usand
 
 - Ao ativar o bot, ele verifica a previsão no intervalo escolhido (5 minutos a 24 horas) e também faz uma verificação ao iniciar a aplicação.
 - Se houver previsão de chuva, o bot envia e-mail para todos os alunos ativos com e-mail cadastrado e também exibe uma notificação do sistema avisando que a aula será realizada dentro da academia.
+- O e-mail inclui um link de decisão para o aluno confirmar se comparecerá à aula; a resposta é registrada pelo servidor local do bot.
 - Sem previsão de chuva, nenhuma mensagem é enviada.
 - A tela também permite verificar o clima manualmente e mostra o histórico de avisos enviados, com a quantidade de e-mails entregues e eventuais falhas.
 
@@ -103,7 +104,7 @@ O teste envia uma mensagem para o próprio `SMTP_USER`. Para enviar a outro ende
 npm run testar-email outro@email.com
 ```
 
-Dentro do aplicativo, abra **Gerenciar Bot** e clique em **Enviar e-mail de teste**. O destinatário vem de `SMTP_TESTE_DESTINATARIO` (ou de `SMTP_USER`, se não estiver definido). Neste projeto o destino do teste já está preenchido como `Tengpescarolo@gmail.com`; falta apenas a senha de app do Gmail em `SMTP_USER`, `SMTP_PASS` e `SMTP_FROM`.
+Dentro do aplicativo, abra **Gerenciar Bot** e clique em **Enviar e-mail de teste**. O destinatário vem de `SMTP_TESTE_DESTINATARIO` (ou de `SMTP_USER`, se não estiver definido).
 
 Outras observações:
 
@@ -111,7 +112,8 @@ Outras observações:
 - Se o servidor exigir STARTTLS obrigatório, use `SMTP_REQUIRE_TLS=true`.
 - Se o servidor usar certificado autoassinado, use `SMTP_TLS_REJECT_UNAUTHORIZED=false`.
 - Os destinatários são os alunos **ativos** (`alunos.ativo = 1`) com e-mail válido na tabela `usuarios`.
-- Sem `SMTP_HOST`, `SMTP_USER` e `SMTP_PASS`, o bot continua exibindo apenas a notificação do sistema e informa na tela que o e-mail não está configurado.
+- Sem SMTP configurado, o bot continua exibindo apenas a notificação do sistema e informa na tela que o e-mail não está configurado.
+- O botão **Enviar e-mail de teste** usa `SMTP_TESTE_DESTINATARIO` quando definido; caso contrário usa o próprio `SMTP_USER`.
 
 Configurações opcionais de clima no `.env`:
 
@@ -132,7 +134,7 @@ A tela **Notificações** é exclusiva do administrador e mostra o histórico do
 - São consideradas mensalidades pendentes ou atrasadas com vencimento nos próximos 7 dias (ou vencidas há até 30 dias).
 - Cada pagamento não recebe um novo lembrete enquanto houver um envio bem-sucedido nos últimos 7 dias.
 - Falhas ficam registradas com o motivo e são tentadas novamente no ciclo seguinte; não existe botão de envio ou reenvio manual.
-- Sem SMTP configurado, nenhuma notificação é registrada e a tela informa que o envio está desativado.
+- Sem SMTP configurado, os lembretes são registrados como notificações internas (`canal = sistema`), sem e-mail.
 
 ## Lançamentos
 
@@ -209,12 +211,22 @@ CSV e JSON usam exatamente os valores carregados para o período selecionado, in
 
 ## Portal do aluno
 
-Nesta versão o acesso é exclusivo de funcionários e administradores. O perfil **aluno** não consegue entrar e a opção **Meu painel** não aparece no menu.
-
-O código do portal permanece no projeto para uso futuro e, quando for liberado, mostrará somente para consulta:
+O perfil **aluno** vê a opção **Meu painel**, somente para consulta, com:
 
 - plano contratado e situação da assinatura;
 - frequência dos últimos 90 dias;
 - última avaliação física, gráfico de evolução do peso e histórico de medidas;
 - presenças recentes;
 - avisos recebidos, incluindo os lembretes de vencimento.
+
+O portal não permite editar dados cadastrais, medidas ou avisos.
+
+## Clima sem o Electron
+
+Para rodar o agendador do bot fora da janela do Electron:
+
+```
+npm run clima-servidor
+```
+
+Os scripts `preparar-teste-clima`, `testar-clima` e `limpar-teste-clima` permitem validar o envio e a decisão do aluno sem depender da interface.

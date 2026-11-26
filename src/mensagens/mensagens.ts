@@ -273,7 +273,7 @@ class BotView {
 
     if (previsao.janela) {
       cartao.append(
-        this.criar('span', 'nota-previsao', `Horário considerado na decisão: ${previsao.janela} (aula de amanhã).`)
+        this.criar('span', 'nota-previsao', `Horário considerado na decisão: ${previsao.janela} (aulas ao ar livre de amanhã).`)
       )
     }
 

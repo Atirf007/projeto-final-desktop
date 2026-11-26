@@ -32,6 +32,21 @@ export type InscricaoAula = {
   status: StatusInscricao
 }
 
+export type InscricaoDetalhe = InscricaoAula & {
+  aulaTitulo: string
+  dataHoraInicio: string
+}
+
+export type FiltroInscricoes = {
+  aulaId?: number
+  alunoId?: number
+  instrutorId?: number
+  status?: StatusInscricao
+  busca?: string
+}
+
+export type ResultadoInscricao = { ok: true; id: number } | { ok: false; mensagem: string }
+
 export type AulaDetalhe = Aula & {
   inscritos: InscricaoAula[]
 }
@@ -92,6 +107,7 @@ const textoOuNulo = (valor: unknown): string | null => (typeof valor === 'string
 const dataHoraBanco = (valor: unknown): string => String(valor ?? '')
 
 const STATUS_AULA: StatusAula[] = ['agendada', 'confirmada', 'cancelada', 'remarcada', 'concluida']
+const STATUS_INSCRICAO: StatusInscricao[] = ['confirmada', 'cancelada', 'presente', 'falta']
 const LOCAIS: LocalAula[] = ['interna', 'externa']
 
 class AulaValidador {
@@ -310,6 +326,12 @@ const mapearInscricao = (linha: RowDataPacket): InscricaoAula => ({
   status: String(linha.status) as StatusInscricao
 })
 
+const mapearInscricaoDetalhe = (linha: RowDataPacket): InscricaoDetalhe => ({
+  ...mapearInscricao(linha),
+  aulaTitulo: String(linha.aula_titulo ?? ''),
+  dataHoraInicio: dataHoraBanco(linha.data_hora_inicio)
+})
+
 class AulaRepository {
   private readonly pool = Banco.pool
 
@@ -387,6 +409,126 @@ class AulaRepository {
       timeout: TIMEOUT
     })
     return linhas.map(mapearInscricao)
+  }
+
+  private readonly camposInscricaoDetalhe = `
+    ia.id, ia.aula_id, ia.aluno_id, u.nome AS aluno_nome, ia.status,
+    a.titulo AS aula_titulo, a.data_hora_inicio`
+
+  listarInscricoesTodas = async (filtro: FiltroInscricoes): Promise<InscricaoDetalhe[]> => {
+    const condicoes: string[] = []
+    const valores: unknown[] = []
+    if (filtro.aulaId) {
+      condicoes.push('ia.aula_id = ?')
+      valores.push(filtro.aulaId)
+    }
+    if (filtro.alunoId) {
+      condicoes.push('ia.aluno_id = ?')
+      valores.push(filtro.alunoId)
+    }
+    if (filtro.instrutorId) {
+      condicoes.push('a.instrutor_id = ?')
+      valores.push(filtro.instrutorId)
+    }
+    if (filtro.status) {
+      condicoes.push('ia.status = ?')
+      valores.push(filtro.status)
+    }
+    if (filtro.busca) {
+      const termo = `%${filtro.busca.replace(/[\\%_]/g, '\\$&')}%`
+      condicoes.push('(u.nome LIKE ? OR a.titulo LIKE ?)')
+      valores.push(termo, termo)
+    }
+    const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
+    const [linhas] = await this.pool.query<RowDataPacket[]>({
+      sql: `SELECT ${this.camposInscricaoDetalhe}
+            FROM inscricoes_aula ia
+            INNER JOIN alunos al ON al.id = ia.aluno_id
+            INNER JOIN usuarios u ON u.id = al.usuario_id
+            INNER JOIN aulas a ON a.id = ia.aula_id
+            ${where}
+            ORDER BY a.data_hora_inicio DESC, u.nome ASC
+            LIMIT 500`,
+      values: valores,
+      timeout: TIMEOUT
+    })
+    return linhas.map(mapearInscricaoDetalhe)
+  }
+
+  obterInscricao = async (id: number): Promise<InscricaoDetalhe | null> => {
+    const [linhas] = await this.pool.query<RowDataPacket[]>({
+      sql: `SELECT ${this.camposInscricaoDetalhe}
+            FROM inscricoes_aula ia
+            INNER JOIN alunos al ON al.id = ia.aluno_id
+            INNER JOIN usuarios u ON u.id = al.usuario_id
+            INNER JOIN aulas a ON a.id = ia.aula_id
+            WHERE ia.id = ? LIMIT 1`,
+      values: [id],
+      timeout: TIMEOUT
+    })
+    return linhas.length ? mapearInscricaoDetalhe(linhas[0]) : null
+  }
+
+  atualizarStatusInscricao = async (id: number, status: StatusInscricao): Promise<boolean> => {
+    const conexao = await this.pool.getConnection()
+    try {
+      await conexao.beginTransaction()
+      const [linhas] = await conexao.query<RowDataPacket[]>({
+        sql: 'SELECT status FROM inscricoes_aula WHERE id = ? LIMIT 1 FOR UPDATE',
+        values: [id],
+        timeout: TIMEOUT
+      })
+      if (!linhas.length) {
+        await conexao.rollback()
+        return false
+      }
+      if (String(linhas[0].status) === 'presente' && status !== 'presente') {
+        throw new ErroAula('A presença já foi registrada; não é possível alterar o status desta inscrição.')
+      }
+      await conexao.query({
+        sql: 'UPDATE inscricoes_aula SET status = ?, atualizado_em = NOW() WHERE id = ?',
+        values: [status, id],
+        timeout: TIMEOUT
+      })
+      await conexao.commit()
+      return true
+    } catch (erro) {
+      await conexao.rollback().catch(() => undefined)
+      throw erro
+    } finally {
+      conexao.release()
+    }
+  }
+
+  excluirInscricao = async (id: number): Promise<boolean> => {
+    const conexao = await this.pool.getConnection()
+    try {
+      await conexao.beginTransaction()
+      const [linhas] = await conexao.query<RowDataPacket[]>({
+        sql: 'SELECT status FROM inscricoes_aula WHERE id = ? LIMIT 1 FOR UPDATE',
+        values: [id],
+        timeout: TIMEOUT
+      })
+      if (!linhas.length) {
+        await conexao.rollback()
+        return false
+      }
+      if (String(linhas[0].status) === 'presente') {
+        throw new ErroAula('Não é possível excluir uma inscrição com presença registrada.')
+      }
+      const [resultado] = await conexao.query<ResultSetHeader>({
+        sql: 'DELETE FROM inscricoes_aula WHERE id = ?',
+        values: [id],
+        timeout: TIMEOUT
+      })
+      await conexao.commit()
+      return resultado.affectedRows > 0
+    } catch (erro) {
+      await conexao.rollback().catch(() => undefined)
+      throw erro
+    } finally {
+      conexao.release()
+    }
   }
 
   minhas = async (alunoId: number): Promise<Aula[]> => {
@@ -596,7 +738,7 @@ class AulaRepository {
     try {
       await conexao.beginTransaction()
       const [aulas] = await conexao.query<RowDataPacket[]>({
-        sql: 'SELECT id, capacidade_max, status FROM aulas WHERE id = ? FOR UPDATE',
+        sql: 'SELECT id, capacidade_max, status, data_hora_inicio FROM aulas WHERE id = ? FOR UPDATE',
         values: [aulaId],
         timeout: TIMEOUT
       })
@@ -605,14 +747,30 @@ class AulaRepository {
       if (statusAula === 'cancelada' || statusAula === 'concluida') {
         throw new ErroAula('Esta aula não aceita novas inscrições.')
       }
+      const dataAula = dataHoraBanco(aulas[0].data_hora_inicio).slice(0, 10)
 
       const [alunos] = await conexao.query<RowDataPacket[]>({
-        sql: 'SELECT id, ativo FROM alunos WHERE id = ? LIMIT 1',
+        sql: 'SELECT id, ativo FROM alunos WHERE id = ? FOR UPDATE',
         values: [alunoId],
         timeout: TIMEOUT
       })
       if (!alunos.length) throw new ErroAula('Aluno não encontrado.')
       if (!alunos[0].ativo) throw new ErroAula('O aluno está inativo e não pode ser inscrito.')
+
+      const [mesmaData] = await conexao.query<RowDataPacket[]>({
+        sql: `SELECT ia.id
+              FROM inscricoes_aula ia
+              INNER JOIN aulas a ON a.id = ia.aula_id
+              WHERE ia.aluno_id = ? AND ia.aula_id <> ?
+                AND ia.status <> 'cancelada'
+                AND DATE(a.data_hora_inicio) = ?
+              LIMIT 1`,
+        values: [alunoId, aulaId, dataAula],
+        timeout: TIMEOUT
+      })
+      if (mesmaData.length) {
+        throw new ErroAula('O aluno já possui inscrição em outra aula nesta data. O limite é de uma aula por dia.')
+      }
 
       const [ocupacao] = await conexao.query<RowDataPacket[]>({
         sql: `SELECT COUNT(*) AS total FROM inscricoes_aula
@@ -832,16 +990,45 @@ export class AulaIpc {
     return { ok: false, mensagem: BancoErros.mensagem(erro, padrao) }
   }
 
+  private erroInscricao = (contexto: string, erro: unknown, padrao: string): ResultadoInscricao => {
+    if (erro instanceof ErroAula) return { ok: false, mensagem: erro.message }
+    if (erro instanceof Error && erro.message === 'Acesso negado') {
+      return { ok: false, mensagem: 'Acesso negado para esta operação.' }
+    }
+    console.error(`[${contexto}]`, erro)
+    return { ok: false, mensagem: BancoErros.mensagem(erro, padrao) }
+  }
+
+  private filtroInscricoes = (entrada: unknown): FiltroInscricoes => {
+    if (typeof entrada !== 'object' || entrada === null) return {}
+    const e = entrada as Record<string, unknown>
+    const filtro: FiltroInscricoes = {}
+    const aulaId = this.idValido(e.aulaId)
+    if (aulaId !== null) filtro.aulaId = aulaId
+    const alunoId = this.idValido(e.alunoId)
+    if (alunoId !== null) filtro.alunoId = alunoId
+    if (typeof e.status === 'string' && STATUS_INSCRICAO.includes(e.status as StatusInscricao)) {
+      filtro.status = e.status as StatusInscricao
+    }
+    if (typeof e.busca === 'string') filtro.busca = e.busca.trim().slice(0, 120)
+    return filtro
+  }
+
   registrar = (): void => {
     registrarCanal('aulas:listar', async (_evento, entrada: unknown): Promise<Aula[]> => {
-      this.sessao.exigir(['admin', 'instrutor'])
+      this.sessao.exigir()
       return this.repositorio.listar(this.validador.filtro(entrada))
     })
 
     registrarCanal('aulas:obter', async (_evento, entrada: unknown): Promise<AulaDetalhe | null> => {
-      this.sessao.exigir(['admin', 'instrutor'])
+      const usuario = this.sessao.exigir()
       const id = this.idValido(entrada)
       if (id === null) throw new Error('Aula inválida.')
+      if (usuario.perfil === 'aluno') {
+        const alunoId = await this.meuAlunoId(usuario)
+        if (alunoId === null) return null
+        return this.repositorio.obter(id, alunoId)
+      }
       return this.repositorio.obter(id, null)
     })
 
@@ -949,14 +1136,19 @@ export class AulaIpc {
     })
 
     registrarCanal('aulas:cancelarInscricao', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
-      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      const usuario = this.sessao.exigir()
       const inscricaoId = this.idValido(entrada)
       if (inscricaoId === null) return { ok: false, mensagem: 'Inscrição inválida.' }
       try {
         const contexto = await this.repositorio.contextoInscricao(inscricaoId)
         if (!contexto) return { ok: false, mensagem: 'Inscrição não encontrada.' }
-        const meuInstrutorId = usuario.perfil === 'instrutor' ? await this.meuInstrutorId(usuario) : null
-        this.gerenciar(usuario, contexto.instrutorId, meuInstrutorId)
+        if (usuario.perfil === 'aluno') {
+          const meuAlunoId = await this.meuAlunoId(usuario)
+          if (meuAlunoId === null || meuAlunoId !== contexto.alunoId) throw new Error('Acesso negado')
+        } else {
+          const meuInstrutorId = usuario.perfil === 'instrutor' ? await this.meuInstrutorId(usuario) : null
+          this.gerenciar(usuario, contexto.instrutorId, meuInstrutorId)
+        }
         const ok = await this.repositorio.cancelarInscricao(inscricaoId)
         if (!ok) return { ok: false, mensagem: 'Inscrição não encontrada.' }
         return { ok: true, id: inscricaoId }
@@ -1005,10 +1197,92 @@ export class AulaIpc {
     })
 
     registrarCanal('aulas:vagas', async (_evento, entrada: unknown): Promise<{ capacidadeMax: number; ocupadas: number; disponiveis: number } | null> => {
-      this.sessao.exigir(['admin', 'instrutor'])
+      this.sessao.exigir()
       const aulaId = this.idValido(entrada)
       if (aulaId === null) throw new Error('Aula inválida.')
       return this.repositorio.vagas(aulaId)
+    })
+
+    registrarCanal('inscricoes:listar', async (_evento, entrada: unknown): Promise<InscricaoDetalhe[]> => {
+      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      const filtro = this.filtroInscricoes(entrada)
+      if (usuario.perfil === 'instrutor') {
+        const instrutorId = await this.meuInstrutorId(usuario)
+        if (instrutorId === null) return []
+        filtro.instrutorId = instrutorId
+      }
+      return this.repositorio.listarInscricoesTodas(filtro)
+    })
+
+    registrarCanal('inscricoes:obter', async (_evento, entrada: unknown): Promise<InscricaoDetalhe | null> => {
+      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      const id = this.idValido(entrada)
+      if (id === null) throw new Error('Inscrição inválida.')
+      const inscricao = await this.repositorio.obterInscricao(id)
+      if (!inscricao) return null
+      const contexto = await this.repositorio.contextoInscricao(id)
+      if (!contexto) return null
+      const meuInstrutorId = usuario.perfil === 'instrutor' ? await this.meuInstrutorId(usuario) : null
+      this.gerenciar(usuario, contexto.instrutorId, meuInstrutorId)
+      return inscricao
+    })
+
+    registrarCanal('inscricoes:criar', async (_evento, entrada: unknown): Promise<ResultadoInscricao> => {
+      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
+      const e = entrada as Record<string, unknown>
+      const aulaId = this.idValido(e.aulaId)
+      const alunoId = this.idValido(e.alunoId)
+      if (aulaId === null || alunoId === null) return { ok: false, mensagem: 'Informe a aula e o aluno.' }
+      try {
+        const aula = await this.repositorio.obter(aulaId, null)
+        if (!aula) return { ok: false, mensagem: 'Aula não encontrada.' }
+        const meuInstrutorId = usuario.perfil === 'instrutor' ? await this.meuInstrutorId(usuario) : null
+        this.gerenciar(usuario, aula.instrutorId, meuInstrutorId)
+        const id = await this.repositorio.inscrever(aulaId, alunoId)
+        return { ok: true, id }
+      } catch (erro) {
+        return this.erroInscricao('inscricoes:criar', erro, 'Não foi possível criar a inscrição.')
+      }
+    })
+
+    registrarCanal('inscricoes:atualizar', async (_evento, entrada: unknown): Promise<ResultadoInscricao> => {
+      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      if (typeof entrada !== 'object' || entrada === null) return { ok: false, mensagem: 'Dados inválidos.' }
+      const e = entrada as Record<string, unknown>
+      const id = this.idValido(e.id)
+      if (id === null) return { ok: false, mensagem: 'Inscrição inválida.' }
+      if (typeof e.status !== 'string' || !STATUS_INSCRICAO.includes(e.status as StatusInscricao)) {
+        return { ok: false, mensagem: 'Status de inscrição inválido.' }
+      }
+      try {
+        const contexto = await this.repositorio.contextoInscricao(id)
+        if (!contexto) return { ok: false, mensagem: 'Inscrição não encontrada.' }
+        const meuInstrutorId = usuario.perfil === 'instrutor' ? await this.meuInstrutorId(usuario) : null
+        this.gerenciar(usuario, contexto.instrutorId, meuInstrutorId)
+        const ok = await this.repositorio.atualizarStatusInscricao(id, e.status as StatusInscricao)
+        if (!ok) return { ok: false, mensagem: 'Inscrição não encontrada.' }
+        return { ok: true, id }
+      } catch (erro) {
+        return this.erroInscricao('inscricoes:atualizar', erro, 'Não foi possível atualizar a inscrição.')
+      }
+    })
+
+    registrarCanal('inscricoes:excluir', async (_evento, entrada: unknown): Promise<ResultadoInscricao> => {
+      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      const id = this.idValido(entrada)
+      if (id === null) return { ok: false, mensagem: 'Inscrição inválida.' }
+      try {
+        const contexto = await this.repositorio.contextoInscricao(id)
+        if (!contexto) return { ok: false, mensagem: 'Inscrição não encontrada.' }
+        const meuInstrutorId = usuario.perfil === 'instrutor' ? await this.meuInstrutorId(usuario) : null
+        this.gerenciar(usuario, contexto.instrutorId, meuInstrutorId)
+        const ok = await this.repositorio.excluirInscricao(id)
+        if (!ok) return { ok: false, mensagem: 'Inscrição não encontrada.' }
+        return { ok: true, id }
+      } catch (erro) {
+        return this.erroInscricao('inscricoes:excluir', erro, 'Não foi possível excluir a inscrição.')
+      }
     })
   }
 }

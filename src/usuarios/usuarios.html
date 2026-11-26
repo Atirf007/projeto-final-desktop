@@ -281,6 +281,12 @@
 
     .botao.secundario:hover:not(:disabled) { background: var(--cinza-100); border-color: var(--cinza-200); }
 
+    .botao.perigo { background: #991b1b; border-color: #991b1b; }
+    .botao.perigo:hover:not(:disabled) { background: #7f1d1d; border-color: #7f1d1d; }
+    .botao.pequeno { padding: 8px 12px; font-size: 12px; }
+    .acoes-linha { display: flex; gap: 8px; flex-wrap: wrap; }
+    .oculto { display: none !important; }
+
     dialog {
       width: min(520px, calc(100vw - 32px));
       max-height: calc(100vh - 32px);
@@ -720,6 +726,7 @@
               <th>Status</th>
               <th>Último acesso</th>
               <th>Cadastrado em</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody id="corpo"></tbody>
@@ -731,6 +738,7 @@
   <dialog id="dialogo" aria-labelledby="titulo-dialogo">
     <h2 id="titulo-dialogo">Novo usuário</h2>
     <form id="formulario" novalidate>
+      <input id="usuario-id" type="hidden">
       <label class="campo">
         <span>Nome</span>
         <input id="nome" type="text" maxlength="120" autocomplete="off">
@@ -747,12 +755,19 @@
           <option value="aluno">Aluno</option>
         </select>
       </label>
+      <label id="campo-ativo" class="campo oculto">
+        <span>Status</span>
+        <select id="ativo">
+          <option value="1">Ativo</option>
+          <option value="0">Inativo</option>
+        </select>
+      </label>
       <label class="campo">
-        <span>Senha</span>
+        <span id="campo-senha">Senha</span>
         <input id="senha" type="password" maxlength="128" autocomplete="new-password">
       </label>
       <label class="campo">
-        <span>Confirmar senha</span>
+        <span id="campo-confirmacao">Confirmar senha</span>
         <input id="confirmacao" type="password" maxlength="128" autocomplete="new-password">
       </label>
       <p id="erro-formulario" role="alert"></p>
@@ -761,6 +776,17 @@
         <button id="salvar" type="submit" class="botao">Cadastrar</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="dialogo-excluir" aria-labelledby="titulo-excluir">
+    <h2 id="titulo-excluir">Excluir usuário</h2>
+    <div style="padding: 20px 24px 24px;">
+      <p id="texto-excluir" style="margin: 0; font-size: 14px;"></p>
+      <p id="erro-excluir" role="alert" style="min-height: 20px; margin: 10px 0 0; font-size: 13px; color: var(--erro);"></p>
+      <div class="acoes">
+        <button id="cancelar-excluir" type="button" class="botao secundario">Cancelar</button>
+        <button id="confirmar-excluir" type="button" class="botao perigo">Excluir</button>
+      </div>
+    </div>
   </dialog>
 </body>
 </html>
