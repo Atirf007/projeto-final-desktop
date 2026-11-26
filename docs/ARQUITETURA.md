@@ -140,7 +140,7 @@ As regras compartilhadas estão na classe `RegrasAulaService` (`src/aulas/Regras
 
 `PresencaRepository` (`src/presencas/PresencaBackend.ts`) usa o mesmo serviço em `criar` e `atualizar`, dentro de transação, antes de gravar ou alterar a presença. O índice único `uk_aluno_data` (`aluno_id`, `data_presenca`) permanece como proteção no banco.
 
-`BotVencimentoServico` (`src/notificacoes/BotVencimento.ts`) marca atrasos, envia lembretes e registra no máximo uma notificação `geral`/`sistema` por dia para cada administrador, com o resumo de inadimplência. O assunto inclui a data (`Alerta de inadimplência — AAAA-MM-DD`) e o índice único `uk_notificacao_alerta_inadimplencia` (`usuario_id`, `tipo`, `canal`, `assunto`) impede duplicatas. `RegrasInadimplencia` usa janela histórica de **30 dias** para planos mensais/trimestrais e **120 dias** para semestrais/anuais.
+`BotVencimentoServico` (`src/notificacoes/BotVencimento.ts`) marca atrasos, envia lembretes e registra no máximo uma notificação `geral`/`sistema` por dia para cada administrador quando há atraso superior a **30 dias**. O assunto inclui a data (`Alerta de inadimplência — AAAA-MM-DD`) e o índice único `uk_notificacao_alerta_inadimplencia` (`usuario_id`, `tipo`, `canal`, `assunto`) impede duplicatas. `RegrasInadimplencia` usa janela histórica de **30 dias** para planos mensais/trimestrais e **120 dias** para semestrais/anuais; atrasos de até 30 dias continuam apenas no fluxo normal de vencimentos.
 
 ## 8. Bot de clima e decisão do aluno
 

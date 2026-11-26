@@ -307,6 +307,13 @@ class VisitanteRepository {
 
   criar = async (dados: CriarVisitanteInput): Promise<number> =>
     this.regras.executarTransacao(async (conexao) => {
+      await this.regras.validarVisitanteUnicoPorDia(conexao, {
+        nome: dados.nome,
+        telefone: dados.telefone,
+        email: dados.email,
+        dataVisita: dados.dataVisita,
+        aulaId: dados.aulaId ?? null
+      })
       if (dados.aulaId !== undefined) {
         const aula = await this.travarAulaVisitante(conexao, dados.aulaId)
         await this.regras.validarCapacidade(conexao, dados.aulaId, aula.capacidadeMax, 1)
@@ -332,12 +339,26 @@ class VisitanteRepository {
   atualizar = async (dados: AtualizarVisitanteInput): Promise<boolean> =>
     this.regras.executarTransacao(async (conexao) => {
       const [existentes] = await conexao.query<RowDataPacket[]>({
-        sql: 'SELECT id, aula_id, status FROM visitantes WHERE id = ? LIMIT 1 FOR UPDATE',
+        sql: `SELECT id, nome, telefone, email, aula_id, data_visita, status
+              FROM visitantes WHERE id = ? LIMIT 1 FOR UPDATE`,
         values: [dados.id],
         timeout: TIMEOUT
       })
       if (!existentes.length) return false
       const atual = existentes[0]
+      await this.regras.validarVisitanteUnicoPorDia(conexao, {
+        nome: dados.nome ?? String(atual.nome),
+        telefone: dados.telefone ?? String(atual.telefone),
+        email: dados.email === undefined ? atual.email ?? null : dados.email,
+        dataVisita: dados.dataVisita ?? dataStr(atual.data_visita),
+        aulaId:
+          dados.aulaId !== undefined
+            ? dados.aulaId
+            : atual.aula_id === null || atual.aula_id === undefined
+              ? null
+              : Number(atual.aula_id),
+        ignorarVisitanteId: dados.id
+      })
       const aulaId = dados.aulaId !== undefined
         ? dados.aulaId
         : atual.aula_id === null || atual.aula_id === undefined

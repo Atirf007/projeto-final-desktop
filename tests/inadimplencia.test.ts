@@ -17,6 +17,8 @@ test('regras de inadimplência distinguem planos longos', () => {
   assert.equal(regras.planoLongo('mensal'), false)
   assert.equal(regras.diasHistorico('semestral'), 120)
   assert.equal(regras.diasHistorico('trimestral'), 30)
+  assert.equal(regras.atrasoExigeAlerta(30), false)
+  assert.equal(regras.atrasoExigeAlerta(31), true)
 })
 
 test('dias de atraso usam a data injetada', () => {
@@ -57,8 +59,33 @@ test('resumo consolida atrasados com regras injetadas', async () => {
   const resumo = await repositorio.resumo()
 
   assert.equal(resumo.atrasados, 2)
+  assert.equal(resumo.atrasadosLongos, 1)
   assert.equal(resumo.totalAlunos, 2)
   assert.equal(resumo.valorTotal, 150)
   assert.equal(resumo.itens[0].diasAtraso, 50)
   assert.equal(resumo.itens[1].diasAtraso, 28)
+})
+
+test('resumo não conta atrasos de 30 dias ou menos como alerta', async () => {
+  const pagamentos = {
+    listar: async () => [
+      {
+        id: 3,
+        alunoId: 12,
+        alunoNome: 'Carla',
+        competencia: '2026-02',
+        valor: 80,
+        dataVencimento: '2026-01-30'
+      }
+    ]
+  } as unknown as PagamentoRepository
+
+  const repositorio = new InadimplenciaRepository(
+    pagamentos,
+    new RegrasInadimplencia(() => new Date('2026-03-01T12:00:00Z'))
+  )
+  const resumo = await repositorio.resumo()
+
+  assert.equal(resumo.atrasados, 1)
+  assert.equal(resumo.atrasadosLongos, 0)
 })

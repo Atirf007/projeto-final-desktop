@@ -102,3 +102,65 @@ test('transação faz commit no sucesso e rollback na falha', async () => {
   )
   assert.deepEqual(falha.eventos, ['begin', 'rollback', 'release'])
 })
+
+test('visitante duplicado no mesmo dia é rejeitado e usa identificadores normalizados', async () => {
+  const conexao = new ConexaoFalsa((consulta) =>
+    consulta.sql.includes('FROM visitantes v') ? [{ id: 8 }] : []
+  )
+  const regras = new RegrasAulaService(poolCom(conexao))
+
+  await assert.rejects(
+    () =>
+      regras.validarVisitanteUnicoPorDia(conexaoCom(conexao), {
+        nome: '  Ana   Silva ',
+        telefone: '(11) 99999-9999',
+        email: 'ANA@Example.com',
+        dataVisita: '2026-01-10'
+      }),
+    (erro: unknown) => erro instanceof ErroAula && /uma aula por dia/.test(erro.message)
+  )
+  assert.deepEqual(conexao.consultas[0].values, [
+    '2026-01-10',
+    0,
+    '11999999999',
+    'ana@example.com',
+    'ana silva'
+  ])
+})
+
+test('validação de visitante ignora o próprio registro na atualização', async () => {
+  const conexao = new ConexaoFalsa((consulta) =>
+    consulta.sql.includes('FROM visitantes v') ? [] : []
+  )
+  const regras = new RegrasAulaService(poolCom(conexao))
+
+  await regras.validarVisitanteUnicoPorDia(conexaoCom(conexao), {
+    nome: 'Ana Silva',
+    telefone: '11999999999',
+    dataVisita: '2026-01-10',
+    ignorarVisitanteId: 7
+  })
+
+  assert.equal(conexao.consultas[0].values?.[1], 7)
+})
+
+test('visitante vinculado a aluno com aula no dia é rejeitado', async () => {
+  const conexao = new ConexaoFalsa((consulta) => {
+    if (consulta.sql.includes('FROM visitantes v')) return []
+    if (consulta.sql.includes('INNER JOIN usuarios u ON u.id = al.usuario_id')) return [{ id: 55 }]
+    if (consulta.sql.includes('FROM presencas p')) return [{ id: 9 }]
+    return []
+  })
+  const regras = new RegrasAulaService(poolCom(conexao))
+
+  await assert.rejects(
+    () =>
+      regras.validarVisitanteUnicoPorDia(conexaoCom(conexao), {
+        nome: 'Ana Silva',
+        telefone: '11999999999',
+        dataVisita: '2026-01-10',
+        aulaId: 30
+      }),
+    (erro: unknown) => erro instanceof ErroAula && /Esta pessoa já possui/.test(erro.message)
+  )
+})

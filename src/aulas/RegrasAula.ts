@@ -16,6 +16,22 @@ export type AlunoTravado = {
   ativo: boolean
 }
 
+export type VisitanteUnicoDia = {
+  nome: string
+  telefone: string
+  email?: string | null
+  dataVisita: string
+  aulaId?: number | null
+  ignorarVisitanteId?: number
+}
+
+const normalizarTexto = (valor: string): string => valor.trim().toLowerCase().replace(/\s+/g, ' ')
+
+const normalizarTelefone = (valor: string): string =>
+  valor.replace(/[\s()+.-]/g, '')
+
+const MENSAGEM_VISITANTE_DIA = 'Esta pessoa já possui aula ou presença registrada nesta data. O limite é de uma aula por dia.'
+
 export class RegrasAulaService {
   constructor(private readonly pool: Pool) {}
 
@@ -87,6 +103,54 @@ export class RegrasAulaService {
     })
     if (mesmaData.length) {
       throw new ErroAula('O aluno já possui aula ou presença registrada nesta data. O limite é de uma aula por dia.')
+    }
+  }
+
+  validarVisitanteUnicoPorDia = async (conexao: PoolConnection, dados: VisitanteUnicoDia): Promise<void> => {
+    const nome = normalizarTexto(dados.nome)
+    const telefone = normalizarTelefone(dados.telefone)
+    const email = normalizarTexto(dados.email ?? '')
+    const ignorar = dados.ignorarVisitanteId ?? 0
+    const aulaId = dados.aulaId ?? 0
+
+    const [duplicados] = await conexao.query<RowDataPacket[]>({
+      sql: `SELECT v.id
+              FROM visitantes v
+             WHERE v.data_visita = ?
+               AND v.id <> ?
+               AND (
+                 REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(v.telefone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '') = ?
+                 OR (v.email IS NOT NULL AND LOWER(TRIM(v.email)) = ?)
+                 OR LOWER(TRIM(v.nome)) = ?
+               )
+             LIMIT 1`,
+      values: [dados.dataVisita, ignorar, telefone, email, nome],
+      timeout: TIMEOUT
+    })
+    if (duplicados.length) throw new ErroAula(MENSAGEM_VISITANTE_DIA)
+
+    const [vinculados] = await conexao.query<RowDataPacket[]>({
+      sql: `SELECT al.id
+              FROM alunos al
+              INNER JOIN usuarios u ON u.id = al.usuario_id
+             WHERE al.ativo = 1
+               AND (
+                 REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(al.telefone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '') = ?
+                 OR LOWER(TRIM(u.email)) = ?
+                 OR LOWER(TRIM(u.nome)) = ?
+               )
+             LIMIT 10`,
+      values: [telefone, email, nome],
+      timeout: TIMEOUT
+    })
+
+    for (const linha of vinculados) {
+      try {
+        await this.validarUmaAulaPorDia(conexao, Number(linha.id), aulaId, dados.dataVisita)
+      } catch (erro) {
+        if (erro instanceof ErroAula) throw new ErroAula(MENSAGEM_VISITANTE_DIA)
+        throw erro
+      }
     }
   }
 

@@ -16,6 +16,7 @@ export type ItemInadimplencia = {
 export type ResumoInadimplencia = {
   geradoEm: string
   atrasados: number
+  atrasadosLongos: number
   valorTotal: number
   totalAlunos: number
   itens: ItemInadimplencia[]
@@ -34,20 +35,23 @@ export class InadimplenciaRepository {
       (a, b) => a.dataVencimento.localeCompare(b.dataVencimento) || a.alunoNome.localeCompare(b.alunoNome)
     )
 
+    const itens = lista.map((pagamento) => ({
+      pagamentoId: pagamento.id,
+      alunoId: pagamento.alunoId,
+      alunoNome: pagamento.alunoNome,
+      competencia: dataISO(pagamento.competencia).slice(0, 7),
+      valor: pagamento.valor,
+      dataVencimento: dataISO(pagamento.dataVencimento),
+      diasAtraso: this.regras.diasAtraso(pagamento.dataVencimento)
+    }))
+
     return {
       geradoEm: new Date().toISOString(),
       atrasados: lista.length,
+      atrasadosLongos: itens.filter((item) => this.regras.atrasoExigeAlerta(item.diasAtraso)).length,
       valorTotal: Math.round(lista.reduce((soma, pagamento) => soma + pagamento.valor, 0) * 100) / 100,
       totalAlunos: new Set(lista.map((pagamento) => pagamento.alunoId)).size,
-      itens: lista.slice(0, 10).map((pagamento) => ({
-        pagamentoId: pagamento.id,
-        alunoId: pagamento.alunoId,
-        alunoNome: pagamento.alunoNome,
-        competencia: dataISO(pagamento.competencia).slice(0, 7),
-        valor: pagamento.valor,
-        dataVencimento: dataISO(pagamento.dataVencimento),
-        diasAtraso: this.regras.diasAtraso(pagamento.dataVencimento)
-      }))
+      itens: itens.slice(0, 10)
     }
   }
 }
