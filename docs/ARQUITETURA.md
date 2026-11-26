@@ -146,12 +146,19 @@ Fluxo implementado:
 2. `AulasAmanha` seleciona aulas `local = 'externa'`, data de amanhã e status `agendada`/`confirmada`.
 3. `DestinatariosAlunos` seleciona alunos com inscrição `confirmada` ou `presente`, `ativo = 1` e e-mail válido.
 4. `MensagemServico` envia o e-mail com um link assinado por `AssinadorDecisao` (HMAC, validade de 7 dias).
-5. `ServidorDecisaoClima` escuta `CLIMA_DECISAO_HOST`/`CLIMA_DECISAO_PORTA` (padrão `127.0.0.1:39517`) e serve `GET /clima/:id` e `POST /clima/:id/(manter|remarcar)?t=token`.
+5. `ServidorDecisaoClima` escuta `CLIMA_DECISAO_HOST`/`CLIMA_DECISAO_PORTA` (padrão `127.0.0.1:39517`) e serve `GET /clima/:id` e `POST /clima/:id/(cancelar|mover)?t=token`.
 
 Em `src/mensagens/DecisaoClima.ts`, `registrarDecisao` roda em transação:
 
-- `manter` apenas registra a decisão.
-- `remarcar` chama `moverParaAreaInterna`, que bloqueia a aula com `FOR UPDATE`, rejeita status `cancelada`/`concluida`, valida capacidade e alunos, e executa:
+- `cancelar` trava a aula, valida os alunos da turma e executa:
+
+```sql
+UPDATE aulas
+   SET status = 'cancelada', atualizado_em = NOW()
+ WHERE id = ?
+```
+
+- `mover` chama `moverParaAreaInterna`, que bloqueia a aula com `FOR UPDATE`, rejeita status `cancelada`/`concluida`, valida capacidade e alunos, e executa:
 
 ```sql
 UPDATE aulas
@@ -160,7 +167,7 @@ UPDATE aulas
  WHERE id = ?
 ```
 
-A data e o horário são mantidos. A página do link mostra o local atual, o botão `Transferir para a área interna` e a confirmação `Sua aula foi transferida para a área interna da academia, mantendo o mesmo horário.` Se a aula já estiver interna, a página informa `Aula na área interna` e a opção `manter` retorna erro.
+A data e o horário são mantidos. A página do link mostra o local atual, os botões `Cancelar a aula` e `Mover para a área interna` e as confirmações `A aula foi cancelada.` ou `A aula foi movida para a área interna.` A decisão é única por aluno e turma: uma resposta registrada impede uma nova resposta; aulas canceladas ou já internas recebem essa informação, sem duplicar registros e sem excluir linhas.
 
 ## 9. Integrações externas
 

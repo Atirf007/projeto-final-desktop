@@ -16,8 +16,8 @@ const TIMEOUT = 10000
 const VALIDADE_TOKEN_MS = 7 * 24 * 60 * 60 * 1000
 const PORTA_PADRAO = 39517
 const HOST_PADRAO = '127.0.0.1'
-const ASSUNTO_MANTER = 'Decisão do aluno: manter a aula'
-const ASSUNTO_REMARCAR = 'Decisão do aluno: pedir remarcação'
+const ASSUNTO_CANCELAR = 'Decisão do aluno: cancelar a aula'
+const ASSUNTO_MOVER = 'Decisão do aluno: mover para a área interna'
 
 const portaServidor = (): number => {
   const porta = Number(process.env.CLIMA_DECISAO_PORTA ?? PORTA_PADRAO)
@@ -69,10 +69,38 @@ export type AvisoDecisao = {
   inscricaoStatus: string
 }
 
+type AcaoDecisao = 'cancelar' | 'mover'
+type EstadoAula = 'disponivel' | 'cancelada' | 'movida' | 'indisponivel'
+
 export type DecisaoRegistrada = {
+  acao: AcaoDecisao
   assunto: string
   mensagem: string
   criadoEm: string
+}
+
+type ResultadoDecisao = {
+  registrada: boolean
+  estado: EstadoAula
+  decisao: DecisaoRegistrada | null
+}
+
+const estadoDaAula = (aviso: AvisoDecisao): EstadoAula => {
+  if (aviso.aulaStatus === 'cancelada') return 'cancelada'
+  if (aviso.local === 'interna') return 'movida'
+  if (
+    !['agendada', 'confirmada', 'remarcada'].includes(aviso.aulaStatus) ||
+    !['confirmada', 'presente'].includes(aviso.inscricaoStatus)
+  ) {
+    return 'indisponivel'
+  }
+  return 'disponivel'
+}
+
+const mensagemEstado = (estado: EstadoAula): string => {
+  if (estado === 'cancelada') return 'Esta aula já foi cancelada.'
+  if (estado === 'movida') return 'Esta aula já foi movida para a área interna.'
+  return 'Esta aula não está mais aberta para escolha.'
 }
 
 /**
@@ -187,6 +215,17 @@ export class DecisaoClimaRepositorio {
     }
   }
 
+  private mapearDecisao = (linha: RowDataPacket | undefined): DecisaoRegistrada | null => {
+    if (!linha) return null
+    const assunto = String(linha.assunto ?? '')
+    return {
+      acao: assunto === ASSUNTO_CANCELAR ? 'cancelar' : 'mover',
+      assunto,
+      mensagem: String(linha.mensagem ?? ''),
+      criadoEm: String(linha.criado_em ?? '')
+    }
+  }
+
   obterDecisao = async (aulaId: number, usuarioId: number): Promise<DecisaoRegistrada | null> => {
     const [linhas] = await this.pool.query<RowDataPacket[]>({
       sql: `SELECT assunto, mensagem, criado_em
@@ -199,16 +238,11 @@ export class DecisaoClimaRepositorio {
                AND assunto IN (?, ?)
              ORDER BY id DESC
              LIMIT 1`,
-      values: [aulaId, usuarioId, ASSUNTO_MANTER, ASSUNTO_REMARCAR],
+      values: [aulaId, usuarioId, ASSUNTO_CANCELAR, ASSUNTO_MOVER],
       timeout: TIMEOUT
     })
 
-    if (!linhas.length) return null
-    return {
-      assunto: String(linhas[0].assunto ?? ''),
-      mensagem: String(linhas[0].mensagem ?? ''),
-      criadoEm: String(linhas[0].criado_em ?? '')
-    }
+    return this.mapearDecisao(linhas[0])
   }
 
   private moverParaAreaInterna = async (conexao: PoolConnection, aulaId: number): Promise<void> => {
@@ -227,15 +261,71 @@ export class DecisaoClimaRepositorio {
     })
   }
 
-  registrarDecisao = async (aviso: AvisoDecisao, decisao: 'manter' | 'remarcar'): Promise<boolean> =>
+  private cancelarAula = async (conexao: PoolConnection, aulaId: number): Promise<void> => {
+    const aula = await travarAula(conexao, aulaId)
+    await validarAlunosDaAula(conexao, aulaId, aula.dataHoraInicio.slice(0, 10))
+    await conexao.query({
+      sql: `UPDATE aulas
+            SET status = 'cancelada', atualizado_em = NOW()
+            WHERE id = ?`,
+      values: [aulaId],
+      timeout: TIMEOUT
+    })
+  }
+
+  registrarDecisao = async (aviso: AvisoDecisao, acao: AcaoDecisao): Promise<ResultadoDecisao> =>
     executarTransacao(this.pool, async (conexao) => {
-      if (decisao === 'remarcar') await this.moverParaAreaInterna(conexao, aviso.aulaId)
-      const assunto = decisao === 'manter' ? ASSUNTO_MANTER : ASSUNTO_REMARCAR
+      const [aulas] = await conexao.query<RowDataPacket[]>({
+        sql: 'SELECT local, status FROM aulas WHERE id = ? LIMIT 1 FOR UPDATE',
+        values: [aviso.aulaId],
+        timeout: TIMEOUT
+      })
+      if (!aulas.length) return { registrada: false, estado: 'indisponivel', decisao: null }
+
+      const [inscricoes] = await conexao.query<RowDataPacket[]>({
+        sql: `SELECT ia.status
+                FROM inscricoes_aula ia
+                INNER JOIN alunos al ON al.id = ia.aluno_id
+               WHERE ia.aula_id = ? AND al.usuario_id = ?
+               LIMIT 1 FOR UPDATE`,
+        values: [aviso.aulaId, aviso.usuarioId],
+        timeout: TIMEOUT
+      })
+
+      const estado = estadoDaAula({
+        ...aviso,
+        local: String(aulas[0].local ?? ''),
+        aulaStatus: String(aulas[0].status ?? ''),
+        inscricaoStatus: String(inscricoes[0]?.status ?? '')
+      })
+      if (estado !== 'disponivel') return { registrada: false, estado, decisao: null }
+
+      const [anteriores] = await conexao.query<RowDataPacket[]>({
+        sql: `SELECT assunto, mensagem, criado_em
+                FROM notificacoes
+               WHERE tipo = 'chuva'
+                 AND canal = 'sistema'
+                 AND status = 'enviado'
+                 AND aula_id = ?
+                 AND usuario_id = ?
+                 AND assunto IN (?, ?)
+               ORDER BY id DESC
+               LIMIT 1 FOR UPDATE`,
+        values: [aviso.aulaId, aviso.usuarioId, ASSUNTO_CANCELAR, ASSUNTO_MOVER],
+        timeout: TIMEOUT
+      })
+      const existente = this.mapearDecisao(anteriores[0])
+      if (existente) return { registrada: false, estado, decisao: existente }
+
+      if (acao === 'cancelar') await this.cancelarAula(conexao, aviso.aulaId)
+      else await this.moverParaAreaInterna(conexao, aviso.aulaId)
+
+      const assunto = acao === 'cancelar' ? ASSUNTO_CANCELAR : ASSUNTO_MOVER
       const quando = dataHoraBr(aviso.dataHoraInicio)
       const mensagem =
-        decisao === 'manter'
-          ? `Aluno decidiu manter a aula "${aviso.titulo}" de ${quando}.`
-          : `Aula "${aviso.titulo}" de ${quando} transferida para a área interna a pedido do aluno.`
+        acao === 'cancelar'
+          ? `Aluno cancelou a aula "${aviso.titulo}" de ${quando}.`
+          : `Aluno moveu a aula "${aviso.titulo}" de ${quando} para a área interna.`
 
       const [resultado] = await conexao.query<ResultSetHeader>({
         sql: `INSERT INTO notificacoes
@@ -259,13 +349,21 @@ export class DecisaoClimaRepositorio {
           mensagem,
           aviso.aulaId,
           aviso.usuarioId,
-          ASSUNTO_MANTER,
-          ASSUNTO_REMARCAR
+          ASSUNTO_CANCELAR,
+          ASSUNTO_MOVER
         ],
         timeout: TIMEOUT
       })
 
-      return resultado.affectedRows > 0
+      if (resultado.affectedRows !== 1) {
+        return { registrada: false, estado, decisao: existente }
+      }
+
+      return {
+        registrada: true,
+        estado,
+        decisao: { acao, assunto, mensagem, criadoEm: new Date().toISOString() }
+      }
     })
 }
 
@@ -332,8 +430,8 @@ export class ServidorDecisaoClima {
     .selo { display: inline-block; padding: 3px 10px; border-radius: 999px; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; font-size: 12px; font-weight: 700; }
     .acoes { display: grid; gap: 10px; margin-top: 20px; }
     button { padding: 12px 16px; font: inherit; font-weight: 700; border-radius: 8px; border: 1px solid #d1d5db; cursor: pointer; }
-    .manter { background: #10b981; border-color: #10b981; color: #fff; }
-    .remarcar { background: #fff; color: #b91c1c; border-color: #fecaca; }
+    .cancelar { background: #fff; color: #b91c1c; border-color: #fecaca; }
+    .mover { background: #10b981; border-color: #10b981; color: #fff; }
     .nota { margin-top: 16px; font-size: 12px; color: #6b7280; }
     .erro { color: #b91c1c; font-weight: 600; }
   </style>
@@ -380,7 +478,7 @@ export class ServidorDecisaoClima {
         return
       }
 
-      if (requisicao.method === 'POST' && (acao === 'manter' || acao === 'remarcar')) {
+      if (requisicao.method === 'POST' && (acao === 'cancelar' || acao === 'mover')) {
         this.responder(resposta, await this.decidir(id, token, acao))
         return
       }
@@ -398,9 +496,13 @@ export class ServidorDecisaoClima {
     }
   }
 
-  private podeDecidir = (aviso: AvisoDecisao): boolean =>
-    ['agendada', 'confirmada', 'remarcada'].includes(aviso.aulaStatus) &&
-    ['confirmada', 'presente'].includes(aviso.inscricaoStatus)
+  private paginaIndisponivel = (estado: EstadoAula, detalhe = ''): Resposta => ({
+    status: 409,
+    html: this.pagina(
+      'Aula indisponível para decisão',
+      `${detalhe}<p class="erro">${escaparHtml(mensagemEstado(estado))}</p>`
+    )
+  })
 
   private mostrar = async (id: number, token: string): Promise<Resposta> => {
     const aviso = await this.repositorio.obterAviso(id)
@@ -413,15 +515,8 @@ export class ServidorDecisaoClima {
       dataHoraBr(aviso.dataHoraInicio)
     )}</p><p>Local atual: ${escaparHtml(localAtual)}.</p>`
 
-    if (!this.podeDecidir(aviso)) {
-      return {
-        status: 409,
-        html: this.pagina(
-          'Aula indisponível para decisão',
-          `${detalhe}<p class="erro">Esta aula não está mais aberta para escolha.</p>`
-        )
-      }
-    }
+    const estado = estadoDaAula(aviso)
+    if (estado !== 'disponivel') return this.paginaIndisponivel(estado, detalhe)
 
     const decisao = await this.repositorio.obterDecisao(aviso.aulaId, aviso.usuarioId)
     if (decisao) {
@@ -430,16 +525,6 @@ export class ServidorDecisaoClima {
         html: this.pagina(
           'Decisão já registrada',
           `${detalhe}<p>${escaparHtml(decisao.mensagem)}</p><p class="nota">Não é necessário responder novamente.</p>`
-        )
-      }
-    }
-
-    if (aviso.local === 'interna') {
-      return {
-        status: 200,
-        html: this.pagina(
-          'Aula na área interna',
-          `${detalhe}<p>Esta aula já foi transferida para a área interna.</p>`
         )
       }
     }
@@ -453,11 +538,11 @@ export class ServidorDecisaoClima {
          ${detalhe}
          <p>Escolha o que deseja fazer com esta aula. A academia será avisada da sua decisão.</p>
          <div class="acoes">
-           <form method="post" action="/clima/${id}/manter?t=${tokenUrl}">
-             <button type="submit" class="manter">Manter a aula</button>
+           <form method="post" action="/clima/${id}/cancelar?t=${tokenUrl}">
+             <button type="submit" class="cancelar">Cancelar a aula</button>
            </form>
-            <form method="post" action="/clima/${id}/remarcar?t=${tokenUrl}">
-              <button type="submit" class="remarcar">Transferir para a área interna</button>
+            <form method="post" action="/clima/${id}/mover?t=${tokenUrl}">
+              <button type="submit" class="mover">Mover para a área interna</button>
             </form>
          </div>
          <p class="nota">Se você não responder, a aula permanece como está.</p>`
@@ -465,33 +550,20 @@ export class ServidorDecisaoClima {
     }
   }
 
-  private decidir = async (id: number, token: string, acao: 'manter' | 'remarcar'): Promise<Resposta> => {
+  private decidir = async (id: number, token: string, acao: AcaoDecisao): Promise<Resposta> => {
     const aviso = await this.repositorio.obterAviso(id)
     if (!aviso) {
       return { ...this.paginaErro('Este aviso não está mais disponível.'), status: 404 }
     }
 
-    if (!this.podeDecidir(aviso)) {
-      return {
-        status: 409,
-        html: this.pagina(
-          'Aula indisponível para decisão',
-          '<p class="erro">Esta aula não está mais aberta para escolha.</p>'
-        )
-      }
-    }
+    const estado = estadoDaAula(aviso)
+    if (estado !== 'disponivel') return this.paginaIndisponivel(estado)
 
-    if (acao === 'manter' && aviso.local === 'interna') {
-      return {
-        status: 409,
-        html: this.pagina('Aula na área interna', '<p>Esta aula já foi transferida para a área interna.</p>')
-      }
-    }
+    const resultado = await this.repositorio.registrarDecisao(aviso, acao)
+    if (!resultado.registrada) {
+      if (resultado.estado !== 'disponivel') return this.paginaIndisponivel(resultado.estado)
 
-    const registrada = await this.repositorio.registrarDecisao(aviso, acao)
-    const decisao = await this.repositorio.obterDecisao(aviso.aulaId, aviso.usuarioId)
-
-    if (!registrada) {
+      const decisao = resultado.decisao ?? (await this.repositorio.obterDecisao(aviso.aulaId, aviso.usuarioId))
       return {
         status: 200,
         html: this.pagina(
@@ -501,10 +573,7 @@ export class ServidorDecisaoClima {
       }
     }
 
-    const mensagem =
-      acao === 'manter'
-        ? 'Sua decisão de manter a aula foi registrada.'
-        : 'Sua aula foi transferida para a área interna da academia, mantendo o mesmo horário.'
+    const mensagem = acao === 'cancelar' ? 'A aula foi cancelada.' : 'A aula foi movida para a área interna.'
     return {
       status: 200,
       html: this.pagina('Decisão registrada', `<p>${escaparHtml(mensagem)}</p>`)
