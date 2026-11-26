@@ -58,7 +58,7 @@ type AlunoResumo = {
   estado?: string
 }
 
-type ResultadoAcao = { ok: true; id?: number } | { ok: false; mensagem: string }
+type ResultadoAcao = { ok: true; id?: number; aviso?: string } | { ok: false; mensagem: string }
 
 type ResultadoClima =
   | {
@@ -169,10 +169,11 @@ class AulasView {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
 
-  private statusPagina = (texto: string, erro = false): void => {
+  private statusPagina = (texto: string, erro = false, aviso = false): void => {
     const el = this.el('status')
     el.textContent = texto
     el.classList.toggle('erro', erro)
+    el.classList.toggle('aviso', aviso)
   }
 
   private podeReservar = (aula: Aula): boolean =>
@@ -439,7 +440,8 @@ class AulasView {
       this.el<HTMLDialogElement>('dialogo-form').close()
       await this.carregar()
       if (this.detalheAtual?.id === id) await this.atualizarDetalhe()
-      this.statusPagina(id > 0 ? 'Aula atualizada com sucesso.' : 'Aula cadastrada com sucesso.')
+      const mensagem = id > 0 ? 'Aula atualizada com sucesso.' : 'Aula cadastrada com sucesso.'
+      this.statusPagina(resultado.aviso ? `${mensagem} ${resultado.aviso}` : mensagem, false, Boolean(resultado.aviso))
     } catch (e) {
       console.error(e)
       erro.textContent = 'Não foi possível salvar a aula.'
@@ -813,8 +815,10 @@ class AulasView {
       await this.carregar()
       await this.atualizarDetalhe()
       const msg = this.el('msg-detalhe')
-      msg.className = 'msg-info sucesso'
-      msg.textContent = 'Aula remarcada com sucesso.'
+      msg.className = resultado.aviso ? 'msg-info aviso' : 'msg-info sucesso'
+      msg.textContent = resultado.aviso
+        ? `Aula remarcada com sucesso. ${resultado.aviso}`
+        : 'Aula remarcada com sucesso.'
     } catch (e) {
       console.error(e)
       erro.textContent = 'Não foi possível remarcar a aula.'
