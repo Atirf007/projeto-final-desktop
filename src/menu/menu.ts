@@ -81,7 +81,7 @@ class MenuView {
   private carregarAlerta = async (perfil: string): Promise<void> => {
     const caixa = this.el<HTMLElement>('alerta-inadimplencia')
     caixa.hidden = true
-    if (perfil !== 'admin' && perfil !== 'instrutor') return
+    if (perfil !== 'admin') return
 
     try {
       const resumo = await ipcRenderer.invoke('inadimplencia:resumo') as ResumoInadimplencia

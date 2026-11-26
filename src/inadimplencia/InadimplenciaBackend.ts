@@ -64,7 +64,7 @@ export class InadimplenciaIpc {
 
   registrar = (): void => {
     registrarCanal('inadimplencia:resumo', async (): Promise<ResumoInadimplencia> => {
-      this.sessao.exigir(['admin', 'instrutor'])
+      this.sessao.exigir(['admin'])
       return this.repositorio.resumo()
     })
   }
