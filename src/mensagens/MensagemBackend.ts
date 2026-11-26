@@ -45,6 +45,19 @@ type AvisoPreparado = {
 
 const chaveAviso = (aulaId: number, email: string): string => `${aulaId}|${email.trim().toLowerCase()}`
 
+export const textoNotificacaoChuva = (previsao: PrevisaoClima): string => {
+  const [ano, mes, dia] = previsao.data.split('-')
+  const data = ano && mes && dia ? `${dia}/${mes}/${ano}` : previsao.data
+  const janela = previsao.janela ? ` no horário das aulas (${previsao.janela})` : ''
+  const percentual = Math.round(previsao.probabilidadeChuva)
+
+  return (
+    `Caro instrutor, a previsão para amanhã (${data}) indica ${percentual}% de chance de chuva${janela}. ` +
+    'Por isso, a aula será realizada dentro da academia, no espaço coberto. ' +
+    'Por favor, avise os alunos.'
+  )
+}
+
 export class MensagemServico {
   private readonly historico: Mensagem[] = []
   private readonly datasAvisadas = new Set<string>()
@@ -66,6 +79,13 @@ export class MensagemServico {
   emailConfigurado = (): boolean => this.emails.configurado()
 
   emailRemetente = (): string => this.emails.remetenteFormatado()
+
+  testarEmail = async (destinatario: string): Promise<ResultadoEnvioEmail> =>
+    this.emails.enviar(
+      [destinatario],
+      'Teste do bot de clima - Academia Cotil',
+      'Se você recebeu esta mensagem, o envio de e-mail do bot está funcionando.'
+    )
 
   private dataBr = (iso: string): string => {
     const [ano, mes, dia] = iso.split('-')

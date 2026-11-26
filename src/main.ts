@@ -6,9 +6,9 @@ import { AulaIpc } from './aulas/AulaBackend'
 import { AvaliacaoIpc } from './avaliacoes/AvaliacaoBackend'
 import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/AutenticacaoBackend'
 import { FuncionarioIpc, ModalidadeIpc } from './funcionarios/FuncionarioBackend'
+import { LancamentoIpc } from './lancamentos/LancamentoBackend'
 import { CepIpc } from './integracoes/CepBackend'
 import { ClimaIpc } from './integracoes/ClimaBackend'
-import { LancamentoIpc } from './lancamentos/LancamentoBackend'
 import { FeriadosIpc } from './integracoes/FeriadosBackend'
 import { WgerIpc } from './integracoes/WgerBackend'
 import { BotClimaIpc, BotClimaServico } from './mensagens/BotClima'
@@ -23,11 +23,30 @@ import { RelatorioIpc } from './relatorios/RelatorioBackend'
 import { UsuarioIpc } from './usuarios/UsuarioBackend'
 import { VisitanteIpc } from './visitantes/VisitanteBackend'
 
+type Modulo =
+  | 'relatorios'
+  | 'usuarios'
+  | 'funcionarios'
+  | 'alunos'
+  | 'aulas'
+  | 'planos'
+  | 'pagamentos'
+  | 'lancamentos'
+  | 'visitantes'
+  | 'avaliacoes'
+  | 'notificacoes'
+  | 'presencas'
+  | 'inscricoes'
+  | 'feriados'
+  | 'exercicios'
+  | 'portal'
+  | 'bot'
+
 const CSP = [
   "default-src 'none'",
   "script-src 'none'",
   "style-src 'unsafe-inline'",
-  "img-src 'self' data: https://wger.de",
+  "img-src 'self' data: file: https://wger.de",
   "font-src 'self'",
   "connect-src 'none'",
   "media-src 'none'",
@@ -40,150 +59,156 @@ const CSP = [
 
 class Aplicacao {
   private readonly sessao = new Sessao()
+  private visivel: JanelaApp | null = null
+  private encerrando = false
 
   private readonly login = new JanelaApp({
     pasta: 'autenticacao',
     nome: 'login',
-    largura: 440,
-    altura: 560,
+    largura: 1200,
+    altura: 760,
     redimensionavel: false
   })
 
   private readonly menu = new JanelaApp({ pasta: 'menu', nome: 'menu', largura: 1000, altura: 700 })
 
-  private readonly relatorios = new JanelaApp({ pasta: 'relatorios', nome: 'relatorios', largura: 1000, altura: 700 })
+  private readonly modulos: Record<Modulo, JanelaApp>
 
-  private readonly usuarios = new JanelaApp({ pasta: 'usuarios', nome: 'usuarios', largura: 1000, altura: 700 })
+  constructor() {
+    const criarModulo = (pasta: string, largura: number, altura: number, nome = pasta): JanelaApp =>
+      new JanelaApp({
+        pasta,
+        nome,
+        largura,
+        altura,
+        aoFechar: () => this.aoFecharModulo()
+      })
 
-  private readonly funcionarios = new JanelaApp({ pasta: 'funcionarios', nome: 'funcionarios', largura: 1200, altura: 760 })
+    this.modulos = {
+      relatorios: criarModulo('relatorios', 1000, 700),
+      usuarios: criarModulo('usuarios', 1000, 700),
+      funcionarios: criarModulo('funcionarios', 1200, 760),
+      alunos: criarModulo('alunos', 1200, 760),
+      aulas: criarModulo('aulas', 1280, 800),
+      planos: criarModulo('planos', 1280, 800),
+      pagamentos: criarModulo('pagamentos', 1280, 820),
+      lancamentos: criarModulo('lancamentos', 1100, 760),
+      visitantes: criarModulo('visitantes', 1280, 800),
+      avaliacoes: criarModulo('avaliacoes', 1280, 820),
+      notificacoes: criarModulo('notificacoes', 1280, 820),
+      presencas: criarModulo('presencas', 1280, 800),
+      inscricoes: criarModulo('inscricoes', 1280, 800),
+      feriados: criarModulo('feriados', 1100, 760),
+      exercicios: criarModulo('exercicios', 1200, 820),
+      portal: criarModulo('portal', 1280, 900),
+      bot: criarModulo('mensagens', 1000, 820)
+    }
+  }
 
-  private readonly alunos = new JanelaApp({ pasta: 'alunos', nome: 'alunos', largura: 1200, altura: 760 })
+  private mostrar = (janela: JanelaApp): void => {
+    if (this.visivel && this.visivel !== janela) this.visivel.ocultar()
+    janela.abrir()
+    this.visivel = janela
+  }
 
-  private readonly aulas = new JanelaApp({ pasta: 'aulas', nome: 'aulas', largura: 1280, altura: 800 })
+  private abrirModulo = (janela: JanelaApp) => (): void => {
+    this.mostrar(janela)
+  }
 
-  private readonly feriados = new JanelaApp({ pasta: 'feriados', nome: 'feriados', largura: 1100, altura: 760 })
-
-  private readonly exercicios = new JanelaApp({ pasta: 'exercicios', nome: 'exercicios', largura: 1200, altura: 820 })
-
-  private readonly planos = new JanelaApp({ pasta: 'planos', nome: 'planos', largura: 1280, altura: 800 })
-
-  private readonly pagamentos = new JanelaApp({ pasta: 'pagamentos', nome: 'pagamentos', largura: 1280, altura: 820 })
-
-  private readonly visitantes = new JanelaApp({ pasta: 'visitantes', nome: 'visitantes', largura: 1280, altura: 800 })
-
-  private readonly avaliacoes = new JanelaApp({ pasta: 'avaliacoes', nome: 'avaliacoes', largura: 1280, altura: 820 })
-
-  private readonly notificacoes = new JanelaApp({ pasta: 'notificacoes', nome: 'notificacoes', largura: 1280, altura: 820 })
-
-  private readonly presencas = new JanelaApp({ pasta: 'presencas', nome: 'presencas', largura: 1280, altura: 800 })
-
-  private readonly inscricoes = new JanelaApp({ pasta: 'inscricoes', nome: 'inscricoes', largura: 1280, altura: 800 })
-
-  private readonly lancamentos = new JanelaApp({ pasta: 'lancamentos', nome: 'lancamentos', largura: 1100, altura: 760 })
-
-  private readonly portal = new JanelaApp({ pasta: 'portal', nome: 'portal', largura: 1280, altura: 900 })
-
-  private readonly bot = new JanelaApp({ pasta: 'mensagens', nome: 'mensagens', largura: 1000, altura: 820 })
+  private aoFecharModulo = (): void => {
+    if (this.encerrando) return
+    this.visivel = null
+    this.mostrar(this.menu)
+  }
 
   private aoEntrar = (): void => {
-    this.menu.abrir()
+    this.login.ocultar()
+    this.mostrar(this.menu)
     this.login.fechar()
   }
 
   private aoSair = (): void => {
-    this.login.abrir()
-    this.relatorios.fechar()
-    this.usuarios.fechar()
-    this.funcionarios.fechar()
-    this.alunos.fechar()
-    this.aulas.fechar()
-    this.feriados.fechar()
-    this.exercicios.fechar()
-    this.planos.fechar()
-    this.pagamentos.fechar()
-    this.visitantes.fechar()
-    this.avaliacoes.fechar()
-    this.notificacoes.fechar()
-    this.presencas.fechar()
-    this.inscricoes.fechar()
-    this.lancamentos.fechar()
-    this.portal.fechar()
-    this.bot.fechar()
+    this.encerrando = true
+    Object.values(this.modulos).forEach((janela) => janela.fechar())
     this.menu.fechar()
+    this.visivel = null
+    this.encerrando = false
+    this.mostrar(this.login)
   }
 
   private aoVoltar = (origem: BrowserWindow | null): void => {
-    this.menu.abrir()
-    origem?.close()
+    if (origem && !origem.isDestroyed()) origem.close()
+    this.mostrar(this.menu)
   }
 
   private abrirInicial = (): void => {
-    if (this.sessao.usuario()) this.menu.abrir()
-    else this.login.abrir()
+    if (this.visivel) {
+      this.visivel.abrir()
+      return
+    }
+    this.mostrar(this.sessao.usuario() ? this.menu : this.login)
+  }
+
+  private configurarSeguranca = (): void => {
+    session.defaultSession.setPermissionRequestHandler((_conteudo, _permissao, callback) => callback(false))
+    session.defaultSession.setPermissionCheckHandler(() => false)
+    session.defaultSession.webRequest.onHeadersReceived((detalhes, callback) => {
+      callback({
+        responseHeaders: {
+          ...detalhes.responseHeaders,
+          'Content-Security-Policy': [CSP]
+        }
+      })
+    })
+  }
+
+  private registrarIpc = (
+    botClima: BotClimaServico,
+    decisaoClima: ServidorDecisaoClima,
+    notificacaoServico: NotificacaoServico,
+    botVencimento: BotVencimentoServico
+  ): void => {
+    new AutenticacaoIpc(new AutenticacaoServico(), this.sessao, this.aoEntrar, this.aoSair).registrar()
+    new CepIpc(this.sessao).registrar()
+    new ClimaIpc(this.sessao).registrar()
+    new FeriadosIpc(this.sessao).registrar()
+    new WgerIpc(this.sessao).registrar()
+    new BotClimaIpc(this.sessao, botClima).registrar()
+    new AlunoIpc(this.sessao).registrar()
+    new AulaIpc(this.sessao).registrar()
+    new AvaliacaoIpc(this.sessao).registrar()
+    new PresencaResumoIpc(this.sessao).registrar()
+    new PresencaCrudIpc(this.sessao).registrar()
+    new PlanoIpc(this.sessao).registrar()
+    new AssinaturaIpc(this.sessao).registrar()
+    new PagamentoIpc(this.sessao).registrar()
+    new LancamentoIpc(this.sessao).registrar()
+    new VisitanteIpc(this.sessao).registrar()
+    new NotificacaoIpc(this.sessao, botVencimento, notificacaoServico).registrar()
+    new FuncionarioIpc(this.sessao).registrar()
+    new ModalidadeIpc(this.sessao).registrar()
+    new RelatorioIpc(this.sessao).registrar()
+    new UsuarioIpc(this.sessao).registrar()
+
+    const telas: Record<string, () => void> = {}
+    for (const id of Object.keys(this.modulos) as Modulo[]) {
+      telas[id] = this.abrirModulo(this.modulos[id])
+    }
+    new MenuIpc(this.sessao, telas, this.aoVoltar).registrar()
   }
 
   iniciar = (): void => {
     app.whenReady().then(() => {
       if (process.platform === 'win32') app.setAppUserModelId('com.cotil.academia')
 
-      session.defaultSession.setPermissionRequestHandler((_conteudo, _permissao, callback) => callback(false))
-      session.defaultSession.setPermissionCheckHandler(() => false)
-
-      session.defaultSession.webRequest.onHeadersReceived((detalhes, callback) => {
-        callback({
-          responseHeaders: {
-            ...detalhes.responseHeaders,
-            'Content-Security-Policy': [CSP]
-          }
-        })
-      })
+      this.configurarSeguranca()
 
       const botClima = new BotClimaServico()
       const decisaoClima = new ServidorDecisaoClima()
       const notificacaoServico = new NotificacaoServico()
       const botVencimento = new BotVencimentoServico(notificacaoServico)
 
-      new AutenticacaoIpc(new AutenticacaoServico(), this.sessao, this.aoEntrar, this.aoSair).registrar()
-      new CepIpc(this.sessao).registrar()
-      new ClimaIpc(this.sessao).registrar()
-      new FeriadosIpc(this.sessao).registrar()
-      new WgerIpc(this.sessao).registrar()
-      new BotClimaIpc(this.sessao, botClima).registrar()
-      new AlunoIpc(this.sessao).registrar()
-      new AulaIpc(this.sessao).registrar()
-      new LancamentoIpc(this.sessao).registrar()
-      new AvaliacaoIpc(this.sessao).registrar()
-      new PresencaResumoIpc(this.sessao).registrar()
-      new PresencaCrudIpc(this.sessao).registrar()
-      new PlanoIpc(this.sessao).registrar()
-      new AssinaturaIpc(this.sessao).registrar()
-      new PagamentoIpc(this.sessao).registrar()
-      new VisitanteIpc(this.sessao).registrar()
-      new NotificacaoIpc(this.sessao, botVencimento, notificacaoServico).registrar()
-      new FuncionarioIpc(this.sessao).registrar()
-      new ModalidadeIpc(this.sessao).registrar()
-      new MenuIpc(this.sessao, {
-        relatorios: () => this.relatorios.abrir(),
-        usuarios: () => this.usuarios.abrir(),
-        funcionarios: () => this.funcionarios.abrir(),
-        alunos: () => this.alunos.abrir(),
-        aulas: () => this.aulas.abrir(),
-        feriados: () => this.feriados.abrir(),
-        exercicios: () => this.exercicios.abrir(),
-        avaliacoes: () => this.avaliacoes.abrir(),
-        planos: () => this.planos.abrir(),
-        pagamentos: () => this.pagamentos.abrir(),
-        visitantes: () => this.visitantes.abrir(),
-        notificacoes: () => this.notificacoes.abrir(),
-        presencas: () => this.presencas.abrir(),
-        inscricoes: () => this.inscricoes.abrir(),
-        lancamentos: () => this.lancamentos.abrir(),
-        portal: () => this.portal.abrir(),
-        bot: () => this.bot.abrir()
-      }, this.aoVoltar).registrar()
-      new RelatorioIpc(this.sessao).registrar()
-      new UsuarioIpc(this.sessao).registrar()
-
+      this.registrarIpc(botClima, decisaoClima, notificacaoServico, botVencimento)
       this.abrirInicial()
       botClima.iniciar()
       decisaoClima.iniciar()

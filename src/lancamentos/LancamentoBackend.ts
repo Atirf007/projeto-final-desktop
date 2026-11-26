@@ -21,6 +21,13 @@ export type FiltroLancamentos = {
   busca?: string
 }
 
+export type FiltroLancamento = {
+  categoria: CategoriaLancamento | ''
+  inicio: string
+  fim: string
+  busca: string
+}
+
 export type LancamentoInput = {
   id?: number
   categoria: CategoriaLancamento
@@ -152,6 +159,7 @@ class LancamentoValidador {
     const fim = dataValida(e.fim)
     if (fim) filtro.fim = fim
     if (typeof e.busca === 'string') filtro.busca = e.busca.trim().slice(0, 120)
+    if (filtro.inicio && filtro.fim && filtro.inicio > filtro.fim) return {}
     return filtro
   }
 
@@ -170,8 +178,17 @@ class LancamentoValidador {
       return { ok: false, mensagem: 'Selecione uma categoria válida.' }
     }
 
-    const descricao = typeof e.descricao === 'string' ? e.descricao.trim().slice(0, 160) || null : null
-    const numero = typeof e.valor === 'number' ? e.valor : typeof e.valor === 'string' && e.valor.trim() ? Number(e.valor) : NaN
+    const descricaoTexto = typeof e.descricao === 'string' ? e.descricao.trim() : ''
+    if (descricaoTexto.length > 160) {
+      return { ok: false, mensagem: 'A descrição deve ter até 160 caracteres.' }
+    }
+    const descricao = descricaoTexto || null
+    const numero =
+      typeof e.valor === 'number'
+        ? e.valor
+        : typeof e.valor === 'string' && /^\d+([.,]\d{1,2})?$/.test(e.valor.trim())
+          ? Number(e.valor.trim().replace(',', '.'))
+          : NaN
     if (!Number.isFinite(numero) || numero <= 0 || numero > 99999999.99) {
       return { ok: false, mensagem: 'Informe um valor entre 0,01 e 99.999.999,99.' }
     }

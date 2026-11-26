@@ -115,6 +115,61 @@ class BotView {
     return caixa
   }
 
+  private renderKpis = (estado: EstadoBot): void => {
+    const mensagens = estado.mensagens ?? []
+    const enviadas = mensagens.filter((mensagem) => mensagem.status === 'enviado').length
+    const falhas = mensagens.length - enviadas
+
+    const dados = [
+      {
+        rotulo: 'Estado do bot',
+        valor: estado.ativo ? 'Ativo' : 'Inativo',
+        detalhe: estado.verificando
+          ? 'Verificando a previsão agora'
+          : estado.ativo
+            ? 'Avisos automáticos ligados'
+            : 'Envios automáticos pausados'
+      },
+      {
+        rotulo: 'Intervalo',
+        valor: `${estado.intervaloMinutos} min`,
+        detalhe:
+          estado.ativo && estado.proximaVerificacaoEm
+            ? `Próxima: ${this.dataHora(estado.proximaVerificacaoEm)}`
+            : 'Verificação manual disponível'
+      },
+      {
+        rotulo: 'Limiar de chuva',
+        valor: `${estado.limiarChuva}%`,
+        detalhe: 'Chance mínima para avisar'
+      },
+      {
+        rotulo: 'E-mail',
+        valor: estado.emailConfigurado ? 'Configurado' : 'Pendente',
+        detalhe: estado.emailConfigurado
+          ? (estado.emailRemetente ?? 'Envio habilitado')
+          : 'Preencha SMTP_USER, SMTP_PASS e SMTP_FROM'
+      },
+      {
+        rotulo: 'Mensagens',
+        valor: `${enviadas}/${mensagens.length}`,
+        detalhe: falhas > 0 ? `${falhas} falha(s) registrada(s)` : 'Nenhuma falha registrada'
+      }
+    ]
+
+    const cartoes = dados.map(({ rotulo, valor, detalhe }) => {
+      const cartao = this.criar('div', 'kpi')
+      cartao.append(
+        this.criar('span', undefined, rotulo),
+        this.criar('strong', undefined, valor),
+        this.criar('small', undefined, detalhe)
+      )
+      return cartao
+    })
+
+    this.el('kpis-bot').replaceChildren(...cartoes)
+  }
+
   private garantirOpcaoIntervalo = (select: HTMLSelectElement, valor: number): void => {
     const existe = Array.from(select.options).some((opcao) => Number(opcao.value) === valor)
     if (existe) return
@@ -133,6 +188,7 @@ class BotView {
     this.el<HTMLButtonElement>('salvar-intervalo').disabled = ocupado
     this.el<HTMLButtonElement>('salvar-limiar').disabled = ocupado
     this.el<HTMLButtonElement>('verificar').disabled = ocupado
+    this.el<HTMLButtonElement>('testar-email').disabled = ocupado
   }
 
   private renderBot = (estado: EstadoBot): void => {
@@ -176,6 +232,7 @@ class BotView {
     email.className = estado.emailConfigurado ? '' : 'info-alerta'
 
     this.atualizarBotoes()
+    this.renderKpis(estado)
   }
 
   private renderPrevisao = (local: string, previsao: PrevisaoClima, hoje?: PrevisaoClima): void => {
@@ -380,6 +437,8 @@ class BotView {
     })
 
     lista.replaceChildren(...itens)
+
+    if (this.estadoAtual) this.renderKpis(this.estadoAtual)
   }
 
   private renderEstado = (estado: EstadoBot): void => {
@@ -482,6 +541,30 @@ class BotView {
     )
   }
 
+  private testarEmail = async (): Promise<void> => {
+    if (this.acaoEmAndamento) return
+
+    this.acaoEmAndamento = true
+    this.mostrarStatusBot('Enviando e-mail de teste...', 'neutro')
+    this.atualizarBotoes()
+
+    try {
+      const resultado = (await ipcRenderer.invoke('bot:testar-email')) as ResultadoEnvioEmail
+      if (!resultado.configurado) {
+        this.mostrarStatusBot(resultado.erroGeral ?? 'SMTP não configurado.', 'erro')
+      } else if (resultado.enviados > 0) {
+        this.mostrarStatusBot(`E-mail de teste enviado para ${resultado.enviados} destinatário(s).`, 'sucesso')
+      } else {
+        this.mostrarStatusBot(resultado.erroGeral ?? 'Falha ao enviar o e-mail de teste.', 'erro')
+      }
+    } catch (erro) {
+      this.mostrarStatusBot(erro instanceof Error ? erro.message : 'Não foi possível enviar o e-mail de teste.', 'erro')
+    } finally {
+      this.acaoEmAndamento = false
+      this.atualizarBotoes()
+    }
+  }
+
   private voltar = async (): Promise<void> => {
     try {
       await ipcRenderer.invoke('menu:voltar')
@@ -510,6 +593,7 @@ class BotView {
     this.el('salvar-intervalo').addEventListener('click', this.salvarIntervalo)
     this.el('salvar-limiar').addEventListener('click', this.salvarLimiar)
     this.el('verificar').addEventListener('click', this.verificarAgora)
+    this.el('testar-email').addEventListener('click', this.testarEmail)
     this.el('voltar').addEventListener('click', this.voltar)
 
     await this.carregarEstado()

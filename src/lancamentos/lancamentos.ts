@@ -1,124 +1,131 @@
 import { ipcRenderer } from 'electron'
 
-type UsuarioSessao = { id: number; nome: string; perfil: 'admin' | 'instrutor' | 'aluno' }
-
-type CategoriaLancamento = 'aula' | 'aluguel' | 'outros'
+type Categoria = 'aula' | 'aluguel' | 'outros'
 
 type Lancamento = {
   id: number
-  categoria: CategoriaLancamento
+  categoria: Categoria
   descricao: string | null
   valor: number
   dataLancamento: string
 }
 
-type ResultadoAcao = { ok: true; id: number } | { ok: false; mensagem: string }
+type Resultado = { ok: true; id?: number } | { ok: false; mensagem: string }
 
 class LancamentosView {
-  private usuario: UsuarioSessao | null = null
-  private lancamentoParaExcluir: Lancamento | null = null
+  private editandoId: number | null = null
+  private excluindoId: number | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
+
+  private readonly categorias: Record<Categoria, string> = {
+    aula: 'Aulas',
+    aluguel: 'Aluguel',
+    outros: 'Outros'
+  }
+
+  private readonly moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
-  private botao = (texto: string, classe: string): HTMLButtonElement => {
-    const elemento = document.createElement('button')
-    elemento.type = 'button'
-    elemento.className = classe
-    elemento.textContent = texto
-    return elemento
+  private status = (mensagem: string, erro = false): void => {
+    const elemento = this.el('status')
+    elemento.textContent = mensagem
+    elemento.classList.toggle('erro', erro)
+  }
+
+  private data = (valor: string): string => {
+    const [ano, mes, dia] = valor.split('-')
+    return dia && mes && ano ? `${dia}/${mes}/${ano}` : valor
   }
 
   private hoje = (): string => {
     const agora = new Date()
-    const mes = String(agora.getMonth() + 1).padStart(2, '0')
-    const dia = String(agora.getDate()).padStart(2, '0')
-    return `${agora.getFullYear()}-${mes}-${dia}`
+    const dois = (numero: number): string => String(numero).padStart(2, '0')
+    return `${agora.getFullYear()}-${dois(agora.getMonth() + 1)}-${dois(agora.getDate())}`
   }
 
-  private dataBr = (valor: string): string => {
-    const [ano, mes, dia] = String(valor).slice(0, 10).split('-')
-    return ano && mes && dia ? `${dia}/${mes}/${ano}` : valor
+  private celula = (texto: string, classe?: string): HTMLTableCellElement => {
+    const celula = document.createElement('td')
+    celula.textContent = texto
+    if (classe) celula.className = classe
+    return celula
   }
 
-  private moeda = (valor: number): string =>
-    Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-  private status = (texto: string, tipo: 'erro' | 'sucesso' | 'info' = 'info'): void => {
-    const el = this.el('status')
-    el.textContent = texto
-    el.classList.toggle('erro', tipo === 'erro')
-    el.classList.toggle('sucesso', tipo === 'sucesso')
-  }
-
-  private filtro = (): Record<string, unknown> => {
-    const entrada: Record<string, unknown> = {}
-    const busca = this.el<HTMLInputElement>('busca').value.trim()
-    const categoria = this.el<HTMLSelectElement>('filtro-categoria').value
-    const inicio = this.el<HTMLInputElement>('filtro-inicio').value
-    const fim = this.el<HTMLInputElement>('filtro-fim').value
-    if (busca) entrada.busca = busca
-    if (categoria) entrada.categoria = categoria
-    if (inicio) entrada.inicio = inicio
-    if (fim) entrada.fim = fim
-    return entrada
+  private botao = (texto: string, classe: string, acao: () => void): HTMLButtonElement => {
+    const botao = document.createElement('button')
+    botao.type = 'button'
+    botao.className = `pequeno ${classe}`
+    botao.textContent = texto
+    botao.addEventListener('click', acao)
+    return botao
   }
 
   private criarLinha = (lancamento: Lancamento): HTMLTableRowElement => {
-    const tr = document.createElement('tr')
-    const td = (texto: string, classe?: string): HTMLTableCellElement => {
-      const celula = document.createElement('td')
-      celula.textContent = texto
-      if (classe) celula.className = classe
-      return celula
-    }
+    const linha = document.createElement('tr')
 
-    const categoriaTd = document.createElement('td')
+    const categoria = document.createElement('td')
     const selo = document.createElement('span')
-    const categoriaTexto: Record<CategoriaLancamento, string> = {
-      aula: 'Aula',
-      aluguel: 'Aluguel',
-      outros: 'Outros'
-    }
     selo.className = `selo ${lancamento.categoria}`
-    selo.textContent = categoriaTexto[lancamento.categoria] ?? lancamento.categoria
-    categoriaTd.append(selo)
+    selo.textContent = this.categorias[lancamento.categoria] ?? lancamento.categoria
+    categoria.append(selo)
 
-    const acoes = document.createElement('div')
-    acoes.className = 'acoes-linha'
-    const editar = this.botao('Editar', 'botao secundario pequeno')
-    editar.addEventListener('click', () => void this.abrirEdicao(lancamento.id))
-    const excluir = this.botao('Excluir', 'botao perigo pequeno')
-    excluir.addEventListener('click', () => this.abrirExclusao(lancamento))
-    acoes.append(editar, excluir)
-    const acoesTd = document.createElement('td')
-    acoesTd.append(acoes)
-
-    tr.append(
-      td(this.dataBr(lancamento.dataLancamento), 'col-data'),
-      categoriaTd,
-      td(lancamento.descricao ?? '—'),
-      td(this.moeda(lancamento.valor), 'col-valor'),
-      acoesTd
+    const acoes = document.createElement('td')
+    acoes.className = 'col-acoes'
+    const grupo = document.createElement('div')
+    grupo.className = 'acoes-linha'
+    grupo.append(
+      this.botao('Editar', 'secundario', () => this.abrirFormulario(lancamento)),
+      this.botao('Excluir', 'perigo', () => this.abrirExclusao(lancamento))
     )
-    return tr
+    acoes.append(grupo)
+
+    linha.append(
+      this.celula(String(lancamento.id), 'col-id'),
+      categoria,
+      this.celula(lancamento.descricao ?? '—'),
+      this.celula(this.moeda.format(lancamento.valor), 'col-valor'),
+      this.celula(this.data(lancamento.dataLancamento), 'col-data'),
+      acoes
+    )
+
+    return linha
   }
 
   private carregar = async (): Promise<void> => {
+    const corpo = this.el<HTMLTableSectionElement>('corpo')
+    const filtro = {
+      categoria: this.el<HTMLSelectElement>('filtro-categoria').value,
+      inicio: this.el<HTMLInputElement>('filtro-inicio').value,
+      fim: this.el<HTMLInputElement>('filtro-fim').value,
+      busca: this.el<HTMLInputElement>('busca').value.trim()
+    }
+
+    this.status('Carregando lançamentos...')
+
     try {
-      const lancamentos = (await ipcRenderer.invoke('lancamentos:listar', this.filtro())) as Lancamento[]
-      const corpo = this.el<HTMLTableSectionElement>('corpo')
-      corpo.replaceChildren()
-      this.el('titulo').textContent = `Lançamentos (${Array.isArray(lancamentos) ? lancamentos.length : 0})`
-      if (Array.isArray(lancamentos)) lancamentos.forEach((lancamento) => corpo.append(this.criarLinha(lancamento)))
+      const lancamentos: Lancamento[] = await ipcRenderer.invoke('lancamentos:listar', filtro)
+      corpo.replaceChildren(...lancamentos.map(this.criarLinha))
+
+      if (lancamentos.length === 0) {
+        const vazio = document.createElement('tr')
+        const celula = document.createElement('td')
+        celula.colSpan = 6
+        celula.className = 'vazio'
+        celula.textContent = 'Nenhum lançamento encontrado para os filtros informados.'
+        vazio.append(celula)
+        corpo.replaceChildren(vazio)
+      }
+
       this.status('')
-    } catch {
-      this.el<HTMLTableSectionElement>('corpo').replaceChildren()
-      this.status('Não foi possível carregar os lançamentos.', 'erro')
+    } catch (erro) {
+      console.error('[lancamentos:listar]', erro)
+      corpo.replaceChildren()
+      const mensagem = erro instanceof Error && erro.message ? erro.message : 'Não foi possível carregar os lançamentos.'
+      this.status(mensagem, true)
     }
   }
 
-  private agendar = (): void => {
+  private agendarBusca = (): void => {
     if (this.timer) clearTimeout(this.timer)
     this.timer = setTimeout(() => {
       this.timer = null
@@ -126,74 +133,65 @@ class LancamentosView {
     }, 300)
   }
 
-  private abrirFormulario = (lancamento: Lancamento | null): void => {
+  private abrirFormulario = (lancamento?: Lancamento): void => {
+    this.editandoId = lancamento?.id ?? null
+
     this.el<HTMLFormElement>('formulario').reset()
     this.el('erro-formulario').textContent = ''
-    const edicao = lancamento !== null
-    this.el<HTMLInputElement>('lancamento-id').value = edicao ? String(lancamento.id) : ''
-    this.el('titulo-formulario').textContent = edicao ? 'Editar lançamento' : 'Novo lançamento'
-    this.el<HTMLButtonElement>('salvar').textContent = edicao ? 'Salvar alterações' : 'Cadastrar'
-    this.el<HTMLInputElement>('form-data').value = edicao ? lancamento.dataLancamento : this.hoje()
-    this.el<HTMLSelectElement>('form-categoria').value = edicao ? lancamento.categoria : 'aula'
-    this.el<HTMLInputElement>('form-valor').value = edicao ? String(lancamento.valor) : ''
-    this.el<HTMLInputElement>('form-descricao').value = edicao ? (lancamento.descricao ?? '') : ''
-    this.el<HTMLDialogElement>('dialogo-formulario').showModal()
-  }
+    this.el('titulo-form').textContent = lancamento ? 'Editar lançamento' : 'Novo lançamento'
+    this.el<HTMLButtonElement>('salvar').textContent = lancamento ? 'Salvar alterações' : 'Cadastrar'
 
-  private abrirEdicao = async (id: number): Promise<void> => {
-    try {
-      const lancamento = (await ipcRenderer.invoke('lancamentos:obter', id)) as Lancamento | null
-      if (!lancamento) {
-        this.status('Lançamento não encontrado.', 'erro')
-        return
-      }
-      this.abrirFormulario(lancamento)
-    } catch {
-      this.status('Não foi possível carregar o lançamento.', 'erro')
-    }
+    this.el<HTMLSelectElement>('categoria').value = lancamento?.categoria ?? 'aula'
+    this.el<HTMLInputElement>('descricao').value = lancamento?.descricao ?? ''
+    this.el<HTMLInputElement>('valor').value = lancamento ? String(lancamento.valor) : ''
+    this.el<HTMLInputElement>('data').value = lancamento?.dataLancamento ?? this.hoje()
+
+    this.el<HTMLDialogElement>('dialogo-form').showModal()
+    this.el<HTMLInputElement>('descricao').focus()
   }
 
   private fecharFormulario = (): void => {
-    this.el<HTMLDialogElement>('dialogo-formulario').close()
+    this.el<HTMLDialogElement>('dialogo-form').close()
+    this.editandoId = null
   }
 
   private salvar = async (evento: Event): Promise<void> => {
     evento.preventDefault()
+
     const erro = this.el('erro-formulario')
     const botao = this.el<HTMLButtonElement>('salvar')
-    const id = Number(this.el<HTMLInputElement>('lancamento-id').value || '0')
-    const dataLancamento = this.el<HTMLInputElement>('form-data').value
-    const categoria = this.el<HTMLSelectElement>('form-categoria').value
-    const valor = Number(this.el<HTMLInputElement>('form-valor').value)
-    const descricao = this.el<HTMLInputElement>('form-descricao').value
+    const categoria = this.el<HTMLSelectElement>('categoria').value
+    const descricao = this.el<HTMLInputElement>('descricao').value.trim()
+    const valorTexto = this.el<HTMLInputElement>('valor').value
+    const dataLancamento = this.el<HTMLInputElement>('data').value
+    const valor = Number(valorTexto)
+    const eraEdicao = this.editandoId !== null
 
-    if (!dataLancamento) {
-      erro.textContent = 'Informe a data do lançamento.'
-      return
-    }
-    if (!Number.isFinite(valor) || valor <= 0) {
-      erro.textContent = 'Informe um valor maior que zero.'
+    if (!categoria || !valorTexto || !dataLancamento || !Number.isFinite(valor) || valor <= 0) {
+      erro.textContent = 'Preencha categoria, valor e data do lançamento.'
       return
     }
 
     botao.disabled = true
     erro.textContent = ''
+
+    const dados = { categoria, descricao, valor, dataLancamento }
+
     try {
-      const resultado = (await ipcRenderer.invoke(id ? 'lancamentos:atualizar' : 'lancamentos:criar', {
-        id: id || undefined,
-        categoria,
-        descricao,
-        valor,
-        dataLancamento
-      })) as ResultadoAcao
+      const resultado: Resultado = this.editandoId === null
+        ? await ipcRenderer.invoke('lancamentos:criar', dados)
+        : await ipcRenderer.invoke('lancamentos:atualizar', { id: this.editandoId, ...dados })
+
       if (!resultado.ok) {
         erro.textContent = resultado.mensagem
         return
       }
+
       this.fecharFormulario()
       await this.carregar()
-      this.status(id ? 'Lançamento atualizado com sucesso.' : 'Lançamento registrado com sucesso.', 'sucesso')
-    } catch {
+      this.status(eraEdicao ? 'Lançamento atualizado com sucesso.' : 'Lançamento cadastrado com sucesso.')
+    } catch (erroIpc) {
+      console.error('[lancamentos:salvar]', erroIpc)
       erro.textContent = 'Não foi possível salvar o lançamento.'
     } finally {
       botao.disabled = false
@@ -201,82 +199,64 @@ class LancamentosView {
   }
 
   private abrirExclusao = (lancamento: Lancamento): void => {
-    this.lancamentoParaExcluir = lancamento
+    this.excluindoId = lancamento.id
     this.el('texto-excluir').textContent =
-      `Deseja excluir o lançamento de ${this.moeda(lancamento.valor)} em ${this.dataBr(lancamento.dataLancamento)}?`
+      `Excluir o lançamento "${lancamento.descricao || this.categorias[lancamento.categoria]}" de ${this.data(lancamento.dataLancamento)}?`
     this.el('erro-excluir').textContent = ''
     this.el<HTMLDialogElement>('dialogo-excluir').showModal()
   }
 
   private confirmarExclusao = async (): Promise<void> => {
-    if (!this.lancamentoParaExcluir) return
+    if (this.excluindoId === null) return
+
     const botao = this.el<HTMLButtonElement>('confirmar-excluir')
     botao.disabled = true
     this.el('erro-excluir').textContent = ''
+
     try {
-      const resultado = (await ipcRenderer.invoke('lancamentos:excluir', this.lancamentoParaExcluir.id)) as ResultadoAcao
+      const resultado: Resultado = await ipcRenderer.invoke('lancamentos:excluir', this.excluindoId)
       if (!resultado.ok) {
         this.el('erro-excluir').textContent = resultado.mensagem
         return
       }
+
       this.el<HTMLDialogElement>('dialogo-excluir').close()
-      this.lancamentoParaExcluir = null
+      this.excluindoId = null
       await this.carregar()
-      this.status('Lançamento excluído com sucesso.', 'sucesso')
-    } catch {
+      this.status('Lançamento excluído. Os relatórios foram atualizados.')
+    } catch (erroIpc) {
+      console.error('[lancamentos:excluir]', erroIpc)
       this.el('erro-excluir').textContent = 'Não foi possível excluir o lançamento.'
     } finally {
       botao.disabled = false
     }
   }
 
-  private limpar = async (): Promise<void> => {
-    this.el<HTMLInputElement>('busca').value = ''
-    this.el<HTMLSelectElement>('filtro-categoria').value = ''
-    this.el<HTMLInputElement>('filtro-inicio').value = ''
-    this.el<HTMLInputElement>('filtro-fim').value = ''
-    await this.carregar()
-  }
-
   private voltar = async (): Promise<void> => {
     try {
       await ipcRenderer.invoke('menu:voltar')
     } catch {
-      this.status('Não foi possível voltar ao menu.', 'erro')
+      this.status('Não foi possível voltar ao menu.', true)
     }
   }
 
-  iniciar = async (): Promise<void> => {
-    try {
-      this.usuario = (await ipcRenderer.invoke('auth:me')) as UsuarioSessao | null
-    } catch {
-      this.usuario = null
-    }
-
+  iniciar = (): void => {
     this.el('voltar').addEventListener('click', () => void this.voltar())
-    if (!this.usuario || this.usuario.perfil !== 'admin') {
-      this.el('painel').classList.add('oculto')
-      this.el('acesso-negado').classList.remove('oculto')
-      return
-    }
-
-    this.el('busca').addEventListener('input', this.agendar)
+    this.el('novo').addEventListener('click', () => this.abrirFormulario())
     this.el('filtro-categoria').addEventListener('change', () => void this.carregar())
     this.el('filtro-inicio').addEventListener('change', () => void this.carregar())
     this.el('filtro-fim').addEventListener('change', () => void this.carregar())
-    this.el('limpar').addEventListener('click', () => void this.limpar())
-    this.el('novo').addEventListener('click', () => this.abrirFormulario(null))
-    this.el('cancelar').addEventListener('click', this.fecharFormulario)
+    this.el('busca').addEventListener('input', this.agendarBusca)
     this.el('formulario').addEventListener('submit', (evento) => void this.salvar(evento))
-    this.el('cancelar-excluir').addEventListener('click', () =>
+    this.el('cancelar-form').addEventListener('click', this.fecharFormulario)
+    this.el('cancelar-excluir').addEventListener('click', () => {
       this.el<HTMLDialogElement>('dialogo-excluir').close()
-    )
+      this.excluindoId = null
+    })
     this.el('confirmar-excluir').addEventListener('click', () => void this.confirmarExclusao())
 
-    await this.carregar()
+    void this.carregar()
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  void new LancamentosView().iniciar()
-})
+window.addEventListener('DOMContentLoaded', () => new LancamentosView().iniciar())

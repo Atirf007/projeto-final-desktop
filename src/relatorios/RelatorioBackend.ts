@@ -14,6 +14,22 @@ export type Receitas = {
   outros: number
 }
 
+export type FormatoExportacao = 'pdf' | 'csv' | 'json' | 'png'
+
+export type PedidoExportacao = {
+  nome: string
+  formato: FormatoExportacao
+  periodo: Periodo
+  receitas: Receitas
+}
+
+const FORMATOS: Record<FormatoExportacao, { extensao: string; rotulo: string }> = {
+  pdf: { extensao: 'pdf', rotulo: 'PDF' },
+  csv: { extensao: 'csv', rotulo: 'CSV para Excel' },
+  json: { extensao: 'json', rotulo: 'JSON' },
+  png: { extensao: 'png', rotulo: 'Imagem PNG' }
+}
+
 export class RelatorioRepository {
   private readonly pool = Banco.pool
 
@@ -82,29 +98,171 @@ export class RelatorioRepository {
   }
 }
 
-export class RelatorioPdf {
-  salvar = async (janela: BrowserWindow, nome: string): Promise<string | null> => {
+export class RelatorioExportador {
+  constructor(private readonly repositorio: RelatorioRepository) {}
+
+  private dois = (numero: number): string => String(numero).padStart(2, '0')
+
+  private decimal = (valor: number): string => valor.toFixed(2).replace('.', ',')
+
+  private percentual = (valor: number): string => valor.toFixed(1).replace('.', ',')
+
+  private celulaCsv = (valor: string | number): string => {
+    const texto = String(valor)
+    return /[;"\r\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto
+  }
+
+  private periodoTexto = (periodo: Periodo): string =>
+    periodo.tipo === 'anual' ? `Ano ${periodo.ano}` : `${this.dois(periodo.mes)}/${periodo.ano}`
+
+  private total = (receitas: Receitas): number =>
+    receitas.planos + receitas.aulas + receitas.aluguel + receitas.outros
+
+  private participacoes = (receitas: Receitas): Receitas => {
+    const total = this.total(receitas)
+    const parte = (valor: number): number => (total > 0 ? (valor / total) * 100 : 0)
+
+    return {
+      planos: parte(receitas.planos),
+      aulas: parte(receitas.aulas),
+      aluguel: parte(receitas.aluguel),
+      outros: parte(receitas.outros)
+    }
+  }
+
+  private lider = (receitas: Receitas): { rotulo: string; valor: number } => {
+    const itens = [
+      { rotulo: 'Planos', valor: receitas.planos },
+      { rotulo: 'Aulas', valor: receitas.aulas },
+      { rotulo: 'Aluguel', valor: receitas.aluguel },
+      { rotulo: 'Outros', valor: receitas.outros }
+    ]
+    return itens.reduce((atual, item) => (item.valor > atual.valor ? item : atual), itens[0])
+  }
+
+  private csv = (pedido: PedidoExportacao): string => {
+    const total = this.total(pedido.receitas)
+    const partes = this.participacoes(pedido.receitas)
+
+    const linhas: Array<Array<string | number>> = [
+      ['Relatório de receitas - Academia Cotil'],
+      ['Período', this.periodoTexto(pedido.periodo)],
+      [],
+      ['Categoria', 'Valor (R$)', 'Participação (%)'],
+      ['Planos', this.decimal(pedido.receitas.planos), this.percentual(partes.planos)],
+      ['Aulas', this.decimal(pedido.receitas.aulas), this.percentual(partes.aulas)],
+      ['Aluguel', this.decimal(pedido.receitas.aluguel), this.percentual(partes.aluguel)],
+      ['Outros', this.decimal(pedido.receitas.outros), this.percentual(partes.outros)],
+      ['Total', this.decimal(total), '100,0']
+    ]
+
+    return '\uFEFF' + linhas.map((linha) => linha.map(this.celulaCsv).join(';')).join('\r\n')
+  }
+
+  private json = (pedido: PedidoExportacao): string => {
+    const total = this.total(pedido.receitas)
+    const partes = this.participacoes(pedido.receitas)
+    const lider = this.lider(pedido.receitas)
+
+    return JSON.stringify(
+      {
+        sistema: 'Academia Cotil',
+        periodo: pedido.periodo,
+        periodoTexto: this.periodoTexto(pedido.periodo),
+        geradoEm: new Date().toISOString(),
+        receitas: pedido.receitas,
+        total,
+        participacoesPercentuais: partes,
+        categoriaLider: lider.rotulo,
+        valorCategoriaLider: lider.valor,
+        participacaoLiderPercentual: total > 0 ? (lider.valor / total) * 100 : 0
+      },
+      null,
+      2
+    )
+  }
+
+  private escolherDestino = async (
+    janela: BrowserWindow,
+    nome: string,
+    formato: FormatoExportacao
+  ): Promise<string | null> => {
+    const config = FORMATOS[formato]
     const base = nome.replace(/[^\w-]/g, '').slice(0, 60) || 'relatorio'
 
     const { canceled, filePath } = await dialog.showSaveDialog(janela, {
-      defaultPath: `${base}.pdf`,
-      filters: [{ name: 'PDF', extensions: ['pdf'] }]
+      defaultPath: `${base}.${config.extensao}`,
+      filters: [{ name: config.rotulo, extensions: [config.extensao] }]
     })
     if (canceled || !filePath) return null
 
-    const destino = filePath.toLowerCase().endsWith('.pdf') ? filePath : `${filePath}.pdf`
+    return filePath.toLowerCase().endsWith(`.${config.extensao}`)
+      ? filePath
+      : `${filePath}.${config.extensao}`
+  }
+
+  salvarPdf = async (janela: BrowserWindow, nome: string): Promise<string | null> => {
+    const destino = await this.escolherDestino(janela, nome, 'pdf')
+    if (!destino) return null
+
     const conteudo = await janela.webContents.printToPDF({ printBackground: true, landscape: true, pageSize: 'A4' })
     await writeFile(destino, conteudo)
     return destino
   }
+
+  salvar = async (janela: BrowserWindow, pedido: PedidoExportacao): Promise<string | null> => {
+    if (pedido.formato === 'pdf') return this.salvarPdf(janela, pedido.nome)
+
+    const destino = await this.escolherDestino(janela, pedido.nome, pedido.formato)
+    if (!destino) return null
+
+    if (pedido.formato === 'png') {
+      const imagem = await janela.webContents.capturePage()
+      await writeFile(destino, imagem.toPNG())
+      return destino
+    }
+
+    const conteudo = pedido.formato === 'csv' ? this.csv(pedido) : this.json(pedido)
+    await writeFile(destino, conteudo, 'utf8')
+    return destino
+  }
+
+  validar = (entrada: unknown): PedidoExportacao | null => {
+    if (typeof entrada !== 'object' || entrada === null) return null
+
+    const { nome, formato, periodo, receitas } = entrada as Record<string, unknown>
+    if (typeof nome !== 'string' || !Object.prototype.hasOwnProperty.call(FORMATOS, formato as string)) return null
+    if (!this.repositorio.periodoValido(periodo)) return null
+    if (typeof receitas !== 'object' || receitas === null) return null
+
+    const valores = receitas as Record<string, unknown>
+    const numero = (valor: unknown): number | null =>
+      typeof valor === 'number' && Number.isFinite(valor) && valor >= 0 ? valor : null
+
+    const planos = numero(valores.planos)
+    const aulas = numero(valores.aulas)
+    const aluguel = numero(valores.aluguel)
+    const outros = numero(valores.outros)
+    if (planos === null || aulas === null || aluguel === null || outros === null) return null
+
+    return {
+      nome: nome.slice(0, 60),
+      formato: formato as FormatoExportacao,
+      periodo: periodo as Periodo,
+      receitas: { planos, aulas, aluguel, outros }
+    }
+  }
 }
 
 export class RelatorioIpc {
+  private readonly exportador: RelatorioExportador
+
   constructor(
     private readonly sessao: Sessao,
-    private readonly repositorio: RelatorioRepository = new RelatorioRepository(),
-    private readonly pdf: RelatorioPdf = new RelatorioPdf()
-  ) {}
+    private readonly repositorio: RelatorioRepository = new RelatorioRepository()
+  ) {
+    this.exportador = new RelatorioExportador(this.repositorio)
+  }
 
   registrar = (): void => {
     registrarCanal('relatorios:receitas', (_evento, periodo: unknown) => {
@@ -113,11 +271,21 @@ export class RelatorioIpc {
       return this.repositorio.receitas(periodo)
     })
 
-    registrarCanal('relatorios:exportar-pdf', (evento, nome: unknown) => {
+    registrarCanal('relatorios:exportar', async (evento, entrada: unknown) => {
+      this.sessao.exigir(['admin'])
+      const pedido = this.exportador.validar(entrada)
+      if (!pedido) throw new Error('Dados de exportação inválidos')
+
+      const janela = BrowserWindow.fromWebContents(evento.sender)
+      if (!janela) throw new Error('Janela não encontrada')
+      return this.exportador.salvar(janela, pedido)
+    })
+
+    registrarCanal('relatorios:exportar-pdf', async (evento, nome: unknown) => {
       this.sessao.exigir(['admin'])
       const janela = BrowserWindow.fromWebContents(evento.sender)
       if (!janela) throw new Error('Janela não encontrada')
-      return this.pdf.salvar(janela, typeof nome === 'string' ? nome : 'relatorio')
+      return this.exportador.salvarPdf(janela, typeof nome === 'string' ? nome : 'relatorio')
     })
   }
 }

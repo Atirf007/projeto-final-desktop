@@ -23,11 +23,6 @@ const somarMeses = (data: string, meses: number): string => {
 
 const primeiroDia = (data: string): string => `${data.slice(0, 7)}-01`
 
-/**
- * Cria as mensalidades de uma assinatura na tabela `pagamentos`.
- * O valor total do contrato é dividido pelo número de meses do plano.
- * A restrição UNIQUE (assinatura_id, competencia) evita duplicidade.
- */
 export const gerarMensalidades = async (
   executor: Pool | PoolConnection,
   dados: DadosMensalidades

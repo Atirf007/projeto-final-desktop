@@ -3,13 +3,9 @@ import { registrarCanal } from '../SegurancaIpc'
 import { Sessao } from '../Sessao'
 
 export type HorarioAula = {
-  /** Hora cheia inicial (0–23). */
   inicio: number
-  /** Hora cheia final (0–23). */
   fim: number
-  /** Minutos desde 00:00 do início da aula. */
   inicioMin: number
-  /** Minutos desde 00:00 do fim da aula. */
   fimMin: number
   titulo?: string
 }
@@ -18,13 +14,9 @@ export type PrevisaoClima = {
   data: string
   temperaturaMinC: number
   temperaturaMaxC: number
-  /** Probabilidade usada na decisão: no horário da aula (se houver aula) ou a máxima do dia. */
   probabilidadeChuva: number
-  /** Máxima do dia, apenas para referência. */
   probabilidadeDia: number
-  /** Hora do pico de chuva do dia, ex.: "16:00". */
   horarioPico?: string
-  /** Janela de horário considerada, ex.: "10:05–10:50". */
   janela?: string
   precipitacaoMm: number
   codigoClima: number
@@ -47,11 +39,6 @@ type RespostaOpenMeteo = {
   }
 }
 
-/**
- * Modelos consultados em paralelo. A mediana entre eles evita que um único
- * modelo destoe da previsão (o ECMWF, por exemplo, costuma exagerar a
- * probabilidade de chuva na região de Limeira em comparação com o Google).
- */
 const MODELOS = ['ecmwf_ifs025', 'gfs_seamless', 'icon_seamless', 'gem_seamless']
 
 const DESCRICOES: Record<number, string> = {
@@ -120,10 +107,6 @@ export class OpenMeteoClient {
     return ordenado[meio]
   }
 
-  /**
-   * Lê o mesmo campo em todos os modelos. Quando a API devolve as chaves sem
-   * sufixo (consulta de um modelo só), usa essa série como fallback.
-   */
   private series = (conjunto: Record<string, unknown>, campo: string, indice: number): number[] => {
     const porModelo = MODELOS.map((modelo) => conjunto[`${campo}_${modelo}`])
     const series = porModelo.some((serie) => Array.isArray(serie)) ? porModelo : [conjunto[campo]]
@@ -134,7 +117,6 @@ export class OpenMeteoClient {
       .filter((valor): valor is number => typeof valor === 'number' && Number.isFinite(valor))
   }
 
-  /** Escolhe o código do tempo do modelo cuja probabilidade ficou mais perto da mediana. */
   private codigoRepresentativo = (
     diario: Record<string, unknown>,
     indice: number,
@@ -171,11 +153,11 @@ export class OpenMeteoClient {
     return [...horas].sort((a, b) => a - b)
   }
 
-  private probabilidadeHoraria = (dados: RespostaOpenMeteo, indice: number): number => {
+  private probabilidadeHoraria = (dados: RespostaOpenMeteo, indice: number): number | null => {
     const horario = dados.hourly
-    if (!horario) return 0
+    if (!horario) return null
     const probabilidades = this.series(horario, 'precipitation_probability', indice)
-    return probabilidades.length > 0 ? Math.round(this.mediana(probabilidades)) : 0
+    return probabilidades.length > 0 ? Math.round(this.mediana(probabilidades)) : null
   }
 
   private picoDoDia = (dados: RespostaOpenMeteo, data: string): string | undefined => {
@@ -186,7 +168,7 @@ export class OpenMeteoClient {
     tempos.forEach((tempo, indice) => {
       if (!String(tempo).startsWith(data)) return
       const probabilidade = this.probabilidadeHoraria(dados, indice)
-      if (probabilidade > melhor.probabilidade) {
+      if (probabilidade !== null && probabilidade > melhor.probabilidade) {
         melhor = { probabilidade, horario: String(tempo).slice(11, 16) }
       }
     })
@@ -194,16 +176,17 @@ export class OpenMeteoClient {
     return melhor.probabilidade >= 0 ? melhor.horario : undefined
   }
 
-  private probabilidadeNaJanela = (dados: RespostaOpenMeteo, data: string, horas: number[]): number => {
+  private probabilidadeNaJanela = (dados: RespostaOpenMeteo, data: string, horas: number[]): number | null => {
     const tempos = dados.hourly?.time
-    if (!Array.isArray(tempos) || horas.length === 0) return 0
+    if (!Array.isArray(tempos) || horas.length === 0) return null
 
-    let maior = 0
+    let maior: number | null = null
     for (const hora of horas) {
       const alvo = `${data}T${String(hora).padStart(2, '0')}:00`
       const indice = tempos.indexOf(alvo)
       if (indice < 0) continue
-      maior = Math.max(maior, this.probabilidadeHoraria(dados, indice))
+      const valor = this.probabilidadeHoraria(dados, indice)
+      if (valor !== null) maior = maior === null ? valor : Math.max(maior, valor)
     }
     return maior
   }
@@ -238,8 +221,9 @@ export class OpenMeteoClient {
     const codigo = this.codigoRepresentativo(diario, indice, probabilidadeDia)
 
     const horas = horarios ? this.horasDaJanela(horarios) : []
-    const probabilidadeJanela = horas.length > 0 ? this.probabilidadeNaJanela(dados, data, horas) : 0
-    const probabilidade = horas.length > 0 ? probabilidadeJanela : probabilidadeDia
+    const probabilidadeJanela = horas.length > 0 ? this.probabilidadeNaJanela(dados, data, horas) : null
+    const usaJanela = probabilidadeJanela !== null
+    const probabilidade = usaJanela ? probabilidadeJanela : probabilidadeDia
 
     return {
       data,
@@ -248,7 +232,7 @@ export class OpenMeteoClient {
       probabilidadeChuva: probabilidade,
       probabilidadeDia,
       horarioPico: this.picoDoDia(dados, data),
-      janela: horarios && horas.length > 0 ? this.descreverJanela(horarios) : undefined,
+      janela: horarios && usaJanela ? this.descreverJanela(horarios) : undefined,
       precipitacaoMm: Number(precipitacao.toFixed(1)),
       codigoClima: codigo,
       descricao: DESCRICOES[codigo] ?? 'Condição não identificada',
@@ -266,43 +250,53 @@ export class OpenMeteoClient {
       return this.cache.valor
     }
 
-    const url = new URL('https://api.open-meteo.com/v1/forecast')
-    url.searchParams.set('latitude', String(this.latitude))
-    url.searchParams.set('longitude', String(this.longitude))
-    url.searchParams.set(
-      'daily',
-      'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum'
-    )
-    url.searchParams.set('hourly', 'precipitation_probability')
-    url.searchParams.set('models', MODELOS.join(','))
-    url.searchParams.set('timezone', 'America/Sao_Paulo')
-    url.searchParams.set('forecast_days', '2')
+    const montarUrl = (modelos: boolean): URL => {
+      const url = new URL('https://api.open-meteo.com/v1/forecast')
+      url.searchParams.set('latitude', String(this.latitude))
+      url.searchParams.set('longitude', String(this.longitude))
+      url.searchParams.set(
+        'daily',
+        'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum'
+      )
+      url.searchParams.set('hourly', 'precipitation_probability')
+      if (modelos) url.searchParams.set('models', MODELOS.join(','))
+      url.searchParams.set('timezone', 'America/Sao_Paulo')
+      url.searchParams.set('forecast_days', '2')
+      return url
+    }
 
-    try {
-      const resposta = await fetch(url, { signal: AbortSignal.timeout(8000) })
-      if (!resposta.ok) {
-        return { ok: false, mensagem: 'Não foi possível consultar a previsão do tempo no momento.' }
+    const consultar = async (modelos: boolean): Promise<RespostaOpenMeteo | null> => {
+      try {
+        const resposta = await fetch(montarUrl(modelos), { signal: AbortSignal.timeout(12000) })
+        if (!resposta.ok) return null
+        const dados = (await resposta.json()) as RespostaOpenMeteo
+        const datas = dados.daily?.time
+        return Array.isArray(datas) && datas.length > 0 ? dados : null
+      } catch {
+        return null
       }
+    }
 
-      const dados = (await resposta.json()) as RespostaOpenMeteo
-      const hoje = this.previsaoNoIndice(dados, 0, limiar)
-      const previsao = this.previsaoNoIndice(dados, 1, limiar, horarios) ?? hoje
-      if (!previsao) return { ok: false, mensagem: 'A previsão do tempo não retornou dados para amanhã.' }
-
-      const resultado: ResultadoClima = {
-        ok: true,
-        local: this.local,
-        previsao,
-        hoje: hoje && hoje.data !== previsao.data ? hoje : undefined
-      }
-      this.cache = { expiraEm: Date.now() + this.ttlMs, chave, valor: resultado }
-      return resultado
-    } catch {
+    const dados = (await consultar(true)) ?? (await consultar(false))
+    if (!dados) {
       return {
         ok: false,
         mensagem: 'Não foi possível consultar a previsão do tempo. Verifique a conexão com a internet.'
       }
     }
+
+    const hoje = this.previsaoNoIndice(dados, 0, limiar)
+    const previsao = this.previsaoNoIndice(dados, 1, limiar, horarios) ?? hoje
+    if (!previsao) return { ok: false, mensagem: 'A previsão do tempo não retornou dados para amanhã.' }
+
+    const resultado: ResultadoClima = {
+      ok: true,
+      local: this.local,
+      previsao,
+      hoje: hoje && hoje.data !== previsao.data ? hoje : undefined
+    }
+    this.cache = { expiraEm: Date.now() + this.ttlMs, chave, valor: resultado }
+    return resultado
   }
 }
 

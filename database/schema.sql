@@ -1,3 +1,6 @@
+-- Configuração inicial do banco de dados
+SET FOREIGN_KEY_CHECKS = 0;
+
 CREATE TABLE IF NOT EXISTS `usuarios` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `nome` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -248,3 +251,32 @@ CREATE TABLE IF NOT EXISTS `notificacoes` (
   CONSTRAINT `fk_notificacoes_pagamento` FOREIGN KEY (`pagamento_id`) REFERENCES `pagamentos` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_notificacoes_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+INSERT INTO usuarios (nome, email, senha_hash, perfil) VALUES
+  ('Administrador Teste', 'admin@teste.com', 'scrypt:bcfc4b12db22e8599f646766b304ee79:918319a69eea9d3013f340ae0daf7e93b4dbf7810d0ea018cacd1e5deaafacf19ed56542ac328589d07c4db5c261a03f6515306e6cf2edfaf8661087882699d9', 'admin'),
+  ('Instrutor Teste', 'instrutor@teste.com', 'scrypt:153ed10c6c758f8c98708f2b2e9a496b:c2179ee89caa0e6f6049cef96851005ab96948f48eb218bc2ec013b76ee0d70b07b94ee65a4248ad36fe82a92354e87596a6b3be09c4d589eac40af5db6c0521', 'instrutor'),
+  ('Aluno Teste', 'aluno@teste.com', 'scrypt:6f1a852f5d32470a53317e6443e1ee35:708a9512a2ad2038f69c64aca448702d6950446dad395d115167786810d4fa9b5d30db79207f72a23c39997c1ebcbe9e26f59f8aac4cf12959ed9b19ae5f6858', 'aluno')
+ON DUPLICATE KEY UPDATE
+  nome = VALUES(nome),
+  senha_hash = VALUES(senha_hash),
+  perfil = VALUES(perfil),
+  ativo = 1;
+
+INSERT INTO lancamentos (categoria, descricao, valor, data_lancamento) VALUES
+  ('aula', 'TESTE-RELATORIO', 1800.00, DATE_FORMAT(CURDATE(), '%Y-%m-05')),
+  ('aula', 'TESTE-RELATORIO', 950.50, DATE_FORMAT(CURDATE(), '%Y-%m-18')),
+  ('aluguel', 'TESTE-RELATORIO', 1200.00, DATE_FORMAT(CURDATE(), '%Y-%m-10')),
+  ('outros', 'TESTE-RELATORIO', 340.00, DATE_FORMAT(CURDATE(), '%Y-%m-22')),
+  ('aula', 'TESTE-RELATORIO', 1500.00, DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-12'), INTERVAL 1 MONTH)),
+  ('aluguel', 'TESTE-RELATORIO', 1200.00, DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-10'), INTERVAL 1 MONTH)),
+  ('outros', 'TESTE-RELATORIO', 210.00, DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-20'), INTERVAL 2 MONTH));
+
+INSERT INTO pagamentos (assinatura_id, competencia, valor, data_vencimento, data_pagamento, status, metodo, observacao)
+SELECT a.id, DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL m.n MONTH), '%Y-%m-01'), m.valor,
+       DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL m.n MONTH), '%Y-%m-10'),
+       DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL m.n MONTH), '%Y-%m-05'),
+       'pago', 'pix', 'TESTE-RELATORIO'
+FROM (SELECT id FROM assinaturas ORDER BY id LIMIT 1) a
+JOIN (SELECT 0 AS n, 3200.00 AS valor UNION ALL SELECT 1, 2800.00 UNION ALL SELECT 2, 2500.00) m;

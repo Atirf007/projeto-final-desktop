@@ -111,7 +111,7 @@ class NotificacoesView {
         ? `Próxima: ${this.dataHoraFmt(situacao.agendador.proximaExecucaoEm)}`
         : ''
       this.el('situacao-dias').textContent = `${situacao.agendador?.diasAntes ?? 7} dias`
-      this.el('situacao-hoje').textContent = `${situacao.enviadasHoje} enviada(s)`
+      this.el('situacao-hoje').textContent = `${situacao.enviadasHoje} registrada(s)`
       this.el('situacao-falhas').textContent =
         `${situacao.falhasHoje} falha(s) • ${situacao.pendentes} pendente(s)`
       this.el('aviso-smtp').classList.toggle('oculto', situacao.smtpConfigurado)

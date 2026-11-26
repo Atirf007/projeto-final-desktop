@@ -7,6 +7,7 @@ type OpcoesJanela = {
   largura: number
   altura: number
   redimensionavel?: boolean
+  aoFechar?: () => void
 }
 
 export class JanelaApp {
@@ -16,6 +17,8 @@ export class JanelaApp {
 
   abrir = (): void => {
     if (this.janela && !this.janela.isDestroyed()) {
+      if (this.janela.isMinimized()) this.janela.restore()
+      if (!this.janela.isVisible()) this.janela.show()
       this.janela.focus()
       return
     }
@@ -57,10 +60,15 @@ export class JanelaApp {
 
     janela.on('closed', () => {
       if (this.janela === janela) this.janela = null
+      this.opcoes.aoFechar?.()
     })
 
     janela.loadFile(path.join(__dirname, pasta, `${nome}.html`))
     this.janela = janela
+  }
+
+  ocultar = (): void => {
+    if (this.janela && !this.janela.isDestroyed()) this.janela.hide()
   }
 
   fechar = (): void => {

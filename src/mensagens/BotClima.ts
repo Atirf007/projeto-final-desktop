@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import 'dotenv/config'
 import { Sessao } from '../Sessao'
+import { ResultadoEnvioEmail } from '../integracoes/EmailBackend'
 import { Mensagem, MensagemServico, ResultadoVerificacao } from './MensagemBackend'
 
 /**
@@ -195,6 +196,9 @@ export class BotClimaServico {
     return this.estado()
   }
 
+  testarEmail = async (destinatario: string): Promise<ResultadoEnvioEmail> =>
+    this.mensagens.testarEmail(destinatario)
+
   verificar = async (): Promise<EstadoBot> => {
     if (this.verificando) return this.estado()
 
@@ -256,6 +260,13 @@ export class BotClimaIpc {
     registrarCanal('bot:definir-limiar', (_evento, limiar: unknown): EstadoBot => {
       this.sessao.exigir(['admin'])
       return this.bot.definirLimiar(limiar)
+    })
+
+    registrarCanal('bot:testar-email', async (): Promise<ResultadoEnvioEmail> => {
+      this.sessao.exigir(['admin'])
+      const destino = (process.env.SMTP_TESTE_DESTINATARIO ?? process.env.SMTP_USER ?? '').trim()
+      if (!destino) throw new Error('Defina SMTP_TESTE_DESTINATARIO no arquivo .env.')
+      return this.bot.testarEmail(destino)
     })
   }
 }

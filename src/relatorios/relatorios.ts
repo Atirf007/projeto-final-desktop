@@ -11,6 +11,10 @@ type Receitas = {
 
 type Barra = { rotulo: string; valor: number; destaque: boolean }
 
+type FormatoExportacao = 'pdf' | 'csv' | 'json' | 'png'
+
+type TipoGrafico = 'barras' | 'blocos'
+
 class RelatoriosView {
   private readonly moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -23,10 +27,36 @@ class RelatoriosView {
   private readonly svgNs = 'http://www.w3.org/2000/svg'
 
   private nomeArquivo = 'relatorio'
+  private receitasAtuais: Receitas | null = null
+  private periodoAtualDados: Periodo | null = null
+  private categoriasAtuais: Barra[] = []
+  private totalAtual = 0
+  private rankingVisivel = false
+
+  private readonly classesCategoria = ['categoria-0', 'categoria-1', 'categoria-2', 'categoria-3']
+
+  private readonly rotuloFormato: Record<FormatoExportacao, string> = {
+    pdf: 'PDF',
+    csv: 'CSV',
+    json: 'JSON',
+    png: 'PNG'
+  }
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
   private dois = (numero: number): string => String(numero).padStart(2, '0')
+
+  private criar = (tag: string, classe?: string, texto?: string): HTMLElement => {
+    const elemento = document.createElement(tag)
+    if (classe) elemento.className = classe
+    if (texto !== undefined) elemento.textContent = texto
+    return elemento
+  }
+
+  private percentual = (valor: number): string => `${valor.toFixed(1).replace('.', ',')}%`
+
+  private participacao = (valor: number, total: number): number =>
+    total > 0 ? (valor / total) * 100 : 0
 
   private svg = (tag: string, atributos: Record<string, string | number>, texto?: string): SVGElement => {
     const elemento = document.createElementNS(this.svgNs, tag) as SVGElement
@@ -41,6 +71,20 @@ class RelatoriosView {
     const fator = maximo / base
     const arredondado = fator <= 1 ? 1 : fator <= 2 ? 2 : fator <= 5 ? 5 : 10
     return arredondado * base
+  }
+
+  private distribuirBlocos = (categorias: Barra[], total: number, quantidade: number): number[] => {
+    if (total <= 0) return categorias.map(() => 0)
+
+    const exatas = categorias.map((categoria) => (categoria.valor / total) * quantidade)
+    const bases = exatas.map((valor) => Math.floor(valor))
+    const restante = quantidade - bases.reduce((soma, valor) => soma + valor, 0)
+    const ordem = exatas
+      .map((valor, indice) => ({ indice, fracao: valor - bases[indice] }))
+      .sort((a, b) => b.fracao - a.fracao || a.indice - b.indice)
+
+    for (let i = 0; i < restante; i++) bases[ordem[i % ordem.length].indice]++
+    return bases
   }
 
   private periodoAtual = (): Periodo | null => {
@@ -64,22 +108,77 @@ class RelatoriosView {
     return `Receita por categoria - ${mes}`
   }
 
-  private desenhar = (receitas: Receitas): void => {
-    const planos = Number(receitas.planos) || 0
-    const aulas = Number(receitas.aulas) || 0
-    const aluguel = Number(receitas.aluguel) || 0
-    const outros = Number(receitas.outros) || 0
+  private renderResumo = (categorias: Barra[], total: number): void => {
+    const ordenadas = [...categorias].sort((a, b) => b.valor - a.valor)
+    const lider = ordenadas[0]
+    const participacao = lider ? this.participacao(lider.valor, total) : 0
+    const ativas = categorias.filter((categoria) => categoria.valor > 0).length
+    const media = categorias.length > 0 ? total / categorias.length : 0
 
-    const total = planos + aulas + aluguel + outros
-
-    const barras: Barra[] = [
-      { rotulo: 'Planos', valor: planos, destaque: false },
-      { rotulo: 'Aulas', valor: aulas, destaque: false },
-      { rotulo: 'Aluguel', valor: aluguel, destaque: false },
-      { rotulo: 'Outros', valor: outros, destaque: false },
-      { rotulo: 'Total', valor: total, destaque: true }
+    const dados = [
+      {
+        rotulo: 'Receita total',
+        valor: this.moeda.format(total),
+        detalhe: 'Soma de todas as categorias'
+      },
+      {
+        rotulo: 'Categoria líder',
+        valor: lider?.rotulo ?? '—',
+        detalhe: lider ? this.moeda.format(lider.valor) : 'Sem dados no período'
+      },
+      {
+        rotulo: 'Participação da líder',
+        valor: this.percentual(participacao),
+        detalhe: 'Do total recebido'
+      },
+      {
+        rotulo: 'Categorias ativas',
+        valor: `${ativas} de ${categorias.length}`,
+        detalhe: `Média de ${this.moeda.format(media)}`
+      }
     ]
 
+    const cartoes = dados.map(({ rotulo, valor, detalhe }) => {
+      const cartao = this.criar('div', 'kpi')
+      cartao.append(
+        this.criar('span', undefined, rotulo),
+        this.criar('strong', undefined, valor),
+        this.criar('small', undefined, detalhe)
+      )
+      return cartao
+    })
+
+    this.el('kpis').replaceChildren(...cartoes)
+  }
+
+  private renderRanking = (categorias: Barra[], total: number): void => {
+    const ordenadas = [...categorias].sort((a, b) => b.valor - a.valor)
+    const maximo = ordenadas[0]?.valor ?? 0
+
+    const itens = ordenadas.map((categoria, indice) => {
+      const lider = indice === 0 && categoria.valor > 0
+      const item = this.criar('div', lider ? 'ranking-item lider' : 'ranking-item')
+
+      const trilha = this.criar('div', 'ranking-trilha')
+      const barra = this.criar('span', 'ranking-barra')
+      barra.style.width = `${maximo > 0 ? (categoria.valor / maximo) * 100 : 0}%`
+      trilha.append(barra)
+
+      const participacao = this.participacao(categoria.valor, total)
+      const valor = `${this.moedaCurta.format(categoria.valor)} · ${this.percentual(participacao)}`
+
+      item.append(
+        this.criar('span', undefined, `${indice + 1}. ${categoria.rotulo}`),
+        trilha,
+        this.criar('strong', undefined, valor)
+      )
+      return item
+    })
+
+    this.el('ranking').replaceChildren(...itens)
+  }
+
+  private desenharBarras = (categorias: Barra[], barras: Barra[], total: number): void => {
     const largura = 800
     const altura = 380
     const margemEsquerda = 90
@@ -129,6 +228,108 @@ class RelatoriosView {
     this.el('grafico').replaceChildren(grafico)
   }
 
+  private desenharBlocos = (categorias: Barra[], total: number): void => {
+    const largura = 800
+    const altura = 380
+    const colunas = 20
+    const linhas = 5
+    const tamanho = 26
+    const espaco = 6
+    const passo = tamanho + espaco
+    const larguraGrade = colunas * passo - espaco
+    const alturaGrade = linhas * passo - espaco
+    const origemX = (largura - larguraGrade) / 2
+    const origemY = 42
+    const quantidades = this.distribuirBlocos(categorias, total, colunas * linhas)
+
+    const grafico = this.svg('svg', {
+      viewBox: `0 0 ${largura} ${altura}`,
+      role: 'img',
+      'aria-label': 'Gráfico de blocos com a participação de cada categoria'
+    })
+
+    let posicao = 0
+    categorias.forEach((categoria, indiceCategoria) => {
+      for (let i = 0; i < quantidades[indiceCategoria]; i++) {
+        const atual = posicao++
+        grafico.appendChild(
+          this.svg('rect', {
+            x: origemX + (atual % colunas) * passo,
+            y: origemY + Math.floor(atual / colunas) * passo,
+            width: tamanho,
+            height: tamanho,
+            rx: 4,
+            class: `bloco ${this.classesCategoria[indiceCategoria]}`
+          })
+        )
+      }
+    })
+
+    for (; posicao < colunas * linhas; posicao++) {
+      grafico.appendChild(
+        this.svg('rect', {
+          x: origemX + (posicao % colunas) * passo,
+          y: origemY + Math.floor(posicao / colunas) * passo,
+          width: tamanho,
+          height: tamanho,
+          rx: 4,
+          class: 'bloco vazio'
+        })
+      )
+    }
+
+    const legendaY = origemY + alturaGrade + 38
+    categorias.forEach((categoria, indice) => {
+      const x = origemX + (indice % 2) * (larguraGrade / 2)
+      const y = legendaY + Math.floor(indice / 2) * 34
+      const texto = `${categoria.rotulo} · ${this.moedaCurta.format(categoria.valor)} · ${this.percentual(this.participacao(categoria.valor, total))}`
+      grafico.appendChild(
+        this.svg('rect', { x, y: y - 13, width: 14, height: 14, rx: 3, class: `bloco ${this.classesCategoria[indice]}` })
+      )
+      grafico.appendChild(this.svg('text', { x: x + 22, y, class: 'legenda-texto' }, texto))
+    })
+
+    this.el('grafico').replaceChildren(grafico)
+  }
+
+  private renderGrafico = (): void => {
+    if (this.categoriasAtuais.length === 0) return
+
+    const tipo = this.el<HTMLSelectElement>('tipo-grafico').value as TipoGrafico
+    if (tipo === 'blocos') {
+      this.desenharBlocos(this.categoriasAtuais, this.totalAtual)
+      return
+    }
+
+    this.desenharBarras(
+      this.categoriasAtuais,
+      [...this.categoriasAtuais, { rotulo: 'Total', valor: this.totalAtual, destaque: true }],
+      this.totalAtual
+    )
+  }
+
+  private desenhar = (receitas: Receitas): void => {
+    const planos = Number(receitas.planos) || 0
+    const aulas = Number(receitas.aulas) || 0
+    const aluguel = Number(receitas.aluguel) || 0
+    const outros = Number(receitas.outros) || 0
+
+    const total = planos + aulas + aluguel + outros
+
+    const categorias: Barra[] = [
+      { rotulo: 'Planos', valor: planos, destaque: false },
+      { rotulo: 'Aulas', valor: aulas, destaque: false },
+      { rotulo: 'Aluguel', valor: aluguel, destaque: false },
+      { rotulo: 'Outros', valor: outros, destaque: false }
+    ]
+
+    this.categoriasAtuais = categorias
+    this.totalAtual = total
+    this.renderResumo(categorias, total)
+    this.renderRanking(categorias, total)
+    this.renderGrafico()
+  }
+
   private atualizar = async (): Promise<void> => {
     const periodo = this.periodoAtual()
     const status = this.el('status')
@@ -143,10 +344,18 @@ class RelatoriosView {
 
     try {
       const receitas: Receitas = await ipcRenderer.invoke('relatorios:receitas', periodo)
+      this.receitasAtuais = receitas
+      this.periodoAtualDados = periodo
       this.desenhar(receitas)
       status.textContent = ''
     } catch {
+      this.receitasAtuais = null
+      this.periodoAtualDados = null
+      this.categoriasAtuais = []
+      this.totalAtual = 0
       this.el('grafico').replaceChildren()
+      this.el('kpis').replaceChildren()
+      this.el('ranking').replaceChildren()
       status.textContent = 'Não foi possível carregar os dados.'
     }
   }
@@ -158,13 +367,38 @@ class RelatoriosView {
     await this.atualizar()
   }
 
+  private alternarRanking = (): void => {
+    this.rankingVisivel = !this.rankingVisivel
+
+    this.el('painel-ranking').hidden = !this.rankingVisivel
+    this.el('area-visualizacao').classList.toggle('sem-ranking', !this.rankingVisivel)
+
+    const botao = this.el<HTMLButtonElement>('alternar-ranking')
+    botao.textContent = this.rankingVisivel ? 'Ocultar ranking' : 'Mostrar ranking'
+    botao.setAttribute('aria-pressed', String(this.rankingVisivel))
+  }
+
   private exportar = async (): Promise<void> => {
     const status = this.el('status')
+    const formato = this.el<HTMLSelectElement>('formato-exportacao').value as FormatoExportacao
+
+    if (!this.receitasAtuais || !this.periodoAtualDados) {
+      status.textContent = 'Carregue os dados do período antes de exportar.'
+      return
+    }
+
     try {
-      const caminho: string | null = await ipcRenderer.invoke('relatorios:exportar-pdf', this.nomeArquivo)
-      status.textContent = caminho ? `PDF salvo em ${caminho}` : 'Exportação cancelada.'
+      const caminho: string | null = await ipcRenderer.invoke('relatorios:exportar', {
+        nome: this.nomeArquivo,
+        formato,
+        periodo: this.periodoAtualDados,
+        receitas: this.receitasAtuais
+      })
+      status.textContent = caminho
+        ? `${this.rotuloFormato[formato]} salvo em ${caminho}`
+        : 'Exportação cancelada.'
     } catch {
-      status.textContent = 'Não foi possível exportar o PDF.'
+      status.textContent = 'Não foi possível exportar o relatório.'
     }
   }
 
@@ -184,6 +418,8 @@ class RelatoriosView {
     this.el('periodo').addEventListener('change', this.alternarPeriodo)
     this.el('mes').addEventListener('change', this.atualizar)
     this.el('ano').addEventListener('change', this.atualizar)
+    this.el('tipo-grafico').addEventListener('change', this.renderGrafico)
+    this.el('alternar-ranking').addEventListener('click', this.alternarRanking)
     this.el('exportar').addEventListener('click', this.exportar)
     this.el('voltar').addEventListener('click', this.voltar)
 
