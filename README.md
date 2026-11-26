@@ -14,7 +14,7 @@ npm run popular-tabelas
 npm start
 ```
 
-`criar-tabelas` cria o database `DB_NAME` quando ele não existe, aplica `database/schema.sql` e executa migrações idempotentes para atualizar bancos já existentes. `popular-tabelas` aplica `database/seed.sql`, uma carga de demonstração que cobre as 15 tabelas — inclusive `lancamentos`, usada pelos relatórios.
+`criar-tabelas` aplica `database/schema.sql` e executa migrações idempotentes no banco `DB_NAME` do `.env`, que precisa existir e ser acessível com `DB_USER`. `popular-tabelas` aplica `database/seed.sql`, uma carga de demonstração que cobre as 15 tabelas — inclusive `lancamentos`, usada pelos relatórios.
 
 Para um ambiente sem dados de demonstração, substitua `popular-tabelas` por:
 
@@ -32,7 +32,7 @@ O seed é idempotente: pode ser reaplicado sem duplicar registros; ele atualiza 
 | Perfil | E-mail | Senha |
 |---|---|---|
 | Administrador | `admin@cotil.unicamp.br` | `Admin@123456` |
-| Funcionário (`instrutor`) | `funcionario@cl205172.com` | `Funcionario@123456` |
+| Funcionário (`instrutor`) | `funcionario@exemplo.com` | `Funcionario@123456` |
 | Alunos | `aluno1@exemplo.com` a `aluno4@exemplo.com` | `Aluno@123456` |
 
 As senhas são gravadas como hash `scrypt`, no formato `scrypt:<sal>:<hash>`, compatível com `Senha.gerar` em `src/autenticacao/AutenticacaoBackend.ts`. Os usuários-aluno entram no app em **Aulas** (para consultar a agenda e gerenciar apenas a própria reserva) e no **Meu painel**, sem acesso às telas de gestão. Detalhes em `database/README.md`.

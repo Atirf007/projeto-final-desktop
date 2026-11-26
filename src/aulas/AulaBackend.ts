@@ -2,6 +2,7 @@ import { registrarCanal } from '../SegurancaIpc'
 import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
+import { FeriadoCliente } from '../integracoes/FeriadosBackend'
 import { Sessao, UsuarioSessao } from '../Sessao'
 
 export type StatusAula = 'agendada' | 'confirmada' | 'cancelada' | 'remarcada' | 'concluida'
@@ -89,7 +90,7 @@ export type FiltroAulas = {
   status?: StatusAula
 }
 
-export type ResultadoAula = { ok: true; id?: number } | { ok: false; mensagem: string }
+export type ResultadoAula = { ok: true; id?: number; aviso?: string } | { ok: false; mensagem: string }
 
 type ContextoInscricao = {
   inscricaoId: number
@@ -961,8 +962,23 @@ export class AulaIpc {
 
   constructor(
     private readonly sessao: Sessao,
-    private readonly repositorio: AulaRepository = new AulaRepository()
+    private readonly repositorio: AulaRepository = new AulaRepository(),
+    private readonly feriados: FeriadoCliente = new FeriadoCliente()
   ) {}
+
+  private avisoFeriado = async (dataHora: string): Promise<string | undefined> => {
+    const data = String(dataHora).slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return undefined
+    try {
+      const verificado = await this.feriados.verificar(data)
+      if (!verificado.ok || !verificado.feriado) return undefined
+      const [ano, mes, dia] = data.split('-')
+      return `Atenção: ${dia}/${mes}/${ano} é feriado (${verificado.feriado.nome}). O agendamento foi concluído normalmente.`
+    } catch (erro) {
+      console.error('[aulas:feriado]', erro)
+      return undefined
+    }
+  }
 
   private idValido(valor: unknown): number | null {
     const id = typeof valor === 'number' ? valor : typeof valor === 'string' ? Number(valor) : NaN
@@ -1043,7 +1059,7 @@ export class AulaIpc {
           v.dados.instrutorId = meuInstrutorId
         }
         const id = await this.repositorio.criar(v.dados)
-        return { ok: true, id }
+        return { ok: true, id, aviso: await this.avisoFeriado(v.dados.dataHoraInicio) }
       } catch (erro) {
         return this.erro('aulas:criar', erro, 'Não foi possível cadastrar a aula.')
       }
@@ -1061,7 +1077,7 @@ export class AulaIpc {
         if (usuario.perfil === 'instrutor') v.dados.instrutorId = meuInstrutorId ?? undefined
         const ok = await this.repositorio.atualizar(v.dados)
         if (!ok) return { ok: false, mensagem: 'Aula não encontrada.' }
-        return { ok: true, id: v.dados.id }
+        return { ok: true, id: v.dados.id, aviso: await this.avisoFeriado(v.dados.dataHoraInicio ?? aula.dataHoraInicio) }
       } catch (erro) {
         return this.erro('aulas:atualizar', erro, 'Não foi possível atualizar a aula.')
       }
@@ -1078,7 +1094,7 @@ export class AulaIpc {
         this.gerenciar(usuario, aula.instrutorId, meuInstrutorId)
         const ok = await this.repositorio.remarcar(v.dados)
         if (!ok) return { ok: false, mensagem: 'Aula não encontrada.' }
-        return { ok: true, id: v.dados.id }
+        return { ok: true, id: v.dados.id, aviso: await this.avisoFeriado(v.dados.novaDataHora) }
       } catch (erro) {
         return this.erro('aulas:remarcar', erro, 'Não foi possível remarcar a aula.')
       }

@@ -351,6 +351,23 @@
 
     #status { margin: 16px 0 0; font-size: 13px; color: var(--erro); }
 
+    .alerta-inadimplencia {
+      margin-bottom: 20px;
+      padding: 14px 16px;
+      color: #7c2d12;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-left: 4px solid #ea580c;
+      border-radius: 12px;
+    }
+
+    .alerta-topo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; }
+    .alerta-topo strong { font-size: 14px; color: #9a3412; }
+    .alerta-topo span { font-size: 12px; color: #7c2d12; }
+    .alerta-inadimplencia details { margin-top: 8px; }
+    .alerta-inadimplencia summary { font-size: 12px; font-weight: 700; color: #9a3412; cursor: pointer; }
+    .alerta-inadimplencia ul { margin: 8px 0 0; padding-left: 20px; font-size: 12px; }
+
     @media (max-width: 720px) {
       main { padding: 20px; }
       .conta { margin-left: 0; width: 100%; justify-content: space-between; }
@@ -735,6 +752,12 @@
         <line x1="12" y1="20" x2="12" y2="10" />
         <line x1="18" y1="20" x2="18" y2="4" />
       </symbol>
+      <symbol id="ico-assiduidade" viewBox="0 0 24 24">
+        <path d="M4 19V9" />
+        <path d="M10 19V5" />
+        <path d="M16 19v-7" />
+        <path d="M22 19H2" />
+      </symbol>
       <symbol id="ico-mensagens" viewBox="0 0 24 24">
         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
         <path d="M13.7 21a2 2 0 0 1-3.4 0" />
@@ -862,6 +885,7 @@
         <span>módulos disponíveis</span>
       </div>
     </section>
+    <section id="alerta-inadimplencia" class="alerta-inadimplencia" hidden></section>
     <section id="opcoes"></section>
     <p id="status" role="alert"></p>
   </main>

@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { createConnection, RowDataPacket } from 'mysql2/promise'
+import { RowDataPacket } from 'mysql2/promise'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { Banco } from '../src/Banco'
@@ -9,28 +9,6 @@ const dividir = (sql: string): string[] =>
     .split(';')
     .map((comando) => comando.trim())
     .filter(Boolean)
-
-async function garantirDatabase(): Promise<void> {
-  const nome = process.env.DB_NAME ?? ''
-  if (!/^[A-Za-z0-9_]+$/.test(nome)) {
-    throw new Error('DB_NAME invalido. Use apenas letras, numeros e underscore.')
-  }
-
-  const conexao = await createConnection({
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT ?? 3306),
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
-  })
-
-  try {
-    await conexao.query(
-      `CREATE DATABASE IF NOT EXISTS \`${nome}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-    )
-  } finally {
-    await conexao.end()
-  }
-}
 
 async function coluna(tabela: string, nome: string): Promise<RowDataPacket | null> {
   const [linhas] = await Banco.pool.query<RowDataPacket[]>(
@@ -116,7 +94,10 @@ async function garantirUnico(tabela: string, nome: string, colunas: string): Pro
 }
 
 async function main(): Promise<void> {
-  await garantirDatabase()
+  const nome = process.env.DB_NAME ?? ''
+  if (!/^[A-Za-z0-9_]+$/.test(nome)) {
+    throw new Error('DB_NAME invalido. Use apenas letras, numeros e underscore.')
+  }
 
   const arquivo = join(__dirname, '..', 'database', 'schema.sql')
   const comandos = dividir(readFileSync(arquivo, 'utf8'))

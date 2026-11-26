@@ -1,4 +1,5 @@
 import { app, BrowserWindow, session } from 'electron'
+import { AssiduidadeIpc } from './assiduidade/AssiduidadeBackend'
 import { JanelaApp } from './JanelaApp'
 import { Sessao } from './Sessao'
 import { AlunoIpc } from './alunos/AlunoBackend'
@@ -6,6 +7,7 @@ import { AulaIpc } from './aulas/AulaBackend'
 import { AvaliacaoIpc } from './avaliacoes/AvaliacaoBackend'
 import { AutenticacaoIpc, AutenticacaoServico } from './autenticacao/AutenticacaoBackend'
 import { FuncionarioIpc, ModalidadeIpc } from './funcionarios/FuncionarioBackend'
+import { InadimplenciaIpc } from './inadimplencia/InadimplenciaBackend'
 import { LancamentoIpc } from './lancamentos/LancamentoBackend'
 import { CepIpc } from './integracoes/CepBackend'
 import { ClimaIpc } from './integracoes/ClimaBackend'
@@ -25,6 +27,7 @@ import { VisitanteIpc } from './visitantes/VisitanteBackend'
 
 type Modulo =
   | 'relatorios'
+  | 'assiduidade'
   | 'usuarios'
   | 'funcionarios'
   | 'alunos'
@@ -86,6 +89,7 @@ class Aplicacao {
 
     this.modulos = {
       relatorios: criarModulo('relatorios', 1000, 700),
+      assiduidade: criarModulo('assiduidade', 1280, 860),
       usuarios: criarModulo('usuarios', 1000, 700),
       funcionarios: criarModulo('funcionarios', 1200, 760),
       alunos: criarModulo('alunos', 1200, 760),
@@ -182,12 +186,14 @@ class Aplicacao {
     new PlanoIpc(this.sessao).registrar()
     new AssinaturaIpc(this.sessao).registrar()
     new PagamentoIpc(this.sessao).registrar()
+    new InadimplenciaIpc(this.sessao).registrar()
     new LancamentoIpc(this.sessao).registrar()
     new VisitanteIpc(this.sessao).registrar()
     new NotificacaoIpc(this.sessao, botVencimento, notificacaoServico).registrar()
     new FuncionarioIpc(this.sessao).registrar()
     new ModalidadeIpc(this.sessao).registrar()
     new RelatorioIpc(this.sessao).registrar()
+    new AssiduidadeIpc(this.sessao).registrar()
     new UsuarioIpc(this.sessao).registrar()
 
     const telas: Record<string, () => void> = {}

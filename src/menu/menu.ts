@@ -1,4 +1,5 @@
 import { ipcRenderer } from 'electron'
+import type { ResumoInadimplencia } from '../inadimplencia/InadimplenciaBackend'
 
 type Opcao = { id: string; titulo: string; descricao: string; grupo: string; disponivel: boolean }
 
@@ -12,6 +13,7 @@ class MenuView {
   }
 
   private readonly svgNs = 'http://www.w3.org/2000/svg'
+  private readonly moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   private el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -66,6 +68,60 @@ class MenuView {
     return botao
   }
 
+  private dataBr = (valor: string): string => {
+    const [ano, mes, dia] = valor.split('-').map(Number)
+    return ano && mes && dia ? `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}` : valor
+  }
+
+  private competenciaBr = (valor: string): string => {
+    const [ano, mes] = valor.split('-')
+    return ano && mes ? `${mes}/${ano}` : valor
+  }
+
+  private carregarAlerta = async (perfil: string): Promise<void> => {
+    const caixa = this.el<HTMLElement>('alerta-inadimplencia')
+    caixa.hidden = true
+    if (perfil !== 'admin') return
+
+    try {
+      const resumo = await ipcRenderer.invoke('inadimplencia:resumo') as ResumoInadimplencia
+      if (!resumo.atrasados) return
+
+      caixa.replaceChildren()
+      const topo = document.createElement('div')
+      topo.className = 'alerta-topo'
+
+      const titulo = document.createElement('strong')
+      titulo.textContent = `${resumo.atrasados} ${resumo.atrasados === 1 ? 'mensalidade em atraso' : 'mensalidades em atraso'}`
+
+      const detalhe = document.createElement('span')
+      detalhe.textContent = `${resumo.totalAlunos} ${resumo.totalAlunos === 1 ? 'aluno' : 'alunos'} • ${this.moeda.format(resumo.valorTotal)}`
+
+      topo.append(titulo, detalhe)
+      caixa.append(topo)
+
+      if (resumo.itens.length) {
+        const detalhes = document.createElement('details')
+        const resumoDetalhes = document.createElement('summary')
+        resumoDetalhes.textContent = 'Ver detalhes'
+        const lista = document.createElement('ul')
+
+        for (const item of resumo.itens) {
+          const linha = document.createElement('li')
+          linha.textContent = `${item.alunoNome} — ${this.competenciaBr(item.competencia)} • vencida em ${this.dataBr(item.dataVencimento)} • ${this.moeda.format(item.valor)} • ${item.diasAtraso} ${item.diasAtraso === 1 ? 'dia' : 'dias'} em atraso`
+          lista.append(linha)
+        }
+
+        detalhes.append(resumoDetalhes, lista)
+        caixa.append(detalhes)
+      }
+
+      caixa.hidden = false
+    } catch {
+      caixa.hidden = true
+    }
+  }
+
   private abrir = async (id: string): Promise<void> => {
     try {
       await ipcRenderer.invoke('menu:abrir', id)
@@ -102,6 +158,8 @@ class MenuView {
       this.el('opcoes').replaceChildren(
         ...Array.from(grupos, ([grupo, opcoes]) => this.criarGrupo(grupo, opcoes))
       )
+
+      await this.carregarAlerta(dados.perfil)
     } catch {
       this.el('status').textContent = 'Sessão inválida. Faça login novamente.'
     }
