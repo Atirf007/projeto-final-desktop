@@ -122,8 +122,11 @@ test('visitante duplicado no mesmo dia é rejeitado e usa identificadores normal
   assert.deepEqual(conexao.consultas[0].values, [
     '2026-01-10',
     0,
+    1,
     '11999999999',
+    1,
     'ana@example.com',
+    0,
     'ana silva'
   ])
 })
@@ -163,4 +166,61 @@ test('visitante vinculado a aluno com aula no dia é rejeitado', async () => {
       }),
     (erro: unknown) => erro instanceof ErroAula && /Esta pessoa já possui/.test(erro.message)
   )
+})
+
+test('visitante cancelado no mesmo dia não bloqueia novo cadastro', async () => {
+  const conexao = new ConexaoFalsa((consulta) => {
+    if (!consulta.sql.includes('FROM visitantes v')) return []
+    return consulta.sql.includes("v.status <> 'cancelado'") ? [] : [{ id: 8 }]
+  })
+  const regras = new RegrasAulaService(poolCom(conexao))
+
+  await regras.validarVisitanteUnicoPorDia(conexaoCom(conexao), {
+    nome: 'Ana Silva',
+    telefone: '(11) 99999-9999',
+    dataVisita: '2026-01-10'
+  })
+
+  assert.match(conexao.consultas[0].sql, /v\.status <> 'cancelado'/)
+})
+
+test('homônimos com telefone e e-mail diferentes não bloqueiam', async () => {
+  const conexao = new ConexaoFalsa((consulta) => {
+    if (!consulta.sql.includes('FROM visitantes v')) return []
+    const [, , temTelefone, telefone, temEmail, email, usarNome] = consulta.values ?? []
+    const duplicado =
+      (temTelefone === 1 && telefone === '11999999999') ||
+      (temEmail === 1 && email === 'ana@exemplo.com') ||
+      usarNome === 1
+    return duplicado ? [{ id: 9 }] : []
+  })
+  const regras = new RegrasAulaService(poolCom(conexao))
+
+  await regras.validarVisitanteUnicoPorDia(conexaoCom(conexao), {
+    nome: 'Ana Silva',
+    telefone: '(11) 98888-8888',
+    email: 'ana@outro.test',
+    dataVisita: '2026-01-10'
+  })
+
+  assert.equal(conexao.consultas[0].values?.[6], 0)
+})
+
+test('nome é usado quando telefone e e-mail estão ausentes', async () => {
+  const conexao = new ConexaoFalsa((consulta) => {
+    if (!consulta.sql.includes('FROM visitantes v')) return []
+    return consulta.values?.[6] === 1 ? [{ id: 10 }] : []
+  })
+  const regras = new RegrasAulaService(poolCom(conexao))
+
+  await assert.rejects(
+    () =>
+      regras.validarVisitanteUnicoPorDia(conexaoCom(conexao), {
+        nome: 'Ana Silva',
+        telefone: '',
+        dataVisita: '2026-01-10'
+      }),
+    ErroAula
+  )
+  assert.equal(conexao.consultas[0].values?.[6], 1)
 })

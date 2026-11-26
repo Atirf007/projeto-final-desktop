@@ -517,7 +517,8 @@ export class NotificacaoServico {
   }
 
   registrarAlertaInadimplencia = async (resumo: ResumoInadimplencia): Promise<number> => {
-    if (resumo.atrasadosLongos <= 0) return 0
+    const haAtrasos = resumo.atrasadosLongos > 0 || resumo.atrasadosLeves > 0
+    if (!haAtrasos && resumo.emAberto <= 0) return 0
 
     const assunto = `Alerta de inadimplência — ${new Date().toISOString().slice(0, 10)}`
     if (await this.repositorio.alertaInadimplenciaExiste(assunto)) return 0
@@ -525,14 +526,28 @@ export class NotificacaoServico {
     const admins = await this.repositorio.admins()
     if (!admins.length) return 0
 
-    const detalhes = resumo.itens
+    const destaquesAtraso = resumo.itens
       .slice(0, 5)
-      .map((item) => `${item.alunoNome}: ${item.competencia} (${item.diasAtraso} dias)`)
-      .join('; ')
+      .map((item) => `${item.alunoNome}: ${item.competencia} (${item.diasAtraso} dias em atraso)`)
+    const destaquesAberto = resumo.itensEmAberto
+      .slice(0, 5)
+      .map((item) => `${item.alunoNome}: ${item.competencia} (em aberto)`)
+    const detalhes = [...destaquesAtraso, ...destaquesAberto].slice(0, 5).join('; ')
+    const valorAberto = Math.round((resumo.valorTotalAlerta - resumo.valorTotal) * 100) / 100
+    const alunosEmAberto = Math.max(0, resumo.totalAlunosAlerta - resumo.totalAlunos)
     const mensagem = [
-      `Existem ${resumo.atrasados} pagamento(s) em atraso envolvendo ${resumo.totalAlunos} aluno(s).`,
-      `${resumo.atrasadosLongos} pagamento(s) com atraso superior a ${DIAS_ALERTA_INADIMPLENCIA} dias.`,
-      `Valor total: ${moedaBr(resumo.valorTotal)}.`,
+      `Pagamentos em atraso: ${resumo.atrasados} envolvendo ${resumo.totalAlunos} aluno(s).`,
+      resumo.atrasadosLongos > 0
+        ? `${resumo.atrasadosLongos} pagamento(s) com atraso superior a ${DIAS_ALERTA_INADIMPLENCIA} dias.`
+        : '',
+      resumo.atrasadosLeves > 0
+        ? `${resumo.atrasadosLeves} pagamento(s) com atraso de até ${DIAS_ALERTA_INADIMPLENCIA} dias.`
+        : '',
+      resumo.emAberto > 0
+        ? `${resumo.emAberto} pagamento(s) em aberto ainda não vencido(s) envolvendo ${alunosEmAberto} aluno(s).`
+        : '',
+      `Valor em atraso: ${moedaBr(resumo.valorTotal)}.`,
+      resumo.emAberto > 0 ? `Valor em aberto: ${moedaBr(valorAberto)}.` : '',
       detalhes ? `Destaques: ${detalhes}.` : ''
     ]
       .filter(Boolean)
