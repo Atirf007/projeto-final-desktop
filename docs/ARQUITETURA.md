@@ -1409,12 +1409,14 @@ O `PermissionService` e os guards de IPC aplicam isso no main. O menu do React t
 |---|---|
 | Fonte | `https://api.open-meteo.com/v1/forecast` |
 | Dados | Probabilidade de chuva, precipitação, temperatura, código do tempo, por hora/dia |
-| Propósito real | Verificar risco de chuva nas aulas **ao ar livre** e avisar alunos 1 dia antes; sugerir transferência para área interna |
+| Propósito real | Verificar risco de chuva nas aulas **ao ar livre** e avisar alunos 1 dia antes; oferecer a escolha entre cancelar a aula e movê-la para a área interna |
 | Onde entra | `ClimaService`, `AulaService`, `NotificacaoService`; job diário no main e botão manual “Verificar clima” |
 | Entrada | Latitude/longitude da academia (`.env`), data da aula |
 | Saída usada | `PrevisaoClima[]`, `RiscoAula[]` |
 | Autenticação | Nenhuma (API pública) |
 | Fallback | Cache em memória + mensagem “não foi possível consultar agora”; nunca derrubar a tela |
+
+A decisão do aluno usa `ServidorDecisaoClima`, um servidor HTTP local: o link gerado com HMAC-SHA256 (validade de 7 dias) leva à página com as opções **cancelar a aula** e **mover para a área interna**. O servidor valida o token, abre uma transação travando a aula e a inscrição, aplica `aulas.status = 'cancelada'` ou `aulas.local = 'interna'` e grava a escolha em `notificacoes` (`tipo = 'chuva'`, `canal = 'sistema'`). A deduplicação é por turma: uma decisão registrada impede uma segunda resposta; aulas já canceladas ou já movidas recebem essa informação, sem duplicar registros. Nenhuma linha de aula, inscrição ou notificação é excluída.
 
 ### API 2 — ViaCEP (endereço)
 
@@ -1462,7 +1464,7 @@ O enunciado exige **envio de e-mails** de vencimento e de chuva. Isso é uma int
 
 - `EmailService` com Nodemailer/SMTP ou Resend;
 - Em desenvolvimento, usar Ethereal ou Mailtrap para não enviar e-mail real;
-- Templates: vencimento próximo, aula externa com risco de chuva, aula experimental;
+- Templates: vencimento próximo, aula externa com risco de chuva (com link para cancelar ou mover), aula experimental;
 - Toda tentativa é registrada em `notificacoes` (status, erro, data de envio).
 
 > Se o professor aceitar e-mail como uma das 4 APIs, ele pode substituir o Wger. A recomendação é manter as 4 APIs de dados e o e-mail como integração adicional, para não correr risco no requisito.
