@@ -7,6 +7,8 @@ export class BancoErros {
         ''
     )
 
+    if (codigo || detalhe) console.error('[banco]', { codigo, detalhe })
+
     if (codigo === 'ER_DUP_ENTRY') {
       if (/alunos\.cpf|\bcpf\b/i.test(detalhe)) return 'Já existe um aluno com este CPF.'
       if (/instrutores\.cref/i.test(detalhe)) return 'Já existe um funcionário com este CREF.'
@@ -41,17 +43,11 @@ export class BancoErros {
     }
 
     if (codigo === 'ER_NO_SUCH_TABLE') {
-      if (/lancamentos/i.test(detalhe)) {
-        return 'A tabela lancamentos não existe. Execute npm run criar-tabelas.'
-      }
       return 'A tabela necessária não existe no banco de dados.'
     }
 
     if (codigo === 'ER_BAD_FIELD_ERROR') {
-      if (/lancamentos/i.test(detalhe)) {
-        return `A tabela lancamentos está desatualizada. Execute npm run criar-tabelas. (${detalhe})`
-      }
-      return `Campo inexistente no banco de dados. Execute npm run criar-tabelas. (${detalhe})`
+      return 'Campo inexistente no banco de dados. Execute npm run criar-tabelas.'
     }
 
     if (
@@ -61,7 +57,7 @@ export class BancoErros {
       codigo === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' ||
       codigo === 'ER_WRONG_VALUE_FOR_TYPE'
     ) {
-      return `Dado inválido para o banco de dados: ${detalhe}`
+      return 'Dado inválido para o banco de dados. Verifique os campos e tente novamente.'
     }
 
     if (codigo === 'ER_ACCESS_DENIED_ERROR') {
@@ -72,7 +68,6 @@ export class BancoErros {
       return 'Não foi possível acessar o banco configurado no arquivo .env.'
     }
 
-    if (codigo) return `${padrao} (${codigo}: ${detalhe})`.trim()
-    return detalhe ? `${padrao} ${detalhe}`.trim() : padrao
+    return padrao
   }
 }
