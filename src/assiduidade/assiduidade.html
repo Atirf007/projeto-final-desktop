@@ -7,23 +7,66 @@
   <title>Cotil — Evolução da assiduidade</title>
   <style>
     :root {
-      --primaria-900: #111827;
-      --primaria-800: #1f2937;
-      --primaria-700: #374151;
-      --primaria-600: #4b5563;
-      --primaria-500: #6b7280;
-      --secundaria: #10b981;
-      --secundaria-hover: #059669;
-      --secundaria-suave: #ecfdf5;
-      --secundaria-borda: #a7f3d0;
-      --bg-pagina: #f9fafb;
-      --bg-card: #ffffff;
-      --cinza-200: #e5e7eb;
+      --cinza-50: #f8fafc;
       --cinza-100: #f3f4f6;
+      --cinza-200: #e5e7eb;
+      --cinza-300: #d1d5db;
+      --cinza-400: #9ca3af;
+      --cinza-500: #6b7280;
+      --cinza-600: #4b5563;
+      --cinza-700: #374151;
+      --cinza-800: #1f2937;
+      --cinza-900: #111827;
+
+      --verde-50: #ecfdf5;
+      --verde-100: #d1fae5;
+      --verde-200: #a7f3d0;
+      --verde-500: #10b981;
+      --verde-600: #059669;
+      --verde-700: #047857;
+
+      --fundo: #f8fafc;
+      --superficie: #ffffff;
+      --texto: #111827;
+      --texto-suave: #4b5563;
+      --borda: #e5e7eb;
+      --branco: #ffffff;
+
       --erro: #b91c1c;
+      --erro-suave: #fef2f2;
+      --erro-borda: #fecaca;
+      --alerta: #92400e;
+      --alerta-suave: #fffbeb;
+      --alerta-borda: #fde68a;
+      --sucesso: #166534;
+
+      --esp-1: 4px;
+      --esp-2: 8px;
+      --esp-3: 12px;
+      --esp-4: 16px;
+      --esp-5: 24px;
+      --esp-6: 32px;
+      --fs-12: 12px;
+      --fs-13: 13px;
+      --fs-14: 14px;
+      --fs-16: 16px;
+      --fs-20: 20px;
+      --altura-controle: 40px;
       --raio-card: 12px;
       --raio-controle: 8px;
       --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+      --primaria-900: var(--cinza-900);
+      --primaria-800: var(--cinza-800);
+      --primaria-700: var(--cinza-700);
+      --primaria-600: var(--cinza-600);
+      --primaria-500: var(--cinza-500);
+      --secundaria: var(--verde-500);
+      --secundaria-hover: var(--verde-600);
+      --secundaria-suave: var(--verde-50);
+      --secundaria-borda: var(--verde-200);
+      --bg-pagina: var(--fundo);
+      --bg-card: var(--superficie);
     }
 
     * { box-sizing: border-box; }
@@ -43,7 +86,7 @@
       flex-wrap: wrap;
       gap: 12px 16px;
       background: var(--primaria-800);
-      color: #ffffff;
+      color: var(--branco);
       padding: 14px 28px;
       border-bottom: 3px solid var(--secundaria);
       box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12);
@@ -65,7 +108,7 @@
       width: 20px;
       height: 20px;
       fill: none;
-      stroke: #ffffff;
+      stroke: var(--branco);
       stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
@@ -78,7 +121,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #e5e7eb;
+      color: var(--borda);
     }
 
     .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
@@ -90,14 +133,14 @@
       font-size: 13px;
       font-weight: 600;
       font-family: inherit;
-      color: #ffffff;
+      color: var(--branco);
       background: transparent;
       border: 1px solid var(--primaria-500);
       border-radius: var(--raio-controle);
       cursor: pointer;
     }
 
-    .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
+    .voltar:hover { background: var(--primaria-700); border-color: var(--branco); }
     .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
 
     main { padding: 28px 32px 40px; max-width: 1440px; margin: 0 auto; }
@@ -133,12 +176,12 @@
       font-family: inherit;
       font-size: 14px;
       border-radius: var(--raio-controle);
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
+      border: 1px solid var(--cinza-300);
+      background: var(--branco);
     }
 
     button {
-      color: #ffffff;
+      color: var(--branco);
       background: var(--primaria-800);
       border-color: var(--primaria-800);
       font-weight: 600;
@@ -158,7 +201,7 @@
       display: grid;
       gap: 6px;
       padding: 16px 18px;
-      background: linear-gradient(135deg, #f8f9fa 0%, #eef0f2 100%);
+      background: linear-gradient(135deg, var(--cinza-50) 0%, var(--cinza-100) 100%);
       border: 1px solid var(--cinza-200);
       border-left: 4px solid var(--secundaria);
       border-radius: 12px;
@@ -168,30 +211,61 @@
     .kpi strong { font-size: 22px; font-weight: 800; color: var(--primaria-800); }
     .kpi small { font-size: 11px; color: var(--primaria-500); }
 
-    table { width: 100%; border-collapse: separate; border-spacing: 0; background: #f8f9fa; border: 1px solid var(--cinza-200); border-radius: 12px; overflow: hidden; }
-    thead th { position: sticky; top: 0; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); background: #e5e8eb; border-bottom: 2px solid var(--secundaria); text-align: left; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--cinza-50); border: 1px solid var(--cinza-200); border-radius: 12px; overflow: hidden; }
+    thead th { position: sticky; top: 0; padding: 11px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); background: var(--borda); border-bottom: 2px solid var(--secundaria); text-align: left; }
     tbody td { padding: 10px 12px; border-bottom: 1px solid var(--cinza-200); vertical-align: top; font-size: 13px; }
-    tbody tr:nth-child(even) { background: #f3f4f6; }
-    tbody tr:hover { background: #e8eaed; }
+    tbody tr:nth-child(even) { background: var(--cinza-100); }
+    tbody tr:hover { background: var(--borda); }
 
     .selo { display: inline-block; padding: 3px 10px; font-size: 10px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; border-radius: 999px; }
-    .selo.alta { color: #047857; background: var(--secundaria-suave); border: 1px solid var(--secundaria-borda); }
-    .selo.media { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; }
-    .selo.baixa { color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; }
-    .selo.inativo { color: #4b5563; background: #eef0f2; border: 1px solid #d1d5db; }
+    .selo.alta { color: var(--verde-700); background: var(--secundaria-suave); border: 1px solid var(--secundaria-borda); }
+    .selo.media { color: var(--alerta); background: var(--alerta-suave); border: 1px solid var(--alerta-borda); }
+    .selo.baixa { color: var(--erro); background: var(--erro-suave); border: 1px solid var(--erro-borda); }
+    .selo.inativo { color: var(--cinza-600); background: var(--cinza-100); border: 1px solid var(--cinza-300); }
     .destaque { font-weight: 700; color: var(--primaria-800); }
 
     details summary { cursor: pointer; font-weight: 600; }
     details ul { margin: 8px 0 0; padding-left: 18px; color: var(--primaria-600); }
     details li { margin-bottom: 4px; }
 
-    .vazio { padding: 14px; color: var(--primaria-500); background: var(--cinza-100); border: 1px dashed #cbd5e1; border-radius: 10px; }
+    .vazio { padding: 14px; color: var(--primaria-500); background: var(--cinza-100); border: 1px dashed var(--cinza-300); border-radius: 10px; }
 
     @media (max-width: 720px) {
       main { padding: 20px; }
       .periodo { margin-left: 0; }
       .tabela { overflow-x: auto; }
     }
+
+    :where(body) { font-family: var(--fonte); font-size: var(--fs-14); color: var(--texto); line-height: 1.5; }
+    :where(h1) { font-size: var(--fs-20); font-weight: 700; }
+    :where(h2) { font-size: var(--fs-16); font-weight: 700; }
+    :where(button, input, select, textarea) { font-family: inherit; font-size: var(--fs-14); min-height: var(--altura-controle); border-radius: var(--raio-controle); }
+    :where(button) { gap: var(--esp-2); }
+    :where(input, select, textarea) { padding: var(--esp-3) var(--esp-4); }
+    :where(label, .campo > span) { color: var(--texto-suave); }
+    :where(input::placeholder, textarea::placeholder) { color: var(--cinza-400); opacity: 1; }
+    :where(button, input, select, textarea, a, summary):focus-visible { outline: 3px solid var(--verde-700); outline-offset: 2px; }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--verde-700);
+      outline-offset: 2px;
+    }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--verde-600);
+      box-shadow: 0 0 0 3px var(--verde-100);
+    }
+    .voltar:focus-visible { outline: 3px solid var(--verde-200); outline-offset: 3px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+    :where(thead th) { color: var(--cinza-700); background: var(--cinza-100); }
+    :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
+    :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
+    :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
   </style>
 </head>
 <body>
