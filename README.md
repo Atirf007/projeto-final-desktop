@@ -1,10 +1,32 @@
-# projeto-final-desktop
+# Projeto Final Desktop — Academia
 
 Sistema de gestão de academia em Electron, TypeScript e MySQL.
 
+## Pré-requisitos
+
+- **Node.js 22 ou superior** e npm.
+- **MySQL 8 ou superior**.
+- Permissão para criar banco e usuário no MySQL.
+
+Crie o banco e um usuário dedicado antes de rodar os scripts (ajuste nomes e credenciais):
+
+```sql
+CREATE DATABASE academia CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'academia_app'@'localhost' IDENTIFIED BY 'troque_esta_senha';
+GRANT ALL PRIVILEGES ON academia.* TO 'academia_app'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Use os mesmos valores em `DB_NAME`, `DB_USER` e `DB_PASSWORD` no `.env`.
+
 ## Como iniciar
 
-1. Preencha `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME` no arquivo `.env` (use o `.env.example` como modelo).
+1. Copie o modelo e preencha as variáveis de banco:
+
+```
+cp .env.example .env
+```
+
 2. Rode os comandos:
 
 ```
@@ -14,7 +36,7 @@ npm run popular-tabelas
 npm start
 ```
 
-`criar-tabelas` aplica `database/schema.sql` e executa migrações idempotentes no banco `DB_NAME` do `.env`, que precisa existir e ser acessível com `DB_USER`. `popular-tabelas` aplica `database/seed.sql`, uma carga de demonstração que cobre as 15 tabelas — inclusive `lancamentos`, usada pelos relatórios.
+O banco indicado em `DB_NAME` precisa existir antes de `npm run criar-tabelas`. Esse script aplica `database/schema.sql` e executa migrações idempotentes. `popular-tabelas` aplica `database/seed.sql`, uma carga de demonstração que cobre as 15 tabelas — inclusive `lancamentos`, usada pelos relatórios.
 
 Para um ambiente sem dados de demonstração, substitua `popular-tabelas` por:
 
@@ -24,6 +46,18 @@ npm run criar-funcionario
 ```
 
 `criar-admin` cria ou atualiza o administrador usando `ADMIN_NOME`, `ADMIN_EMAIL` e `ADMIN_SENHA` do `.env`. `criar-funcionario` cria ou atualiza um usuário com perfil de funcionário (`instrutor`) usando `FUNCIONARIO_NOME`, `FUNCIONARIO_EMAIL` e `FUNCIONARIO_SENHA` do `.env`.
+
+## Verificação
+
+Antes de avaliar ou abrir um PR, rode:
+
+```
+npm run typecheck
+npm test
+npm run build
+```
+
+O workflow `.github/workflows/ci.yml` executa esses mesmos comandos em pushes e pull requests.
 
 ### Dados de demonstração
 
@@ -37,7 +71,7 @@ O seed é idempotente: pode ser reaplicado sem duplicar registros; ele atualiza 
 
 As senhas são gravadas como hash `scrypt`, no formato `scrypt:<sal>:<hash>`, compatível com `Senha.gerar` em `src/autenticacao/AutenticacaoBackend.ts`. Os usuários-aluno entram no app em **Aulas** (para consultar a agenda e gerenciar apenas a própria reserva) e no **Meu painel**, sem acesso às telas de gestão. Detalhes em `database/README.md`.
 
-O `npm install` baixa o binário do Electron automaticamente. Caso o binário esteja ausente ou corrompido, o `npm start` executa `scripts/garantir-electron` e baixa novamente antes de abrir a aplicação.
+O `npm install` baixa o binário do Electron automaticamente. Caso o binário esteja ausente ou corrompido, o `npm start` executa `scripts/garantir-electron.ts` e baixa novamente antes de abrir a aplicação.
 
 ## Tela inicial
 
@@ -47,7 +81,7 @@ A janela de login abre em 1200×760 e traz a foto da academia. Para usar a sua f
 src/autenticacao/assets/login-foto.jpg
 ```
 
-(crie a pasta `assets` se ela não existir) e rode `npm run build` antes de `npm start`. Sem o arquivo, a tela mostra um fundo verde automático no lugar da foto.
+(crie a pasta `assets` se ela não existir). O `npm start` já executa o build antes de abrir a aplicação. Sem o arquivo, a tela mostra um fundo verde automático no lugar da foto.
 
 O primeiro administrador precisa existir na tabela `usuarios`. A senha é guardada como hash `scrypt`, no formato `scrypt:<sal>:<hash>`. Depois de entrar como administrador, novos usuários são cadastrados pela opção Usuários do menu.
 
@@ -72,7 +106,7 @@ A tela **Gerenciar Bot** consulta a previsão do tempo para o dia seguinte usand
 
 ### Envio de e-mails (SMTP)
 
-Os domínios `@unicamp.br` e `@cotil.unicamp.br` usam **Google Workspace**, então o `.env` já vem apontando para o Gmail:
+Os domínios `@unicamp.br` e `@cotil.unicamp.br` usam **Google Workspace**. Para habilitar o envio pelo Gmail, descomente e preencha o bloco SMTP no `.env`:
 
 ```
 SMTP_HOST=smtp.gmail.com
