@@ -1,4 +1,5 @@
 export const TIPOS_PLANO_LONGO = ['semestral', 'anual'] as const
+export const DIAS_ALERTA_INADIMPLENCIA = 30
 
 export class RegrasInadimplencia {
   constructor(private readonly agora: () => Date = () => new Date()) {}
@@ -7,6 +8,8 @@ export class RegrasInadimplencia {
     TIPOS_PLANO_LONGO.some((item) => item === String(tipo ?? '').trim().toLowerCase())
 
   diasHistorico = (tipo: string): number => (this.planoLongo(tipo) ? 120 : 30)
+
+  atrasoExigeAlerta = (diasAtraso: number): boolean => diasAtraso > DIAS_ALERTA_INADIMPLENCIA
 
   diasAtraso = (vencimento: string): number => {
     const [ano, mes, dia] = String(vencimento ?? '')

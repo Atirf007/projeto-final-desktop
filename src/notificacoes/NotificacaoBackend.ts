@@ -5,7 +5,11 @@ import { BancoErros } from '../BancoErros'
 import { EmailServico } from '../integracoes/EmailBackend'
 import { Sessao } from '../Sessao'
 import { ResumoInadimplencia } from '../inadimplencia/InadimplenciaBackend'
-import { RegrasInadimplencia, TIPOS_PLANO_LONGO } from '../inadimplencia/RegrasInadimplencia'
+import {
+  DIAS_ALERTA_INADIMPLENCIA,
+  RegrasInadimplencia,
+  TIPOS_PLANO_LONGO
+} from '../inadimplencia/RegrasInadimplencia'
 
 export type TipoNotificacao = 'vencimento' | 'chuva' | 'experimental' | 'geral'
 export type StatusNotificacao = 'pendente' | 'enviado' | 'falhou'
@@ -513,7 +517,7 @@ export class NotificacaoServico {
   }
 
   registrarAlertaInadimplencia = async (resumo: ResumoInadimplencia): Promise<number> => {
-    if (resumo.atrasados <= 0) return 0
+    if (resumo.atrasadosLongos <= 0) return 0
 
     const assunto = `Alerta de inadimplência — ${new Date().toISOString().slice(0, 10)}`
     if (await this.repositorio.alertaInadimplenciaExiste(assunto)) return 0
@@ -527,6 +531,7 @@ export class NotificacaoServico {
       .join('; ')
     const mensagem = [
       `Existem ${resumo.atrasados} pagamento(s) em atraso envolvendo ${resumo.totalAlunos} aluno(s).`,
+      `${resumo.atrasadosLongos} pagamento(s) com atraso superior a ${DIAS_ALERTA_INADIMPLENCIA} dias.`,
       `Valor total: ${moedaBr(resumo.valorTotal)}.`,
       detalhes ? `Destaques: ${detalhes}.` : ''
     ]
