@@ -9,6 +9,7 @@ import {
   ResultadoEnvioVencimentos
 } from './NotificacaoBackend'
 import { PagamentoRepository } from '../pagamentos/PagamentoBackend'
+import { InadimplenciaRepository } from '../inadimplencia/InadimplenciaBackend'
 
 export type ConfiguracaoVencimento = {
   diasAntes: number
@@ -63,7 +64,8 @@ export class BotVencimentoServico implements AgendadorVencimento {
   constructor(
     private readonly servico: NotificacaoServico = new NotificacaoServico(),
     private readonly configuracao: ConfiguracaoVencimentoArquivo = new ConfiguracaoVencimentoArquivo(),
-    private readonly pagamentos: PagamentoRepository = new PagamentoRepository()
+    private readonly pagamentos: PagamentoRepository = new PagamentoRepository(),
+    private readonly inadimplencia: InadimplenciaRepository = new InadimplenciaRepository()
   ) {
     const salva = this.configuracao.carregar()
     this.diasAntes = salva.diasAntes
@@ -120,6 +122,11 @@ export class BotVencimentoServico implements AgendadorVencimento {
     try {
       await this.pagamentos.marcarAtrasados()
       const resultado = await this.servico.enviarVencimentos(this.diasAntes)
+      try {
+        await this.servico.registrarAlertaInadimplencia(await this.inadimplencia.resumo())
+      } catch (erro) {
+        console.error('[bot-vencimento] não foi possível registrar o alerta de inadimplência:', erro)
+      }
       this.ultimoResultado = resultado
       if (resultado.configurado) {
         this.ultimaExecucaoEm = new Date().toISOString()

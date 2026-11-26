@@ -153,7 +153,19 @@ async function main(): Promise<void> {
     () => garantirIndice('notificacoes', 'idx_notificacoes_usuario_criado', '`usuario_id`,`criado_em`'),
     () => garantirIndice('notificacoes', 'idx_notificacoes_tipo_criado', '`tipo`,`criado_em`'),
     () => garantirUnico('presencas', 'uk_aluno_data', '`aluno_id`,`data_presenca`'),
-    () => garantirUnico('pagamentos', 'uk_assinatura_competencia', '`assinatura_id`,`competencia`')
+    () => garantirUnico('pagamentos', 'uk_assinatura_competencia', '`assinatura_id`,`competencia`'),
+    () =>
+      garantirUnico(
+        'notificacoes',
+        'uk_notificacao_decisao_clima',
+        '`tipo`,`canal`,`status`,`aula_id`,`usuario_id`,`assunto`'
+      ),
+    () =>
+      garantirUnico(
+        'notificacoes',
+        'uk_notificacao_alerta_inadimplencia',
+        '`usuario_id`,`tipo`,`canal`,`assunto`'
+      )
   ]
 
   let aplicadas = 0

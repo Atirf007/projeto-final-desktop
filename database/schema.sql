@@ -247,6 +247,8 @@ CREATE TABLE IF NOT EXISTS `notificacoes` (
   KEY `fk_notificacoes_usuario` (`usuario_id`),
   KEY `fk_notificacoes_aula` (`aula_id`),
   KEY `fk_notificacoes_pagamento` (`pagamento_id`),
+  UNIQUE KEY `uk_notificacao_decisao_clima` (`tipo`,`canal`,`status`,`aula_id`,`usuario_id`,`assunto`),
+  UNIQUE KEY `uk_notificacao_alerta_inadimplencia` (`usuario_id`,`tipo`,`canal`,`assunto`),
   CONSTRAINT `fk_notificacoes_aula` FOREIGN KEY (`aula_id`) REFERENCES `aulas` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_notificacoes_pagamento` FOREIGN KEY (`pagamento_id`) REFERENCES `pagamentos` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_notificacoes_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
