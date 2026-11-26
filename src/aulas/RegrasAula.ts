@@ -1,5 +1,4 @@
 import { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise'
-import { Banco } from '../Banco'
 
 const TIMEOUT = 15000
 
@@ -136,39 +135,3 @@ export class RegrasAulaService {
     }
   }
 }
-
-const servicoPadrao = new RegrasAulaService(Banco.pool)
-
-export const executarTransacao = <T>(
-  pool: Pool,
-  operacao: (conexao: PoolConnection) => Promise<T>
-): Promise<T> => new RegrasAulaService(pool).executarTransacao(operacao)
-
-export const travarAula = (conexao: PoolConnection, aulaId: number): Promise<AulaTravada> =>
-  servicoPadrao.travarAula(conexao, aulaId)
-
-export const travarAluno = (conexao: PoolConnection, alunoId: number): Promise<AlunoTravado | null> =>
-  servicoPadrao.travarAluno(conexao, alunoId)
-
-export const validarUmaAulaPorDia = (
-  conexao: PoolConnection,
-  alunoId: number,
-  aulaId: number,
-  dataAula: string
-): Promise<void> => servicoPadrao.validarUmaAulaPorDia(conexao, alunoId, aulaId, dataAula)
-
-export const validarAlunosDaAula = (
-  conexao: PoolConnection,
-  aulaId: number,
-  dataAula: string
-): Promise<void> => servicoPadrao.validarAlunosDaAula(conexao, aulaId, dataAula)
-
-export const contarOcupacao = (conexao: PoolConnection, aulaId: number): Promise<number> =>
-  servicoPadrao.contarOcupacao(conexao, aulaId)
-
-export const validarCapacidade = (
-  conexao: PoolConnection,
-  aulaId: number,
-  capacidadeMax: number,
-  vagasAdicionais = 0
-): Promise<void> => servicoPadrao.validarCapacidade(conexao, aulaId, capacidadeMax, vagasAdicionais)
