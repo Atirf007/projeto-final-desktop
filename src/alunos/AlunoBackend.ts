@@ -303,7 +303,8 @@ class AlunoRepository {
   listar = async (filtro: FiltroAlunos): Promise<AlunoResumo[]> => {
     const busca = typeof filtro.busca === 'string' ? filtro.busca.trim() : ''
     const termo = busca ? `%${busca.replace(/[\\%_]/g, '\\$&')}%` : ''
-    const cpfTermo = busca ? `%${busca.replace(/\D/g, '') || busca}%` : ''
+    const digitos = busca.replace(/\D/g, '')
+    const cpfTermo = busca ? `%${(digitos || busca).replace(/[\\%_]/g, '\\$&')}%` : ''
     const ativo = typeof filtro.ativo === 'boolean' ? (filtro.ativo ? 1 : 0) : null
     const [linhas] = await this.pool.query<RowDataPacket[]>({
       sql: this.sqlListar,
@@ -589,11 +590,6 @@ export class AlunoIpc {
     registrarCanal('alunos:meuPerfil', async (): Promise<Aluno | null> => {
       const usuario = this.sessao.exigir(['aluno'])
       return this.repositorio.obterPorUsuario(usuario.id, true)
-    })
-
-    registrarCanal('alunos:atualizarMeuPerfil', async (): Promise<ResultadoAluno> => {
-      this.sessao.exigir(['aluno'])
-      return { ok: false, mensagem: 'Atualização do próprio perfil ainda não está disponível nesta tela.' }
     })
   }
 }
