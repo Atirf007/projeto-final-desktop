@@ -91,8 +91,8 @@
       justify-content: space-between;
       padding: 44px 48px;
       overflow: hidden;
-      color: #ffffff;
-      background-color: #022c22;
+      color: var(--branco);
+      background-color: var(--verde-700);
       background-image:
         linear-gradient(180deg, rgba(2, 44, 34, 0.28) 0%, rgba(2, 44, 34, 0.72) 58%, rgba(2, 44, 34, 0.96) 100%),
         url('assets/login-foto.jpg');
@@ -141,7 +141,7 @@
       width: 26px;
       height: 26px;
       fill: none;
-      stroke: #ffffff;
+      stroke: var(--branco);
       stroke-width: 2;
       stroke-linecap: round;
       stroke-linejoin: round;
@@ -169,7 +169,7 @@
       font-weight: 800;
       letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: #d1fae5;
+      color: var(--verde-100);
       background: rgba(6, 78, 59, 0.55);
       border: 1px solid rgba(167, 243, 208, 0.35);
       border-radius: 999px;
@@ -181,7 +181,7 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #34d399;
+      background: var(--verde-500);
       box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18);
     }
 
@@ -210,7 +210,7 @@
       font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.04em;
-      color: #ecfdf5;
+      color: var(--verde-50);
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 999px;
@@ -234,7 +234,7 @@
       padding: 48px 56px;
       background:
         radial-gradient(560px 320px at 100% 0%, rgba(16, 185, 129, 0.06), transparent 65%),
-        #ffffff;
+        var(--branco);
     }
 
     .cartao { width: 100%; max-width: 430px; }
@@ -250,8 +250,8 @@
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--verde-escuro);
-      background: #ecfdf5;
-      border: 1px solid #a7f3d0;
+      background: var(--verde-50);
+      border: 1px solid var(--verde-200);
       border-radius: 999px;
     }
 
@@ -285,7 +285,7 @@
       font-weight: 800;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #334155;
+      color: var(--cinza-700);
     }
 
     input {
@@ -295,17 +295,17 @@
       font-family: inherit;
       font-size: 15px;
       color: var(--tinta);
-      background: #f8fafc;
+      background: var(--cinza-50);
       border: 1.5px solid var(--linha);
       border-radius: 12px;
       outline: none;
       transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
     }
 
-    input::placeholder { color: #94a3b8; }
-    input:hover { border-color: #cbd5e1; }
+    input::placeholder { color: var(--cinza-400); }
+    input:hover { border-color: var(--cinza-300); }
     input:focus {
-      background: #ffffff;
+      background: var(--branco);
       border-color: var(--verde);
       box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
     }
@@ -317,7 +317,7 @@
       font-family: inherit;
       font-size: 15px;
       font-weight: 700;
-      color: #ffffff;
+      color: var(--branco);
       background: linear-gradient(135deg, var(--verde) 0%, var(--verde-escuro) 100%);
       border: none;
       border-radius: 12px;
@@ -333,7 +333,7 @@
     }
 
     button:active:not(:disabled) { transform: translateY(0); }
-    button:focus-visible { outline: 3px solid #a7f3d0; outline-offset: 3px; }
+    button:focus-visible { outline: 3px solid var(--verde-200); outline-offset: 3px; }
     button:disabled { opacity: 0.7; cursor: default; }
 
     button.carregando::before {
@@ -344,7 +344,7 @@
       margin-right: 10px;
       vertical-align: -2px;
       border: 2px solid rgba(255, 255, 255, 0.45);
-      border-top-color: #ffffff;
+      border-top-color: var(--branco);
       border-radius: 50%;
       animation: girar 0.7s linear infinite;
     }
@@ -361,8 +361,8 @@
 
     #status:not(:empty) {
       padding: 10px 13px;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
+      background: var(--erro-suave);
+      border: 1px solid var(--erro-borda);
       border-radius: 10px;
     }
 
@@ -374,9 +374,9 @@
       margin-top: 26px;
       padding: 15px 16px;
       font-size: 12.5px;
-      color: #166534;
-      background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-      border: 1px solid #bbf7d0;
+      color: var(--verde-700);
+      background: linear-gradient(135deg, var(--verde-50) 0%, var(--verde-50) 100%);
+      border: 1px solid var(--verde-200);
       border-radius: 12px;
     }
 
@@ -412,19 +412,49 @@
     :where(tbody td, .vazio, .msg-info, .status) { line-height: 1.45; }
     :where(dialog) { max-height: calc(100vh - 40px); overflow: auto; }
     :where(.msg-erro, .erro, #status.erro) { font-weight: 600; }
-    :where(button, input, select, textarea):focus-visible { outline: 3px solid rgba(16, 185, 129, 0.35); outline-offset: 2px; }
-    .opcao:not(:disabled) em { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+    .opcao:not(:disabled) em { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
     @media (max-width: 720px) {
       :where(.painel, .filtros, dialog form, .dialogo-conteudo) { padding: 16px; }
       :where(.tabela) { overflow-x: auto; }
     }
     @media print {
       :where(header, .voltar, #sair, .filtros, .acoes, .acoes-linha) { display: none !important; }
-      :where(body, .painel, table, dialog) { background: #ffffff !important; box-shadow: none !important; }
+      :where(body, .painel, table, dialog) { background: var(--branco) !important; box-shadow: none !important; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
     }
+
+    :where(body) { font-family: var(--fonte); font-size: var(--fs-14); color: var(--texto); line-height: 1.5; }
+    :where(h1) { font-size: var(--fs-20); font-weight: 700; }
+    :where(h2) { font-size: var(--fs-16); font-weight: 700; }
+    :where(button, input, select, textarea) { font-family: inherit; font-size: var(--fs-14); min-height: var(--altura-controle); border-radius: var(--raio-controle); }
+    :where(button) { gap: var(--esp-2); }
+    :where(input, select, textarea) { padding: var(--esp-3) var(--esp-4); }
+    :where(label, .campo > span) { color: var(--texto-suave); }
+    :where(input::placeholder, textarea::placeholder) { color: var(--cinza-400); opacity: 1; }
+    :where(button, input, select, textarea, a, summary):focus-visible { outline: 3px solid var(--verde-700); outline-offset: 2px; }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--verde-700);
+      outline-offset: 2px;
+    }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--verde-600);
+      box-shadow: 0 0 0 3px var(--verde-100);
+    }
+    .voltar:focus-visible { outline: 3px solid var(--verde-200); outline-offset: 3px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+    :where(thead th) { color: var(--cinza-700); background: var(--cinza-100); }
+    :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
+    :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
+    :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
   </style>
 </head>
 <body>

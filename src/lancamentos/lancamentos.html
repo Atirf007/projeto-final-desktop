@@ -71,11 +71,11 @@
     [hidden] { display: none !important; }
 
     html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
-    ::selection { background: #d1d5db; color: #111827; }
+    ::selection { background: var(--cinza-300); color: var(--cinza-900); }
     ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: #eceef1; }
-    ::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 8px; border: 2px solid #eceef1; }
-    ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+    ::-webkit-scrollbar-track { background: var(--cinza-100); }
+    ::-webkit-scrollbar-thumb { background: var(--cinza-400); border-radius: 8px; border: 2px solid var(--cinza-100); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--verde-500); }
 
     body {
       margin: 0;
@@ -85,7 +85,7 @@
       line-height: 1.5;
       background:
         radial-gradient(900px 420px at 100% -10%, rgba(107, 114, 128, 0.12), transparent 60%),
-        linear-gradient(180deg, #eceef1 0%, #f6f7f8 320px);
+        linear-gradient(180deg, var(--cinza-100) 0%, var(--cinza-50) 320px);
       background-attachment: fixed;
     }
 
@@ -95,8 +95,8 @@
       flex-wrap: wrap;
       gap: 12px 16px;
       padding: 14px 28px;
-      color: #ffffff;
-      background: linear-gradient(135deg, #1f2937 0%, #374151 55%, #4b5563 100%);
+      color: var(--branco);
+      background: linear-gradient(135deg, var(--cinza-800) 0%, var(--cinza-700) 55%, var(--cinza-600) 100%);
       border-bottom: 3px solid var(--secundaria);
       box-shadow: 0 6px 18px rgba(31, 41, 55, 0.2);
     }
@@ -112,10 +112,10 @@
       border-radius: 8px;
       box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
     }
-    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: var(--branco); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .marca-texto { display: grid; line-height: 1.2; }
     .marca-texto strong { font-size: 15px; font-weight: 700; }
-    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #d1d5db; }
+    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cinza-300); }
     .divisor { width: 1px; height: 26px; background: var(--primaria-500); }
     header h1 { margin: 0; font-size: 18px; font-weight: 700; }
 
@@ -127,13 +127,13 @@
       cursor: pointer;
     }
     button:not(.secundario):not(.perigo):not(.voltar) {
-      color: #ffffff;
-      background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
-      border: 1px solid #374151;
+      color: var(--branco);
+      background: linear-gradient(135deg, var(--cinza-700) 0%, var(--cinza-800) 100%);
+      border: 1px solid var(--cinza-700);
     }
     button:not(.secundario):not(.perigo):not(.voltar):hover:not(:disabled) {
-      background: linear-gradient(135deg, #10b981 0%, #047857 100%);
-      border-color: #047857;
+      background: linear-gradient(135deg, var(--verde-500) 0%, var(--verde-700) 100%);
+      border-color: var(--verde-700);
       box-shadow: 0 6px 14px -6px rgba(16, 185, 129, 0.55);
       transform: translateY(-1px);
     }
@@ -147,7 +147,7 @@
       padding: 8px 14px;
       font-size: 13px;
       font-weight: 600;
-      color: #ffffff;
+      color: var(--branco);
       background: transparent;
       border: 1px solid var(--primaria-500);
     }
@@ -157,8 +157,8 @@
     main { padding: 28px 32px 40px; max-width: 1440px; margin: 0 auto; }
     .painel {
       padding: 22px 24px;
-      background: #f8f9fa;
-      border: 1px solid #dfe3e6;
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
       border-radius: var(--raio-card);
       box-shadow: 0 1px 2px rgba(31, 41, 55, 0.05), 0 8px 24px -12px rgba(31, 41, 55, 0.16);
     }
@@ -169,12 +169,12 @@
       align-items: flex-end;
       gap: 12px;
       padding: 14px 16px;
-      background: #eef0f2;
-      border: 1px solid #dfe3e6;
+      background: var(--cinza-100);
+      border: 1px solid var(--borda);
       border-radius: 12px;
     }
     .campo { display: grid; gap: 6px; }
-    .campo span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #4b5563; }
+    .campo span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cinza-600); }
     .espaco { flex: 1; }
 
     input, select {
@@ -183,21 +183,21 @@
       font-size: 14px;
       font-family: inherit;
       color: var(--primaria-900);
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
+      background: var(--branco);
+      border: 1px solid var(--cinza-300);
       border-radius: var(--raio-controle);
       outline: none;
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    input:hover, select:hover { border-color: #9ca3af; }
+    input:hover, select:hover { border-color: var(--cinza-400); }
     input:focus, select:focus { border-color: var(--secundaria); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14); }
 
     button.botao { padding: 10px 16px; font-size: 13px; font-weight: 600; }
     button.pequeno { padding: 7px 11px; min-height: 34px; font-size: 12px; font-weight: 600; }
-    button.secundario { color: #374151; background: #eef0f2; border: 1px solid #cbd5e1; }
-    button.secundario:hover:not(:disabled) { background: #e2e6ea; border-color: #9ca3af; }
-    button.perigo { color: #ffffff; background: #b91c1c; border: 1px solid #b91c1c; }
-    button.perigo:hover:not(:disabled) { background: #991b1b; border-color: #7f1d1d; transform: none; }
+    button.secundario { color: var(--cinza-700); background: var(--cinza-100); border: 1px solid var(--cinza-300); }
+    button.secundario:hover:not(:disabled) { background: var(--borda); border-color: var(--cinza-400); }
+    button.perigo { color: var(--branco); background: var(--erro); border: 1px solid var(--erro); }
+    button.perigo:hover:not(:disabled) { background: var(--erro); border-color: var(--erro); transform: none; }
     button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 1px 2px rgba(31, 41, 55, 0.12); }
 
     h2 {
@@ -207,7 +207,7 @@
       font-size: 16px;
       font-weight: 700;
       letter-spacing: -0.01em;
-      color: #1f2937;
+      color: var(--cinza-800);
     }
     h2::before {
       content: "";
@@ -227,8 +227,8 @@
       border-collapse: separate;
       border-spacing: 0;
       font-size: 14px;
-      background: #f8f9fa;
-      border: 1px solid #dfe3e6;
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
       border-radius: 12px;
       overflow: hidden;
     }
@@ -242,14 +242,14 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
       text-align: left;
-      color: #374151;
-      background: #e5e8eb;
+      color: var(--cinza-700);
+      background: var(--borda);
       border-bottom: 2px solid var(--secundaria);
       white-space: nowrap;
     }
-    tbody td { padding: 10px 12px; color: var(--primaria-700); border-bottom: 1px solid #dfe3e6; vertical-align: middle; }
-    tbody tr:nth-child(even) { background: #f3f4f6; }
-    tbody tr:hover { background: #e8eaed; }
+    tbody td { padding: 10px 12px; color: var(--primaria-700); border-bottom: 1px solid var(--borda); vertical-align: middle; }
+    tbody tr:nth-child(even) { background: var(--cinza-100); }
+    tbody tr:hover { background: var(--borda); }
     tbody tr:last-child td { border-bottom: none; }
     .col-id { width: 64px; }
     .col-id, .col-data { color: var(--primaria-500); white-space: nowrap; }
@@ -265,25 +265,25 @@
       letter-spacing: 0.05em;
       text-transform: uppercase;
       border-radius: 999px;
-      border: 1px solid #d1d5db;
-      color: #4b5563;
-      background: #eef0f2;
+      border: 1px solid var(--cinza-300);
+      color: var(--cinza-600);
+      background: var(--cinza-100);
     }
-    .selo.aula { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
-    .selo.aluguel { color: #0369a1; background: #f0f9ff; border-color: #bae6fd; }
-    .selo.outros { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+    .selo.aula { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
+    .selo.aluguel { color: var(--cinza-700); background: var(--cinza-50); border-color: var(--cinza-300); }
+    .selo.outros { color: var(--alerta); background: var(--alerta-suave); border-color: var(--alerta-borda); }
 
     #status { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); }
     #status:empty { margin: 0; }
-    #status.erro, .msg-erro { color: #991b1b; }
-    .vazio { padding: 12px 14px; color: #4b5563; background: #f3f4f6; border: 1px dashed #cbd5e1; border-radius: 10px; }
+    #status.erro, .msg-erro { color: var(--erro); }
+    .vazio { padding: 12px 14px; color: var(--cinza-600); background: var(--cinza-100); border: 1px dashed var(--cinza-300); border-radius: 10px; }
 
     dialog {
       max-width: min(560px, 92vw);
       padding: 0;
-      color: #1f2937;
-      background: #f8f9fa;
-      border: 1px solid #dfe3e6;
+      color: var(--cinza-800);
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
       border-radius: 16px;
       box-shadow: 0 24px 60px -24px rgba(17, 24, 39, 0.65);
     }
@@ -292,8 +292,8 @@
     dialog h2 {
       margin: 0;
       padding: 18px 24px;
-      color: #ffffff;
-      background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+      color: var(--branco);
+      background: linear-gradient(135deg, var(--cinza-800) 0%, var(--cinza-700) 100%);
       border-bottom: 3px solid var(--secundaria);
       border-radius: 16px 16px 0 0;
     }
@@ -320,19 +320,49 @@
     :where(tbody td, .vazio, .msg-info, .status) { line-height: 1.45; }
     :where(dialog) { max-height: calc(100vh - 40px); overflow: auto; }
     :where(.msg-erro, .erro, #status.erro) { font-weight: 600; }
-    :where(button, input, select, textarea):focus-visible { outline: 3px solid rgba(16, 185, 129, 0.35); outline-offset: 2px; }
-    .opcao:not(:disabled) em { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
+    .opcao:not(:disabled) em { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
     @media (max-width: 720px) {
       :where(.painel, .filtros, dialog form, .dialogo-conteudo) { padding: 16px; }
       :where(.tabela) { overflow-x: auto; }
     }
     @media print {
       :where(header, .voltar, #sair, .filtros, .acoes, .acoes-linha) { display: none !important; }
-      :where(body, .painel, table, dialog) { background: #ffffff !important; box-shadow: none !important; }
+      :where(body, .painel, table, dialog) { background: var(--branco) !important; box-shadow: none !important; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
     }
+
+    :where(body) { font-family: var(--fonte); font-size: var(--fs-14); color: var(--texto); line-height: 1.5; }
+    :where(h1) { font-size: var(--fs-20); font-weight: 700; }
+    :where(h2) { font-size: var(--fs-16); font-weight: 700; }
+    :where(button, input, select, textarea) { font-family: inherit; font-size: var(--fs-14); min-height: var(--altura-controle); border-radius: var(--raio-controle); }
+    :where(button) { gap: var(--esp-2); }
+    :where(input, select, textarea) { padding: var(--esp-3) var(--esp-4); }
+    :where(label, .campo > span) { color: var(--texto-suave); }
+    :where(input::placeholder, textarea::placeholder) { color: var(--cinza-400); opacity: 1; }
+    :where(button, input, select, textarea, a, summary):focus-visible { outline: 3px solid var(--verde-700); outline-offset: 2px; }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--verde-700);
+      outline-offset: 2px;
+    }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--verde-600);
+      box-shadow: 0 0 0 3px var(--verde-100);
+    }
+    .voltar:focus-visible { outline: 3px solid var(--verde-200); outline-offset: 3px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+    :where(thead th) { color: var(--cinza-700); background: var(--cinza-100); }
+    :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
+    :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
+    :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
   </style>
 </head>
 <body>
