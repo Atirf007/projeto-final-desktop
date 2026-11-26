@@ -1,6 +1,7 @@
 import { registrarCanal } from '../SegurancaIpc'
 import { Sessao } from '../Sessao'
 import { PagamentoRepository } from '../pagamentos/PagamentoBackend'
+import { RegrasInadimplencia } from './RegrasInadimplencia'
 
 export type ItemInadimplencia = {
   pagamentoId: number
@@ -22,16 +23,11 @@ export type ResumoInadimplencia = {
 
 const dataISO = (valor: unknown): string => String(valor ?? '').slice(0, 10)
 
-const diasEmAtraso = (vencimento: string): number => {
-  const [ano, mes, dia] = dataISO(vencimento).split('-').map(Number)
-  if (!ano || !mes || !dia) return 0
-  const agora = new Date()
-  const hoje = Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate())
-  return Math.max(0, Math.round((hoje - Date.UTC(ano, mes - 1, dia)) / 86_400_000))
-}
-
 export class InadimplenciaRepository {
-  constructor(private readonly pagamentos: PagamentoRepository = new PagamentoRepository()) {}
+  constructor(
+    private readonly pagamentos: PagamentoRepository = new PagamentoRepository(),
+    private readonly regras: RegrasInadimplencia = new RegrasInadimplencia()
+  ) {}
 
   resumo = async (): Promise<ResumoInadimplencia> => {
     const lista = (await this.pagamentos.listar({ status: 'atrasado' })).sort(
@@ -50,7 +46,7 @@ export class InadimplenciaRepository {
         competencia: dataISO(pagamento.competencia).slice(0, 7),
         valor: pagamento.valor,
         dataVencimento: dataISO(pagamento.dataVencimento),
-        diasAtraso: diasEmAtraso(pagamento.dataVencimento)
+        diasAtraso: this.regras.diasAtraso(pagamento.dataVencimento)
       }))
     }
   }

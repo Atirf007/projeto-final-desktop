@@ -4,6 +4,8 @@ import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
 import { EmailServico } from '../integracoes/EmailBackend'
 import { Sessao } from '../Sessao'
+import { ResumoInadimplencia } from '../inadimplencia/InadimplenciaBackend'
+import { RegrasInadimplencia, TIPOS_PLANO_LONGO } from '../inadimplencia/RegrasInadimplencia'
 
 export type TipoNotificacao = 'vencimento' | 'chuva' | 'experimental' | 'geral'
 export type StatusNotificacao = 'pendente' | 'enviado' | 'falhou'
@@ -111,6 +113,7 @@ type PagamentoVencendo = {
   alunoNome: string
   email: string
   planoNome: string
+  planoTipo: string
   competencia: string
   valor: number
   dataVencimento: string
@@ -139,9 +142,11 @@ class NotificacaoRepository {
   private readonly pool = Banco.pool
 
   pagamentosVencendo = async (diasAntes: number): Promise<PagamentoVencendo[]> => {
+    const tiposLongos = TIPOS_PLANO_LONGO.map(() => '?').join(', ')
     const [linhas] = await this.pool.query<RowDataPacket[]>({
       sql: `SELECT pg.id AS pagamento_id, al.id AS aluno_id, u.id AS usuario_id,
                    u.nome AS aluno_nome, u.email AS aluno_email, pl.nome AS plano_nome,
+                   pl.tipo AS plano_tipo,
                    pg.competencia, pg.valor, pg.data_vencimento, pg.status AS status_pagamento
             FROM pagamentos pg
             INNER JOIN assinaturas a ON a.id = pg.assinatura_id
@@ -151,8 +156,9 @@ class NotificacaoRepository {
             WHERE pg.status IN ('pendente', 'atrasado')
               AND al.ativo = 1
               AND u.ativo = 1
-              AND pg.data_vencimento BETWEEN DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-                                         AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+              AND pg.data_vencimento BETWEEN
+                    DATE_SUB(CURDATE(), INTERVAL IF(LOWER(pl.tipo) IN (${tiposLongos}), 120, 30) DAY)
+                    AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
               AND NOT EXISTS (
                 SELECT 1 FROM notificacoes n
                 WHERE n.pagamento_id = pg.id
@@ -162,7 +168,7 @@ class NotificacaoRepository {
               )
             ORDER BY pg.data_vencimento ASC, u.nome ASC
             LIMIT 500`,
-      values: [diasAntes],
+      values: [...TIPOS_PLANO_LONGO, diasAntes],
       timeout: TIMEOUT
     })
     return linhas.map((linha) => ({
@@ -172,6 +178,7 @@ class NotificacaoRepository {
       alunoNome: String(linha.aluno_nome ?? ''),
       email: String(linha.aluno_email ?? ''),
       planoNome: String(linha.plano_nome ?? ''),
+      planoTipo: String(linha.plano_tipo ?? ''),
       competencia: dataStr(linha.competencia),
       valor: Number(linha.valor ?? 0),
       dataVencimento: dataStr(linha.data_vencimento),
@@ -354,6 +361,36 @@ class NotificacaoRepository {
       pendentes: Number(linha.pendentes ?? 0)
     }
   }
+
+  admins = async (): Promise<Array<{ id: number; email: string; nome: string }>> => {
+    const [linhas] = await this.pool.query<RowDataPacket[]>({
+      sql: `SELECT id, email, nome
+            FROM usuarios
+            WHERE perfil = ? AND ativo = 1
+            ORDER BY id ASC`,
+      values: ['admin'],
+      timeout: TIMEOUT
+    })
+    return linhas.map((linha) => ({
+      id: Number(linha.id),
+      email: String(linha.email ?? ''),
+      nome: String(linha.nome ?? '')
+    }))
+  }
+
+  alertaInadimplenciaExiste = async (assunto: string): Promise<boolean> => {
+    const [linhas] = await this.pool.query<RowDataPacket[]>({
+      sql: `SELECT 1
+            FROM notificacoes
+            WHERE tipo = 'geral'
+              AND canal = 'sistema'
+              AND assunto = ?
+            LIMIT 1`,
+      values: [assunto],
+      timeout: TIMEOUT
+    })
+    return linhas.length > 0
+  }
 }
 
 export class NotificacaoServico {
@@ -361,7 +398,8 @@ export class NotificacaoServico {
 
   constructor(
     private readonly email: EmailServico = new EmailServico(),
-    repositorio?: NotificacaoRepository
+    repositorio?: NotificacaoRepository,
+    private readonly regras: RegrasInadimplencia = new RegrasInadimplencia()
   ) {
     this.repositorio = repositorio ?? new NotificacaoRepository()
   }
@@ -413,6 +451,7 @@ export class NotificacaoServico {
       const competencia = competenciaBr(pagamento.competencia)
       const assunto = `Lembrete de vencimento — ${pagamento.planoNome} (${competencia})`
       const situacao = pagamento.statusPagamento === 'atrasado' ? 'em atraso' : 'em aberto'
+      const planoLongo = this.regras.planoLongo(pagamento.planoTipo)
       const mensagem = [
         `Olá, ${pagamento.alunoNome}!`,
         '',
@@ -422,6 +461,9 @@ export class NotificacaoServico {
         `Valor: ${moedaBr(pagamento.valor)}`,
         `Vencimento: ${dataBr(pagamento.dataVencimento)}`,
         `Situação: ${situacao}`,
+        ...(planoLongo
+          ? [`Atenção: em planos semestrais e anuais, o controle do vencimento é ainda mais importante.`]
+          : []),
         '',
         'Se o pagamento já foi realizado, desconsidere este aviso.',
         '',
@@ -468,6 +510,49 @@ export class NotificacaoServico {
       falhas,
       notificacoes
     }
+  }
+
+  registrarAlertaInadimplencia = async (resumo: ResumoInadimplencia): Promise<number> => {
+    if (resumo.atrasados <= 0) return 0
+
+    const assunto = `Alerta de inadimplência — ${new Date().toISOString().slice(0, 10)}`
+    if (await this.repositorio.alertaInadimplenciaExiste(assunto)) return 0
+
+    const admins = await this.repositorio.admins()
+    if (!admins.length) return 0
+
+    const detalhes = resumo.itens
+      .slice(0, 5)
+      .map((item) => `${item.alunoNome}: ${item.competencia} (${item.diasAtraso} dias)`)
+      .join('; ')
+    const mensagem = [
+      `Existem ${resumo.atrasados} pagamento(s) em atraso envolvendo ${resumo.totalAlunos} aluno(s).`,
+      `Valor total: ${moedaBr(resumo.valorTotal)}.`,
+      detalhes ? `Destaques: ${detalhes}.` : ''
+    ]
+      .filter(Boolean)
+      .join('\n')
+
+    let criadas = 0
+    for (const admin of admins) {
+      try {
+        await this.repositorio.criarManual({
+          usuarioId: admin.id,
+          aulaId: null,
+          pagamentoId: null,
+          destinatarioEmail: admin.email,
+          tipo: 'geral',
+          canal: 'sistema',
+          assunto,
+          mensagem,
+          status: 'enviado'
+        })
+        criadas++
+      } catch (erro) {
+        if ((erro as { code?: string }).code !== 'ER_DUP_ENTRY') throw erro
+      }
+    }
+    return criadas
   }
 }
 

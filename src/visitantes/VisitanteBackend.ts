@@ -3,7 +3,7 @@ import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
 import { Sessao } from '../Sessao'
-import { AulaTravada, ErroAula, executarTransacao, travarAula, validarCapacidade } from '../aulas/RegrasAula'
+import { AulaTravada, ErroAula, RegrasAulaService } from '../aulas/RegrasAula'
 
 export type TipoVisitante = 'experimental' | 'visitante'
 export type StatusVisitante = 'agendado' | 'compareceu' | 'faltou' | 'convertido'
@@ -245,6 +245,8 @@ const mapear = (linha: RowDataPacket): Visitante => ({
 class VisitanteRepository {
   private readonly pool = Banco.pool
 
+  constructor(private readonly regras: RegrasAulaService = new RegrasAulaService(Banco.pool)) {}
+
   private readonly campos = `
     v.id, v.nome, v.telefone, v.email, v.aula_id,
     a.titulo AS aula_titulo, a.data_hora_inicio AS aula_data_hora_inicio,
@@ -294,7 +296,7 @@ class VisitanteRepository {
 
   private travarAulaVisitante = async (conexao: PoolConnection, aulaId: number): Promise<AulaTravada> => {
     try {
-      return await travarAula(conexao, aulaId)
+      return await this.regras.travarAula(conexao, aulaId)
     } catch (erro) {
       if (erro instanceof ErroAula) {
         throw new ErroVisitante('A aula selecionada não existe mais. Escolha outra aula.')
@@ -304,10 +306,10 @@ class VisitanteRepository {
   }
 
   criar = async (dados: CriarVisitanteInput): Promise<number> =>
-    executarTransacao(this.pool, async (conexao) => {
+    this.regras.executarTransacao(async (conexao) => {
       if (dados.aulaId !== undefined) {
         const aula = await this.travarAulaVisitante(conexao, dados.aulaId)
-        await validarCapacidade(conexao, dados.aulaId, aula.capacidadeMax, 1)
+        await this.regras.validarCapacidade(conexao, dados.aulaId, aula.capacidadeMax, 1)
       }
       const [resultado] = await conexao.query<ResultSetHeader>({
         sql: `INSERT INTO visitantes
@@ -328,7 +330,7 @@ class VisitanteRepository {
     })
 
   atualizar = async (dados: AtualizarVisitanteInput): Promise<boolean> =>
-    executarTransacao(this.pool, async (conexao) => {
+    this.regras.executarTransacao(async (conexao) => {
       const [existentes] = await conexao.query<RowDataPacket[]>({
         sql: 'SELECT id, aula_id, status FROM visitantes WHERE id = ? LIMIT 1 FOR UPDATE',
         values: [dados.id],
@@ -349,7 +351,7 @@ class VisitanteRepository {
         const aula = await this.travarAulaVisitante(conexao, aulaId)
         if (ocupara) {
           const mesmaAula = aulaId === Number(atual.aula_id)
-          await validarCapacidade(conexao, aulaId, aula.capacidadeMax, ocupava && mesmaAula ? 0 : 1)
+          await this.regras.validarCapacidade(conexao, aulaId, aula.capacidadeMax, ocupava && mesmaAula ? 0 : 1)
         }
       }
 

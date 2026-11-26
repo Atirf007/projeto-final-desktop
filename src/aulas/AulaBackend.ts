@@ -4,15 +4,7 @@ import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
 import { FeriadoCliente } from '../integracoes/FeriadosBackend'
 import { Sessao, UsuarioSessao } from '../Sessao'
-import {
-  ErroAula,
-  executarTransacao,
-  travarAula,
-  travarAluno,
-  validarAlunosDaAula,
-  validarCapacidade,
-  validarUmaAulaPorDia
-} from './RegrasAula'
+import { ErroAula, RegrasAulaService } from './RegrasAula'
 
 export type StatusAula = 'agendada' | 'confirmada' | 'cancelada' | 'remarcada' | 'concluida'
 export type LocalAula = 'interna' | 'externa'
@@ -343,6 +335,8 @@ const mapearInscricaoDetalhe = (linha: RowDataPacket): InscricaoDetalhe => ({
 class AulaRepository {
   private readonly pool = Banco.pool
 
+  constructor(private readonly regras: RegrasAulaService = new RegrasAulaService(Banco.pool)) {}
+
   private readonly camposAula = `
     a.id, a.modalidade_id, m.nome AS modalidade_nome, a.instrutor_id, u.nome AS instrutor_nome,
     a.titulo, a.data_hora_inicio, a.duracao_min, a.capacidade_max, a.local, a.local_descricao, a.status,
@@ -480,7 +474,7 @@ class AulaRepository {
   }
 
   atualizarStatusInscricao = async (id: number, status: StatusInscricao): Promise<boolean> =>
-    executarTransacao(this.pool, async (conexao) => {
+    this.regras.executarTransacao(async (conexao) => {
       const [linhas] = await conexao.query<RowDataPacket[]>({
         sql: `SELECT ia.id, ia.aula_id, ia.aluno_id, ia.status, a.capacidade_max, a.data_hora_inicio
               FROM inscricoes_aula ia
@@ -500,9 +494,9 @@ class AulaRepository {
       if (ocupara) {
         const alunoId = Number(linha.aluno_id)
         const aulaId = Number(linha.aula_id)
-        await travarAluno(conexao, alunoId)
-        await validarUmaAulaPorDia(conexao, alunoId, aulaId, dataHoraBanco(linha.data_hora_inicio).slice(0, 10))
-        await validarCapacidade(conexao, aulaId, Number(linha.capacidade_max), ocupanteAtual ? 0 : 1)
+        await this.regras.travarAluno(conexao, alunoId)
+        await this.regras.validarUmaAulaPorDia(conexao, alunoId, aulaId, dataHoraBanco(linha.data_hora_inicio).slice(0, 10))
+        await this.regras.validarCapacidade(conexao, aulaId, Number(linha.capacidade_max), ocupanteAtual ? 0 : 1)
       }
       await conexao.query({
         sql: 'UPDATE inscricoes_aula SET status = ?, atualizado_em = NOW() WHERE id = ?',
@@ -512,19 +506,14 @@ class AulaRepository {
       return true
     })
 
-  excluirInscricao = async (id: number): Promise<boolean> => {
-    const conexao = await this.pool.getConnection()
-    try {
-      await conexao.beginTransaction()
+  excluirInscricao = async (id: number): Promise<boolean> =>
+    this.regras.executarTransacao(async (conexao) => {
       const [linhas] = await conexao.query<RowDataPacket[]>({
         sql: 'SELECT status FROM inscricoes_aula WHERE id = ? LIMIT 1 FOR UPDATE',
         values: [id],
         timeout: TIMEOUT
       })
-      if (!linhas.length) {
-        await conexao.rollback()
-        return false
-      }
+      if (!linhas.length) return false
       if (String(linhas[0].status) === 'presente') {
         throw new ErroAula('Não é possível excluir uma inscrição com presença registrada.')
       }
@@ -533,15 +522,8 @@ class AulaRepository {
         values: [id],
         timeout: TIMEOUT
       })
-      await conexao.commit()
       return resultado.affectedRows > 0
-    } catch (erro) {
-      await conexao.rollback().catch(() => undefined)
-      throw erro
-    } finally {
-      conexao.release()
-    }
-  }
+    })
 
   minhas = async (alunoId: number): Promise<Aula[]> => {
     const [linhas] = await this.pool.query<RowDataPacket[]>({
@@ -605,10 +587,8 @@ class AulaRepository {
     }
   }
 
-  criar = async (dados: CriarAulaInput): Promise<number> => {
-    const conexao = await this.pool.getConnection()
-    try {
-      await conexao.beginTransaction()
+  criar = async (dados: CriarAulaInput): Promise<number> =>
+    this.regras.executarTransacao(async (conexao) => {
       await this.validarReferencias(conexao, dados.modalidadeId, dados.instrutorId)
       const [resultado] = await conexao.query<ResultSetHeader>({
         sql: `INSERT INTO aulas
@@ -626,18 +606,11 @@ class AulaRepository {
         ],
         timeout: TIMEOUT
       })
-      await conexao.commit()
       return Number(resultado.insertId)
-    } catch (erro) {
-      await conexao.rollback().catch(() => undefined)
-      throw erro
-    } finally {
-      conexao.release()
-    }
-  }
+    })
 
   atualizar = async (dados: AtualizarAulaInput): Promise<boolean> =>
-    executarTransacao(this.pool, async (conexao) => {
+    this.regras.executarTransacao(async (conexao) => {
       const [linhas] = await conexao.query<RowDataPacket[]>({
         sql: `SELECT modalidade_id, instrutor_id, capacidade_max, data_hora_inicio
               FROM aulas WHERE id = ? LIMIT 1 FOR UPDATE`,
@@ -674,8 +647,8 @@ class AulaRepository {
 
       const capacidadeFinal = dados.capacidadeMax ?? Number(aula.capacidade_max)
       const dataFinal = dataHoraBanco(dados.dataHoraInicio ?? aula.data_hora_inicio).slice(0, 10)
-      await validarCapacidade(conexao, dados.id, capacidadeFinal)
-      await validarAlunosDaAula(conexao, dados.id, dataFinal)
+      await this.regras.validarCapacidade(conexao, dados.id, capacidadeFinal)
+      await this.regras.validarAlunosDaAula(conexao, dados.id, dataFinal)
 
       campos.push('atualizado_em = NOW()')
       await conexao.query({
@@ -687,13 +660,13 @@ class AulaRepository {
     })
 
   remarcar = async (dados: RemarcarAulaInput): Promise<boolean> =>
-    executarTransacao(this.pool, async (conexao) => {
-      const aula = await travarAula(conexao, dados.id)
+    this.regras.executarTransacao(async (conexao) => {
+      const aula = await this.regras.travarAula(conexao, dados.id)
       if (aula.status === 'concluida' || aula.status === 'cancelada') {
         throw new ErroAula('Esta aula não pode ser remarcada.')
       }
-      await validarCapacidade(conexao, dados.id, aula.capacidadeMax)
-      await validarAlunosDaAula(conexao, dados.id, dados.novaDataHora.slice(0, 10))
+      await this.regras.validarCapacidade(conexao, dados.id, aula.capacidadeMax)
+      await this.regras.validarAlunosDaAula(conexao, dados.id, dados.novaDataHora.slice(0, 10))
 
       const campos = ['data_hora_inicio = ?', "status = 'remarcada'", 'atualizado_em = NOW()']
       const valores: unknown[] = [dados.novaDataHora]
@@ -723,17 +696,17 @@ class AulaRepository {
   }
 
   inscrever = async (aulaId: number, alunoId: number): Promise<number> =>
-    executarTransacao(this.pool, async (conexao) => {
-      const aula = await travarAula(conexao, aulaId)
+    this.regras.executarTransacao(async (conexao) => {
+      const aula = await this.regras.travarAula(conexao, aulaId)
       if (aula.status === 'cancelada' || aula.status === 'concluida') {
         throw new ErroAula('Esta aula não aceita novas inscrições.')
       }
-      const aluno = await travarAluno(conexao, alunoId)
+      const aluno = await this.regras.travarAluno(conexao, alunoId)
       if (!aluno) throw new ErroAula('Aluno não encontrado.')
       if (!aluno.ativo) throw new ErroAula('O aluno está inativo e não pode ser inscrito.')
 
-      await validarUmaAulaPorDia(conexao, alunoId, aulaId, aula.dataHoraInicio.slice(0, 10))
-      await validarCapacidade(conexao, aulaId, aula.capacidadeMax, 1)
+      await this.regras.validarUmaAulaPorDia(conexao, alunoId, aulaId, aula.dataHoraInicio.slice(0, 10))
+      await this.regras.validarCapacidade(conexao, aulaId, aula.capacidadeMax, 1)
 
       const [existentes] = await conexao.query<RowDataPacket[]>({
         sql: 'SELECT id, status FROM inscricoes_aula WHERE aula_id = ? AND aluno_id = ? LIMIT 1',
@@ -780,19 +753,14 @@ class AulaRepository {
     }
   }
 
-  cancelarInscricao = async (inscricaoId: number): Promise<boolean> => {
-    const conexao = await this.pool.getConnection()
-    try {
-      await conexao.beginTransaction()
+  cancelarInscricao = async (inscricaoId: number): Promise<boolean> =>
+    this.regras.executarTransacao(async (conexao) => {
       const [linhas] = await conexao.query<RowDataPacket[]>({
         sql: 'SELECT status FROM inscricoes_aula WHERE id = ? FOR UPDATE',
         values: [inscricaoId],
         timeout: TIMEOUT
       })
-      if (!linhas.length) {
-        await conexao.rollback()
-        return false
-      }
+      if (!linhas.length) return false
       const status = String(linhas[0].status)
       if (status === 'presente') {
         throw new ErroAula('A presença já foi registrada; não é possível cancelar a inscrição.')
@@ -804,20 +772,11 @@ class AulaRepository {
           timeout: TIMEOUT
         })
       }
-      await conexao.commit()
       return true
-    } catch (erro) {
-      await conexao.rollback().catch(() => undefined)
-      throw erro
-    } finally {
-      conexao.release()
-    }
-  }
+    })
 
-  marcarPresenca = async (inscricaoId: number, presente: boolean): Promise<boolean> => {
-    const conexao = await this.pool.getConnection()
-    try {
-      await conexao.beginTransaction()
+  marcarPresenca = async (inscricaoId: number, presente: boolean): Promise<boolean> =>
+    this.regras.executarTransacao(async (conexao) => {
       const [linhas] = await conexao.query<RowDataPacket[]>({
         sql: `SELECT ia.id, ia.aula_id, ia.aluno_id, ia.status, a.status AS aula_status, a.data_hora_inicio
               FROM inscricoes_aula ia
@@ -827,10 +786,7 @@ class AulaRepository {
         values: [inscricaoId],
         timeout: TIMEOUT
       })
-      if (!linhas.length) {
-        await conexao.rollback()
-        return false
-      }
+      if (!linhas.length) return false
       const linha = linhas[0]
       const statusAula = String(linha.aula_status)
       if (statusAula === 'cancelada') throw new ErroAula('A aula está cancelada; não é possível registrar presença.')
@@ -839,8 +795,11 @@ class AulaRepository {
       const aulaId = Number(linha.aula_id)
       const dataPresenca = dataHoraBanco(linha.data_hora_inicio).slice(0, 10)
 
+      await this.regras.travarAluno(conexao, alunoId)
+
       if (presente) {
         if (String(linha.status) !== 'presente') {
+          await this.regras.validarUmaAulaPorDia(conexao, alunoId, aulaId, dataPresenca)
           try {
             await conexao.query<ResultSetHeader>({
               sql: `INSERT INTO presencas (aluno_id, aula_id, data_presenca, origem, criado_em)
@@ -873,15 +832,8 @@ class AulaRepository {
           timeout: TIMEOUT
         })
       }
-      await conexao.commit()
       return true
-    } catch (erro) {
-      await conexao.rollback().catch(() => undefined)
-      throw erro
-    } finally {
-      conexao.release()
-    }
-  }
+    })
 
   vagas = async (aulaId: number): Promise<{ capacidadeMax: number; ocupadas: number; disponiveis: number } | null> => {
     const [linhas] = await this.pool.query<RowDataPacket[]>({

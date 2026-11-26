@@ -5,15 +5,10 @@ import { createServer, IncomingMessage, Server, ServerResponse } from 'http'
 import { join } from 'path'
 import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
-import {
-  executarTransacao,
-  travarAula,
-  validarAlunosDaAula,
-  validarCapacidade
-} from '../aulas/RegrasAula'
+import { RegrasAulaService } from '../aulas/RegrasAula'
 
 const TIMEOUT = 10000
-const VALIDADE_TOKEN_MS = 7 * 24 * 60 * 60 * 1000
+const VALIDADE_TOKEN_MS = 2 * 24 * 60 * 60 * 1000
 const PORTA_PADRAO = 39517
 const HOST_PADRAO = '127.0.0.1'
 const ASSUNTO_CANCELAR = 'Decisão do aluno: cancelar a aula'
@@ -152,7 +147,9 @@ export class AssinadorDecisao {
     if (!expTexto || !assinaturaTexto) return false
 
     const expiraEm = Number(expTexto)
-    if (!Number.isInteger(expiraEm) || expiraEm < Math.floor(Date.now() / 1000)) return false
+    const agoraSeg = Math.floor(Date.now() / 1000)
+    const limiteSeg = agoraSeg + Math.ceil(VALIDADE_TOKEN_MS / 1000) + 60
+    if (!Number.isInteger(expiraEm) || expiraEm < agoraSeg || expiraEm > limiteSeg) return false
 
     let recebida: Buffer
     try {
@@ -178,6 +175,8 @@ export const obterAssinadorDecisao = (): AssinadorDecisao => {
 
 export class DecisaoClimaRepositorio {
   private readonly pool = Banco.pool
+
+  constructor(private readonly regras: RegrasAulaService = new RegrasAulaService(Banco.pool)) {}
 
   obterAviso = async (id: number): Promise<AvisoDecisao | null> => {
     if (!Number.isInteger(id) || id <= 0) return null
@@ -246,12 +245,12 @@ export class DecisaoClimaRepositorio {
   }
 
   private moverParaAreaInterna = async (conexao: PoolConnection, aulaId: number): Promise<void> => {
-    const aula = await travarAula(conexao, aulaId)
+    const aula = await this.regras.travarAula(conexao, aulaId)
     if (aula.status === 'cancelada' || aula.status === 'concluida') {
       throw new Error('Esta aula não pode ser transferida para a área interna.')
     }
-    await validarCapacidade(conexao, aulaId, aula.capacidadeMax)
-    await validarAlunosDaAula(conexao, aulaId, aula.dataHoraInicio.slice(0, 10))
+    await this.regras.validarCapacidade(conexao, aulaId, aula.capacidadeMax)
+    await this.regras.validarAlunosDaAula(conexao, aulaId, aula.dataHoraInicio.slice(0, 10))
     await conexao.query({
       sql: `UPDATE aulas
             SET local = 'interna', local_descricao = NULL, status = 'remarcada', atualizado_em = NOW()
@@ -262,8 +261,8 @@ export class DecisaoClimaRepositorio {
   }
 
   private cancelarAula = async (conexao: PoolConnection, aulaId: number): Promise<void> => {
-    const aula = await travarAula(conexao, aulaId)
-    await validarAlunosDaAula(conexao, aulaId, aula.dataHoraInicio.slice(0, 10))
+    const aula = await this.regras.travarAula(conexao, aulaId)
+    await this.regras.validarAlunosDaAula(conexao, aulaId, aula.dataHoraInicio.slice(0, 10))
     await conexao.query({
       sql: `UPDATE aulas
             SET status = 'cancelada', atualizado_em = NOW()
@@ -273,8 +272,23 @@ export class DecisaoClimaRepositorio {
     })
   }
 
-  registrarDecisao = async (aviso: AvisoDecisao, acao: AcaoDecisao): Promise<ResultadoDecisao> =>
-    executarTransacao(this.pool, async (conexao) => {
+  registrarDecisao = async (aviso: AvisoDecisao, acao: AcaoDecisao): Promise<ResultadoDecisao> => {
+    try {
+      return await this.registrarDecisaoNaTransacao(aviso, acao)
+    } catch (erro) {
+      if ((erro as { code?: string }).code === 'ER_DUP_ENTRY') {
+        const existente = await this.obterDecisao(aviso.aulaId, aviso.usuarioId)
+        return { registrada: false, estado: 'disponivel', decisao: existente }
+      }
+      throw erro
+    }
+  }
+
+  private registrarDecisaoNaTransacao = async (
+    aviso: AvisoDecisao,
+    acao: AcaoDecisao
+  ): Promise<ResultadoDecisao> =>
+    this.regras.executarTransacao(async (conexao) => {
       const [aulas] = await conexao.query<RowDataPacket[]>({
         sql: 'SELECT local, status FROM aulas WHERE id = ? LIMIT 1 FOR UPDATE',
         values: [aviso.aulaId],
@@ -536,7 +550,7 @@ export class ServidorDecisaoClima {
         'Chuva prevista para sua aula ao ar livre',
         `<span class="selo">Risco de chuva</span>
          ${detalhe}
-         <p>Escolha o que deseja fazer com esta aula. A academia será avisada da sua decisão.</p>
+          <p>Escolha o que deseja fazer com esta aula. Sua decisão será registrada no sistema.</p>
          <div class="acoes">
            <form method="post" action="/clima/${id}/cancelar?t=${tokenUrl}">
              <button type="submit" class="cancelar">Cancelar a aula</button>
