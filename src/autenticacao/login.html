@@ -94,8 +94,7 @@
       color: var(--branco);
       background-color: var(--verde-700);
       background-image:
-        linear-gradient(180deg, rgba(2, 44, 34, 0.28) 0%, rgba(2, 44, 34, 0.72) 58%, rgba(2, 44, 34, 0.96) 100%),
-        url('assets/login-foto.jpg');
+        linear-gradient(180deg, rgba(2, 44, 34, 0.28) 0%, rgba(2, 44, 34, 0.72) 58%, rgba(2, 44, 34, 0.96) 100%);
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -455,6 +454,20 @@
     :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
     :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
     :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
+    .ilustracao-fitness {
+      position: absolute;
+      right: 32px;
+      bottom: 104px;
+      width: 210px;
+      height: 210px;
+      fill: none;
+      stroke: var(--verde-100);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.9;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -475,6 +488,16 @@
           <small>Academia</small>
         </span>
       </div>
+
+      <svg class="ilustracao-fitness" viewBox="0 0 220 220" aria-hidden="true">
+        <circle cx="110" cy="110" r="100" stroke-opacity="0.35" stroke-width="2" />
+        <circle cx="110" cy="52" r="14" />
+        <path d="M110 68v64" />
+        <path d="M110 132l-22 44M110 132l22 44" />
+        <path d="M110 88l-34-6M110 88l34-6" />
+        <path d="M52 82h30M138 82h30" />
+        <path d="M56 74v16M78 74v16M142 74v16M164 74v16" />
+      </svg>
 
       <div class="chamada">
         <span class="etiqueta">Sistema interno</span>
