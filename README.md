@@ -53,8 +53,8 @@ Antes de avaliar ou abrir um PR, rode:
 
 ```
 npm run typecheck
-npm test
 npm run build
+npm test
 ```
 
 O workflow `.github/workflows/ci.yml` executa esses mesmos comandos em pushes e pull requests.
