@@ -1,8 +1,9 @@
 import { registrarCanal } from '../SegurancaIpc'
-import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
+import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
 import { BancoErros } from '../BancoErros'
 import { Sessao } from '../Sessao'
+import { AulaTravada, ErroAula, executarTransacao, travarAula, validarCapacidade } from '../aulas/RegrasAula'
 
 export type TipoVisitante = 'experimental' | 'visitante'
 export type StatusVisitante = 'agendado' | 'compareceu' | 'faltou' | 'convertido'
@@ -291,70 +292,91 @@ class VisitanteRepository {
     return linhas.length ? mapear(linhas[0]) : null
   }
 
-  private validarAula = async (aulaId: number | null): Promise<void> => {
-    if (aulaId === null) return
-    const [linhas] = await this.pool.query<RowDataPacket[]>({
-      sql: 'SELECT id FROM aulas WHERE id = ? LIMIT 1',
-      values: [aulaId],
-      timeout: TIMEOUT
-    })
-    if (!linhas.length) throw new ErroVisitante('A aula selecionada não existe mais. Escolha outra aula.')
-  }
-
-  criar = async (dados: CriarVisitanteInput): Promise<number> => {
-    await this.validarAula(dados.aulaId ?? null)
-    const [resultado] = await this.pool.query<ResultSetHeader>({
-      sql: `INSERT INTO visitantes
-        (nome, telefone, email, aula_id, data_visita, tipo, status, observacoes, criado_em, atualizado_em)
-        VALUES (?, ?, ?, ?, ?, ?, 'agendado', ?, NOW(), NOW())`,
-      values: [
-        dados.nome,
-        dados.telefone,
-        dados.email ?? null,
-        dados.aulaId ?? null,
-        dados.dataVisita,
-        dados.tipo,
-        dados.observacoes ?? null
-      ],
-      timeout: TIMEOUT
-    })
-    return Number(resultado.insertId)
-  }
-
-  atualizar = async (dados: AtualizarVisitanteInput): Promise<boolean> => {
-    const [existentes] = await this.pool.query<RowDataPacket[]>({
-      sql: 'SELECT id FROM visitantes WHERE id = ? LIMIT 1',
-      values: [dados.id],
-      timeout: TIMEOUT
-    })
-    if (!existentes.length) return false
-
-    if (dados.aulaId !== undefined) await this.validarAula(dados.aulaId)
-
-    const campos: string[] = []
-    const valores: unknown[] = []
-    const set = (coluna: string, valor: unknown): void => {
-      campos.push(`${coluna} = ?`)
-      valores.push(valor)
+  private travarAulaVisitante = async (conexao: PoolConnection, aulaId: number): Promise<AulaTravada> => {
+    try {
+      return await travarAula(conexao, aulaId)
+    } catch (erro) {
+      if (erro instanceof ErroAula) {
+        throw new ErroVisitante('A aula selecionada não existe mais. Escolha outra aula.')
+      }
+      throw erro
     }
-    if (dados.nome !== undefined) set('nome', dados.nome)
-    if (dados.telefone !== undefined) set('telefone', dados.telefone)
-    if (dados.email !== undefined) set('email', dados.email)
-    if (dados.aulaId !== undefined) set('aula_id', dados.aulaId)
-    if (dados.dataVisita !== undefined) set('data_visita', dados.dataVisita)
-    if (dados.tipo !== undefined) set('tipo', dados.tipo)
-    if (dados.status !== undefined) set('status', dados.status)
-    if (dados.observacoes !== undefined) set('observacoes', dados.observacoes)
-
-    if (!campos.length) return true
-    campos.push('atualizado_em = NOW()')
-    await this.pool.query({
-      sql: `UPDATE visitantes SET ${campos.join(', ')} WHERE id = ?`,
-      values: [...valores, dados.id],
-      timeout: TIMEOUT
-    })
-    return true
   }
+
+  criar = async (dados: CriarVisitanteInput): Promise<number> =>
+    executarTransacao(this.pool, async (conexao) => {
+      if (dados.aulaId !== undefined) {
+        const aula = await this.travarAulaVisitante(conexao, dados.aulaId)
+        await validarCapacidade(conexao, dados.aulaId, aula.capacidadeMax, 1)
+      }
+      const [resultado] = await conexao.query<ResultSetHeader>({
+        sql: `INSERT INTO visitantes
+          (nome, telefone, email, aula_id, data_visita, tipo, status, observacoes, criado_em, atualizado_em)
+          VALUES (?, ?, ?, ?, ?, ?, 'agendado', ?, NOW(), NOW())`,
+        values: [
+          dados.nome,
+          dados.telefone,
+          dados.email ?? null,
+          dados.aulaId ?? null,
+          dados.dataVisita,
+          dados.tipo,
+          dados.observacoes ?? null
+        ],
+        timeout: TIMEOUT
+      })
+      return Number(resultado.insertId)
+    })
+
+  atualizar = async (dados: AtualizarVisitanteInput): Promise<boolean> =>
+    executarTransacao(this.pool, async (conexao) => {
+      const [existentes] = await conexao.query<RowDataPacket[]>({
+        sql: 'SELECT id, aula_id, status FROM visitantes WHERE id = ? LIMIT 1 FOR UPDATE',
+        values: [dados.id],
+        timeout: TIMEOUT
+      })
+      if (!existentes.length) return false
+      const atual = existentes[0]
+      const aulaId = dados.aulaId !== undefined
+        ? dados.aulaId
+        : atual.aula_id === null || atual.aula_id === undefined
+          ? null
+          : Number(atual.aula_id)
+      const status = dados.status ?? String(atual.status)
+      const ocupava = ['agendado', 'compareceu'].includes(String(atual.status))
+      const ocupara = status === 'agendado' || status === 'compareceu'
+
+      if (aulaId !== null) {
+        const aula = await this.travarAulaVisitante(conexao, aulaId)
+        if (ocupara) {
+          const mesmaAula = aulaId === Number(atual.aula_id)
+          await validarCapacidade(conexao, aulaId, aula.capacidadeMax, ocupava && mesmaAula ? 0 : 1)
+        }
+      }
+
+      const campos: string[] = []
+      const valores: unknown[] = []
+      const set = (coluna: string, valor: unknown): void => {
+        campos.push(`${coluna} = ?`)
+        valores.push(valor)
+      }
+      if (dados.nome !== undefined) set('nome', dados.nome)
+      if (dados.telefone !== undefined) set('telefone', dados.telefone)
+      if (dados.email !== undefined) set('email', dados.email)
+      if (dados.aulaId !== undefined) set('aula_id', dados.aulaId)
+      if (dados.dataVisita !== undefined) set('data_visita', dados.dataVisita)
+      if (dados.tipo !== undefined) set('tipo', dados.tipo)
+      if (dados.status !== undefined) set('status', dados.status)
+      if (dados.observacoes !== undefined) set('observacoes', dados.observacoes)
+
+      if (!campos.length) return true
+      campos.push('atualizado_em = NOW()')
+      await conexao.query({
+        sql: `UPDATE visitantes SET ${campos.join(', ')} WHERE id = ?`,
+        values: [...valores, dados.id],
+        timeout: TIMEOUT
+      })
+      return true
+    })
 
   excluir = async (id: number): Promise<boolean> => {
     const [resultado] = await this.pool.query<ResultSetHeader>({
@@ -380,7 +402,7 @@ export class VisitanteIpc {
   }
 
   private erro = (contexto: string, erro: unknown, padrao: string): ResultadoVisitante => {
-    if (erro instanceof ErroVisitante) return { ok: false, mensagem: erro.message }
+    if (erro instanceof ErroVisitante || erro instanceof ErroAula) return { ok: false, mensagem: erro.message }
     console.error(`[${contexto}]`, erro)
     return { ok: false, mensagem: BancoErros.mensagem(erro, padrao) }
   }

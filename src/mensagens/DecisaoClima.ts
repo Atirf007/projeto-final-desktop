@@ -3,8 +3,14 @@ import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
 import { readFileSync, writeFileSync } from 'fs'
 import { createServer, IncomingMessage, Server, ServerResponse } from 'http'
 import { join } from 'path'
-import { ResultSetHeader, RowDataPacket } from 'mysql2/promise'
+import { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise'
 import { Banco } from '../Banco'
+import {
+  executarTransacao,
+  travarAula,
+  validarAlunosDaAula,
+  validarCapacidade
+} from '../aulas/RegrasAula'
 
 const TIMEOUT = 10000
 const VALIDADE_TOKEN_MS = 7 * 24 * 60 * 60 * 1000
@@ -205,44 +211,62 @@ export class DecisaoClimaRepositorio {
     }
   }
 
-  registrarDecisao = async (aviso: AvisoDecisao, decisao: 'manter' | 'remarcar'): Promise<boolean> => {
-    const assunto = decisao === 'manter' ? ASSUNTO_MANTER : ASSUNTO_REMARCAR
-    const quando = dataHoraBr(aviso.dataHoraInicio)
-    const mensagem =
-      decisao === 'manter'
-        ? `Aluno decidiu manter a aula "${aviso.titulo}" de ${quando}.`
-        : `Aluno pediu remarcação da aula "${aviso.titulo}" de ${quando}.`
-
-    const [resultado] = await this.pool.query<ResultSetHeader>({
-      sql: `INSERT INTO notificacoes
-        (usuario_id, aula_id, destinatario_email, tipo, canal, assunto, mensagem, status, erro, criado_em, enviado_em)
-        SELECT ?, ?, ?, 'chuva', 'sistema', ?, ?, 'enviado', NULL, NOW(), NOW()
-        FROM DUAL
-        WHERE NOT EXISTS (
-          SELECT 1 FROM notificacoes n
-           WHERE n.tipo = 'chuva'
-             AND n.canal = 'sistema'
-             AND n.status = 'enviado'
-             AND n.aula_id = ?
-             AND n.usuario_id = ?
-             AND n.assunto IN (?, ?)
-        )`,
-      values: [
-        aviso.usuarioId,
-        aviso.aulaId,
-        aviso.email,
-        assunto,
-        mensagem,
-        aviso.aulaId,
-        aviso.usuarioId,
-        ASSUNTO_MANTER,
-        ASSUNTO_REMARCAR
-      ],
+  private moverParaAreaInterna = async (conexao: PoolConnection, aulaId: number): Promise<void> => {
+    const aula = await travarAula(conexao, aulaId)
+    if (aula.status === 'cancelada' || aula.status === 'concluida') {
+      throw new Error('Esta aula não pode ser transferida para a área interna.')
+    }
+    await validarCapacidade(conexao, aulaId, aula.capacidadeMax)
+    await validarAlunosDaAula(conexao, aulaId, aula.dataHoraInicio.slice(0, 10))
+    await conexao.query({
+      sql: `UPDATE aulas
+            SET local = 'interna', local_descricao = NULL, status = 'remarcada', atualizado_em = NOW()
+            WHERE id = ?`,
+      values: [aulaId],
       timeout: TIMEOUT
     })
-
-    return resultado.affectedRows > 0
   }
+
+  registrarDecisao = async (aviso: AvisoDecisao, decisao: 'manter' | 'remarcar'): Promise<boolean> =>
+    executarTransacao(this.pool, async (conexao) => {
+      if (decisao === 'remarcar') await this.moverParaAreaInterna(conexao, aviso.aulaId)
+      const assunto = decisao === 'manter' ? ASSUNTO_MANTER : ASSUNTO_REMARCAR
+      const quando = dataHoraBr(aviso.dataHoraInicio)
+      const mensagem =
+        decisao === 'manter'
+          ? `Aluno decidiu manter a aula "${aviso.titulo}" de ${quando}.`
+          : `Aula "${aviso.titulo}" de ${quando} transferida para a área interna a pedido do aluno.`
+
+      const [resultado] = await conexao.query<ResultSetHeader>({
+        sql: `INSERT INTO notificacoes
+          (usuario_id, aula_id, destinatario_email, tipo, canal, assunto, mensagem, status, erro, criado_em, enviado_em)
+          SELECT ?, ?, ?, 'chuva', 'sistema', ?, ?, 'enviado', NULL, NOW(), NOW()
+          FROM DUAL
+          WHERE NOT EXISTS (
+            SELECT 1 FROM notificacoes n
+             WHERE n.tipo = 'chuva'
+               AND n.canal = 'sistema'
+               AND n.status = 'enviado'
+               AND n.aula_id = ?
+               AND n.usuario_id = ?
+               AND n.assunto IN (?, ?)
+          )`,
+        values: [
+          aviso.usuarioId,
+          aviso.aulaId,
+          aviso.email,
+          assunto,
+          mensagem,
+          aviso.aulaId,
+          aviso.usuarioId,
+          ASSUNTO_MANTER,
+          ASSUNTO_REMARCAR
+        ],
+        timeout: TIMEOUT
+      })
+
+      return resultado.affectedRows > 0
+    })
 }
 
 type Resposta = {
@@ -384,9 +408,10 @@ export class ServidorDecisaoClima {
       return { ...this.paginaErro('Este aviso não está mais disponível.'), status: 404 }
     }
 
+    const localAtual = aviso.local === 'interna' ? 'área interna' : 'área externa'
     const detalhe = `<p><strong>${escaparHtml(aviso.titulo)}</strong><br>${escaparHtml(
       dataHoraBr(aviso.dataHoraInicio)
-    )}</p>`
+    )}</p><p>Local atual: ${escaparHtml(localAtual)}.</p>`
 
     if (!this.podeDecidir(aviso)) {
       return {
@@ -409,6 +434,16 @@ export class ServidorDecisaoClima {
       }
     }
 
+    if (aviso.local === 'interna') {
+      return {
+        status: 200,
+        html: this.pagina(
+          'Aula na área interna',
+          `${detalhe}<p>Esta aula já foi transferida para a área interna.</p>`
+        )
+      }
+    }
+
     const tokenUrl = encodeURIComponent(token)
     return {
       status: 200,
@@ -421,9 +456,9 @@ export class ServidorDecisaoClima {
            <form method="post" action="/clima/${id}/manter?t=${tokenUrl}">
              <button type="submit" class="manter">Manter a aula</button>
            </form>
-           <form method="post" action="/clima/${id}/remarcar?t=${tokenUrl}">
-             <button type="submit" class="remarcar">Pedir remarcação</button>
-           </form>
+            <form method="post" action="/clima/${id}/remarcar?t=${tokenUrl}">
+              <button type="submit" class="remarcar">Transferir para a área interna</button>
+            </form>
          </div>
          <p class="nota">Se você não responder, a aula permanece como está.</p>`
       )
@@ -446,6 +481,13 @@ export class ServidorDecisaoClima {
       }
     }
 
+    if (acao === 'manter' && aviso.local === 'interna') {
+      return {
+        status: 409,
+        html: this.pagina('Aula na área interna', '<p>Esta aula já foi transferida para a área interna.</p>')
+      }
+    }
+
     const registrada = await this.repositorio.registrarDecisao(aviso, acao)
     const decisao = await this.repositorio.obterDecisao(aviso.aulaId, aviso.usuarioId)
 
@@ -462,7 +504,7 @@ export class ServidorDecisaoClima {
     const mensagem =
       acao === 'manter'
         ? 'Sua decisão de manter a aula foi registrada.'
-        : 'Seu pedido de remarcação foi registrado. A equipe entrará em contato.'
+        : 'Sua aula foi transferida para a área interna da academia, mantendo o mesmo horário.'
     return {
       status: 200,
       html: this.pagina('Decisão registrada', `<p>${escaparHtml(mensagem)}</p>`)
