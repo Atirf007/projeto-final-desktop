@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data: file:">
+  <title>Cotil — Login</title>
+  <style>
+    :root {
+      --cinza-50: #f8fafc;
+      --cinza-100: #f3f4f6;
+      --cinza-200: #e5e7eb;
+      --cinza-300: #d1d5db;
+      --cinza-400: #9ca3af;
+      --cinza-500: #6b7280;
+      --cinza-600: #4b5563;
+      --cinza-700: #374151;
+      --cinza-800: #1f2937;
+      --cinza-900: #111827;
+
+      --verde-50: #ecfdf5;
+      --verde-100: #d1fae5;
+      --verde-200: #a7f3d0;
+      --verde-500: #10b981;
+      --verde-600: #059669;
+      --verde-700: #047857;
+
+      --fundo: #f8fafc;
+      --superficie: #ffffff;
+      --texto: #111827;
+      --texto-suave: #4b5563;
+      --borda: #e5e7eb;
+      --branco: #ffffff;
+
+      --erro: #b91c1c;
+      --erro-suave: #fef2f2;
+      --erro-borda: #fecaca;
+      --alerta: #92400e;
+      --alerta-suave: #fffbeb;
+      --alerta-borda: #fde68a;
+      --sucesso: #166534;
+
+      --esp-1: 4px;
+      --esp-2: 8px;
+      --esp-3: 12px;
+      --esp-4: 16px;
+      --esp-5: 24px;
+      --esp-6: 32px;
+      --fs-12: 12px;
+      --fs-13: 13px;
+      --fs-14: 14px;
+      --fs-16: 16px;
+      --fs-20: 20px;
+      --altura-controle: 40px;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+      --verde: var(--verde-500);
+      --verde-escuro: var(--verde-700);
+      --verde-claro: var(--verde-100);
+      --tinta: var(--texto);
+      --muted: var(--cinza-500);
+      --linha: var(--borda);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: var(--fonte);
+      color: var(--tinta);
+      background: var(--fundo);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .tela {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .vitrine {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 44px 48px;
+      overflow: hidden;
+      color: var(--branco);
+      background-color: var(--verde-700);
+      background-image:
+        linear-gradient(180deg, rgba(2, 44, 34, 0.28) 0%, rgba(2, 44, 34, 0.72) 58%, rgba(2, 44, 34, 0.96) 100%);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    .vitrine::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(680px 380px at 88% 8%, rgba(16, 185, 129, 0.28), transparent 65%);
+      pointer-events: none;
+    }
+
+    .vitrine::after {
+      content: "";
+      position: absolute;
+      right: -90px;
+      bottom: -110px;
+      width: 320px;
+      height: 320px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 50%;
+      box-shadow: 0 0 0 46px rgba(255, 255, 255, 0.035), 0 0 0 92px rgba(255, 255, 255, 0.025);
+      pointer-events: none;
+    }
+
+    .vitrine > * { position: relative; z-index: 1; }
+
+    .marca { display: flex; align-items: center; gap: 12px; }
+
+    .marca-logo {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      flex: none;
+      border-radius: 13px;
+      background: linear-gradient(135deg, var(--verde) 0%, var(--verde-escuro) 100%);
+      box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.18), 0 10px 22px -8px rgba(0, 0, 0, 0.45);
+    }
+
+    .marca-logo svg {
+      width: 26px;
+      height: 26px;
+      fill: none;
+      stroke: var(--branco);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .marca-texto { display: grid; line-height: 1.15; }
+    .marca-texto strong { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+    .marca-texto small {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--verde-claro);
+    }
+
+    .chamada { max-width: 500px; margin-bottom: 26px; }
+
+    .etiqueta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 6px 12px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--verde-100);
+      background: rgba(6, 78, 59, 0.55);
+      border: 1px solid rgba(167, 243, 208, 0.35);
+      border-radius: 999px;
+      backdrop-filter: blur(6px);
+    }
+
+    .etiqueta::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--verde-500);
+      box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18);
+    }
+
+    .chamada h2 {
+      margin: 0;
+      font-size: clamp(34px, 4vw, 52px);
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      text-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .chamada h2 span { color: var(--verde-claro); }
+
+    .chamada p {
+      margin: 18px 0 0;
+      max-width: 420px;
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .recursos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+
+    .recursos span {
+      padding: 7px 13px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--verde-50);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 999px;
+      backdrop-filter: blur(8px);
+    }
+
+    .rodape {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 18px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.58);
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .painel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 56px;
+      background:
+        radial-gradient(560px 320px at 100% 0%, rgba(16, 185, 129, 0.06), transparent 65%),
+        var(--branco);
+    }
+
+    .cartao { width: 100%; max-width: 430px; }
+
+    .selo-acesso {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 6px 11px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--verde-escuro);
+      background: var(--verde-50);
+      border: 1px solid var(--verde-200);
+      border-radius: 999px;
+    }
+
+    .selo-acesso::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--verde);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+    }
+
+    .subtitulo {
+      margin: 8px 0 0;
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    form { display: grid; gap: 18px; margin-top: 30px; }
+
+    label {
+      display: grid;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--cinza-700);
+    }
+
+    input {
+      width: 100%;
+      height: 52px;
+      padding: 0 16px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--tinta);
+      background: var(--cinza-50);
+      border: 1.5px solid var(--linha);
+      border-radius: 12px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    input::placeholder { color: var(--cinza-400); }
+    input:hover { border-color: var(--cinza-300); }
+    input:focus {
+      background: var(--branco);
+      border-color: var(--verde);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+    }
+
+    button {
+      width: 100%;
+      height: 54px;
+      margin-top: 4px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--branco);
+      background: linear-gradient(135deg, var(--verde) 0%, var(--verde-escuro) 100%);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 10px 20px -10px rgba(4, 120, 87, 0.75);
+      transition: transform 0.12s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+
+    button:hover:not(:disabled) {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+      box-shadow: 0 14px 24px -10px rgba(4, 120, 87, 0.8);
+    }
+
+    button:active:not(:disabled) { transform: translateY(0); }
+    button:focus-visible { outline: 3px solid var(--verde-200); outline-offset: 3px; }
+    button:disabled { opacity: 0.7; cursor: default; }
+
+    button.carregando::before {
+      content: "";
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      margin-right: 10px;
+      vertical-align: -2px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      border-top-color: var(--branco);
+      border-radius: 50%;
+      animation: girar 0.7s linear infinite;
+    }
+
+    @keyframes girar { to { transform: rotate(360deg); } }
+
+    #status {
+      min-height: 20px;
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--erro);
+    }
+
+    #status:not(:empty) {
+      padding: 10px 13px;
+      background: var(--erro-suave);
+      border: 1px solid var(--erro-borda);
+      border-radius: 10px;
+    }
+
+    #status:not(:empty)::before { content: "⚠  "; }
+
+    .aviso {
+      display: flex;
+      gap: 11px;
+      margin-top: 26px;
+      padding: 15px 16px;
+      font-size: 12.5px;
+      color: var(--verde-700);
+      background: linear-gradient(135deg, var(--verde-50) 0%, var(--verde-50) 100%);
+      border: 1px solid var(--verde-200);
+      border-radius: 12px;
+    }
+
+    .aviso svg {
+      width: 18px;
+      height: 18px;
+      flex: none;
+      fill: none;
+      stroke: var(--verde-escuro);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .aviso strong { display: block; margin-bottom: 2px; font-size: 12px; }
+
+    @media (max-width: 900px) {
+      .tela { grid-template-columns: 1fr; }
+      .vitrine { display: none; }
+      .painel { padding: 32px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
+    html { scroll-behavior: smooth; }
+    body { min-height: 100vh; }
+    :where(button) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; cursor: pointer; }
+    :where(button svg) { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    :where(.painel, .cartao, .card, .opcao, .secao, .bloco, .filtros, .kpi, table, dialog) { border-radius: 14px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; overflow: hidden; }
+    :where(thead th) { letter-spacing: 0.05em; text-transform: uppercase; }
+    :where(tbody td, .vazio, .msg-info, .status) { line-height: 1.45; }
+    :where(dialog) { max-height: calc(100vh - 40px); overflow: auto; }
+    :where(.msg-erro, .erro, #status.erro) { font-weight: 600; }
+    .opcao:not(:disabled) em { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
+    @media (max-width: 720px) {
+      :where(.painel, .filtros, dialog form, .dialogo-conteudo) { padding: 16px; }
+      :where(.tabela) { overflow-x: auto; }
+    }
+    @media print {
+      :where(header, .voltar, #sair, .filtros, .acoes, .acoes-linha) { display: none !important; }
+      :where(body, .painel, table, dialog) { background: var(--branco) !important; box-shadow: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+
+    :where(body) { font-family: var(--fonte); font-size: var(--fs-14); color: var(--texto); line-height: 1.5; }
+    :where(h1) { font-size: var(--fs-20); font-weight: 700; }
+    :where(h2) { font-size: var(--fs-16); font-weight: 700; }
+    :where(button, input, select, textarea) { font-family: inherit; font-size: var(--fs-14); min-height: var(--altura-controle); border-radius: var(--raio-controle); }
+    :where(button) { gap: var(--esp-2); }
+    :where(input, select, textarea) { padding: var(--esp-3) var(--esp-4); }
+    :where(label, .campo > span) { color: var(--texto-suave); }
+    :where(input::placeholder, textarea::placeholder) { color: var(--cinza-400); opacity: 1; }
+    :where(button, input, select, textarea, a, summary):focus-visible { outline: 3px solid var(--verde-700); outline-offset: 2px; }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--verde-700);
+      outline-offset: 2px;
+    }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--verde-600);
+      box-shadow: 0 0 0 3px var(--verde-100);
+    }
+    .voltar:focus-visible { outline: 3px solid var(--verde-200); outline-offset: 3px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+    :where(thead th) { color: var(--cinza-700); background: var(--cinza-100); }
+    :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
+    :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
+    :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
+    .ilustracao-fitness {
+      position: absolute;
+      right: 32px;
+      bottom: 104px;
+      width: 210px;
+      height: 210px;
+      fill: none;
+      stroke: var(--verde-100);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.9;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="tela">
+    <section class="vitrine" aria-label="Academia Cotil">
+      <div class="marca">
+        <span class="marca-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M6.5 7.5v9" />
+            <path d="M17.5 7.5v9" />
+            <path d="M3.5 9.5v5" />
+            <path d="M20.5 9.5v5" />
+            <path d="M6.5 12h11" />
+          </svg>
+        </span>
+        <span class="marca-texto">
+          <strong>Cotil</strong>
+          <small>Academia</small>
+        </span>
+      </div>
+
+      <svg class="ilustracao-fitness" viewBox="0 0 220 220" aria-hidden="true">
+        <circle cx="110" cy="110" r="100" stroke-opacity="0.35" stroke-width="2" />
+        <circle cx="110" cy="52" r="14" />
+        <path d="M110 68v64" />
+        <path d="M110 132l-22 44M110 132l22 44" />
+        <path d="M110 88l-34-6M110 88l34-6" />
+        <path d="M52 82h30M138 82h30" />
+        <path d="M56 74v16M78 74v16M142 74v16M164 74v16" />
+      </svg>
+
+      <div class="chamada">
+        <span class="etiqueta">Sistema interno</span>
+        <h2>Cada treino<br>começa <span>aqui.</span></h2>
+        <p>Gestão de alunos, aulas, avaliações e avisos em um único lugar.</p>
+        <div class="recursos" aria-hidden="true">
+          <span>Alunos</span>
+          <span>Aulas</span>
+          <span>Avaliações</span>
+          <span>Relatórios</span>
+        </div>
+      </div>
+
+      <div class="rodape">
+        <span>© 2026 Cotil Academia</span>
+        <span>Acesso interno</span>
+      </div>
+    </section>
+
+    <section class="painel">
+      <div class="cartao">
+        <span class="selo-acesso">Área restrita</span>
+        <h1>Bem-vindo de volta</h1>
+        <p class="subtitulo">Entre com sua conta para continuar.</p>
+
+        <form id="formulario" novalidate>
+          <label>
+            E-mail
+            <input id="email" type="email" autocomplete="username" maxlength="160" placeholder="seu.email@cotil.unicamp.br">
+          </label>
+          <label>
+            Senha
+            <input id="senha" type="password" autocomplete="current-password" maxlength="128" placeholder="Digite sua senha">
+          </label>
+          <p id="status" role="alert" aria-live="polite"></p>
+          <button id="entrar" type="submit">Entrar</button>
+        </form>
+
+        <div class="aviso">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4" y="10" width="16" height="11" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+          <div>
+            <strong>Acesso exclusivo da equipe</strong>
+            Somente funcionários e administradores podem entrar neste sistema.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

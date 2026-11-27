@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Lançamentos</title>
+  <style>
+    :root {
+      --cinza-50: #f8fafc;
+      --cinza-100: #f3f4f6;
+      --cinza-200: #e5e7eb;
+      --cinza-300: #d1d5db;
+      --cinza-400: #9ca3af;
+      --cinza-500: #6b7280;
+      --cinza-600: #4b5563;
+      --cinza-700: #374151;
+      --cinza-800: #1f2937;
+      --cinza-900: #111827;
+
+      --verde-50: #ecfdf5;
+      --verde-100: #d1fae5;
+      --verde-200: #a7f3d0;
+      --verde-500: #10b981;
+      --verde-600: #059669;
+      --verde-700: #047857;
+
+      --fundo: #f8fafc;
+      --superficie: #ffffff;
+      --texto: #111827;
+      --texto-suave: #4b5563;
+      --borda: #e5e7eb;
+      --branco: #ffffff;
+
+      --erro: #b91c1c;
+      --erro-suave: #fef2f2;
+      --erro-borda: #fecaca;
+      --alerta: #92400e;
+      --alerta-suave: #fffbeb;
+      --alerta-borda: #fde68a;
+      --sucesso: #166534;
+
+      --esp-1: 4px;
+      --esp-2: 8px;
+      --esp-3: 12px;
+      --esp-4: 16px;
+      --esp-5: 24px;
+      --esp-6: 32px;
+      --fs-12: 12px;
+      --fs-13: 13px;
+      --fs-14: 14px;
+      --fs-16: 16px;
+      --fs-20: 20px;
+      --altura-controle: 40px;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+      --primaria-900: var(--cinza-900);
+      --primaria-800: var(--cinza-800);
+      --primaria-700: var(--cinza-700);
+      --primaria-600: var(--cinza-600);
+      --primaria-500: var(--cinza-500);
+      --secundaria: var(--verde-500);
+      --secundaria-hover: var(--verde-600);
+      --secundaria-suave: var(--verde-50);
+      --bg-pagina: var(--fundo);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    ::selection { background: var(--cinza-300); color: var(--cinza-900); }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: var(--cinza-100); }
+    ::-webkit-scrollbar-thumb { background: var(--cinza-400); border-radius: 8px; border: 2px solid var(--cinza-100); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--verde-500); }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--fonte);
+      color: var(--primaria-900);
+      line-height: 1.5;
+      background:
+        radial-gradient(900px 420px at 100% -10%, rgba(107, 114, 128, 0.12), transparent 60%),
+        linear-gradient(180deg, var(--cinza-100) 0%, var(--cinza-50) 320px);
+      background-attachment: fixed;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      padding: 14px 28px;
+      color: var(--branco);
+      background: linear-gradient(135deg, var(--cinza-800) 0%, var(--cinza-700) 55%, var(--cinza-600) 100%);
+      border-bottom: 3px solid var(--secundaria);
+      box-shadow: 0 6px 18px rgba(31, 41, 55, 0.2);
+    }
+
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .marca-logo {
+      width: 34px;
+      height: 34px;
+      flex: none;
+      display: grid;
+      place-items: center;
+      background: var(--secundaria);
+      border-radius: 8px;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
+    }
+    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: var(--branco); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; }
+    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cinza-300); }
+    .divisor { width: 1px; height: 26px; background: var(--primaria-500); }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+
+    button {
+      font-family: inherit;
+      border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(31, 41, 55, 0.14);
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+      cursor: pointer;
+    }
+    button:not(.secundario):not(.perigo):not(.voltar) {
+      color: var(--branco);
+      background: linear-gradient(135deg, var(--cinza-700) 0%, var(--cinza-800) 100%);
+      border: 1px solid var(--cinza-700);
+    }
+    button:not(.secundario):not(.perigo):not(.voltar):hover:not(:disabled) {
+      background: linear-gradient(135deg, var(--verde-500) 0%, var(--verde-700) 100%);
+      border-color: var(--verde-700);
+      box-shadow: 0 6px 14px -6px rgba(16, 185, 129, 0.55);
+      transform: translateY(-1px);
+    }
+    button:disabled { opacity: 0.6; cursor: default; }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+
+    .voltar {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--branco);
+      background: transparent;
+      border: 1px solid var(--primaria-500);
+    }
+    .voltar:hover { background: var(--primaria-700); border-color: var(--secundaria); transform: none; }
+    .voltar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    main { padding: 28px 32px 40px; max-width: 1440px; margin: 0 auto; }
+    .painel {
+      padding: 22px 24px;
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
+      border-radius: var(--raio-card);
+      box-shadow: 0 1px 2px rgba(31, 41, 55, 0.05), 0 8px 24px -12px rgba(31, 41, 55, 0.16);
+    }
+
+    .filtros {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--cinza-100);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+    }
+    .campo { display: grid; gap: 6px; }
+    .campo span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cinza-600); }
+    .espaco { flex: 1; }
+
+    input, select {
+      min-height: 42px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--primaria-900);
+      background: var(--branco);
+      border: 1px solid var(--cinza-300);
+      border-radius: var(--raio-controle);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    input:hover, select:hover { border-color: var(--cinza-400); }
+    input:focus, select:focus { border-color: var(--secundaria); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14); }
+
+    button.botao { padding: 10px 16px; font-size: 13px; font-weight: 600; }
+    button.pequeno { padding: 7px 11px; min-height: 34px; font-size: 12px; font-weight: 600; }
+    button.secundario { color: var(--cinza-700); background: var(--cinza-100); border: 1px solid var(--cinza-300); }
+    button.secundario:hover:not(:disabled) { background: var(--borda); border-color: var(--cinza-400); }
+    button.perigo { color: var(--branco); background: var(--erro); border: 1px solid var(--erro); }
+    button.perigo:hover:not(:disabled) { background: var(--erro); border-color: var(--erro); transform: none; }
+    button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 1px 2px rgba(31, 41, 55, 0.12); }
+
+    h2 {
+      position: relative;
+      margin: 22px 0 14px;
+      padding-left: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--cinza-800);
+    }
+    h2::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 16px;
+      border-radius: 2px;
+      background: var(--secundaria);
+    }
+
+    .tabela { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 11px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      text-align: left;
+      color: var(--cinza-700);
+      background: var(--borda);
+      border-bottom: 2px solid var(--secundaria);
+      white-space: nowrap;
+    }
+    tbody td { padding: 10px 12px; color: var(--primaria-700); border-bottom: 1px solid var(--borda); vertical-align: middle; }
+    tbody tr:nth-child(even) { background: var(--cinza-100); }
+    tbody tr:hover { background: var(--borda); }
+    tbody tr:last-child td { border-bottom: none; }
+    .col-id { width: 64px; }
+    .col-id, .col-data { color: var(--primaria-500); white-space: nowrap; }
+    .col-valor { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .col-acoes { text-align: right; white-space: nowrap; }
+    .acoes-linha { display: flex; justify-content: flex-end; gap: 6px; }
+
+    .selo {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      border: 1px solid var(--cinza-300);
+      color: var(--cinza-600);
+      background: var(--cinza-100);
+    }
+    .selo.aula { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
+    .selo.aluguel { color: var(--cinza-700); background: var(--cinza-50); border-color: var(--cinza-300); }
+    .selo.outros { color: var(--alerta); background: var(--alerta-suave); border-color: var(--alerta-borda); }
+
+    #status { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); }
+    #status:empty { margin: 0; }
+    #status.erro, .msg-erro { color: var(--erro); }
+    .vazio { padding: 12px 14px; color: var(--cinza-600); background: var(--cinza-100); border: 1px dashed var(--cinza-300); border-radius: 10px; }
+
+    dialog {
+      max-width: min(560px, 92vw);
+      padding: 0;
+      color: var(--cinza-800);
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
+      border-radius: 16px;
+      box-shadow: 0 24px 60px -24px rgba(17, 24, 39, 0.65);
+    }
+    dialog.menor { max-width: min(460px, 92vw); }
+    dialog::backdrop { background: rgba(17, 24, 39, 0.55); backdrop-filter: blur(3px); }
+    dialog h2 {
+      margin: 0;
+      padding: 18px 24px;
+      color: var(--branco);
+      background: linear-gradient(135deg, var(--cinza-800) 0%, var(--cinza-700) 100%);
+      border-bottom: 3px solid var(--secundaria);
+      border-radius: 16px 16px 0 0;
+    }
+    dialog h2::before { display: none; }
+    .dialogo-conteudo, dialog form { display: grid; gap: 16px; padding: 22px 24px; }
+    .dialogo-conteudo p { margin: 0; }
+    .acoes { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+    #erro-formulario, #erro-excluir { min-height: 20px; margin: 0; font-size: 13px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; transform: none !important; }
+    }
+    @media (max-width: 720px) {
+      main { padding: 20px; }
+      .espaco { display: none; }
+    }
+    html { scroll-behavior: smooth; }
+    body { min-height: 100vh; }
+    :where(button) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; cursor: pointer; }
+    :where(button svg) { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    :where(.painel, .cartao, .card, .opcao, .secao, .bloco, .filtros, .kpi, table, dialog) { border-radius: 14px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; overflow: hidden; }
+    :where(thead th) { letter-spacing: 0.05em; text-transform: uppercase; }
+    :where(tbody td, .vazio, .msg-info, .status) { line-height: 1.45; }
+    :where(dialog) { max-height: calc(100vh - 40px); overflow: auto; }
+    :where(.msg-erro, .erro, #status.erro) { font-weight: 600; }
+    .opcao:not(:disabled) em { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
+    @media (max-width: 720px) {
+      :where(.painel, .filtros, dialog form, .dialogo-conteudo) { padding: 16px; }
+      :where(.tabela) { overflow-x: auto; }
+    }
+    @media print {
+      :where(header, .voltar, #sair, .filtros, .acoes, .acoes-linha) { display: none !important; }
+      :where(body, .painel, table, dialog) { background: var(--branco) !important; box-shadow: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+
+    :where(body) { font-family: var(--fonte); font-size: var(--fs-14); color: var(--texto); line-height: 1.5; }
+    :where(h1) { font-size: var(--fs-20); font-weight: 700; }
+    :where(h2) { font-size: var(--fs-16); font-weight: 700; }
+    :where(button, input, select, textarea) { font-family: inherit; font-size: var(--fs-14); min-height: var(--altura-controle); border-radius: var(--raio-controle); }
+    :where(button) { gap: var(--esp-2); }
+    :where(input, select, textarea) { padding: var(--esp-3) var(--esp-4); }
+    :where(label, .campo > span) { color: var(--texto-suave); }
+    :where(input::placeholder, textarea::placeholder) { color: var(--cinza-400); opacity: 1; }
+    :where(button, input, select, textarea, a, summary):focus-visible { outline: 3px solid var(--verde-700); outline-offset: 2px; }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--verde-700);
+      outline-offset: 2px;
+    }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--verde-600);
+      box-shadow: 0 0 0 3px var(--verde-100);
+    }
+    .voltar:focus-visible { outline: 3px solid var(--verde-200); outline-offset: 3px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+    :where(thead th) { color: var(--cinza-700); background: var(--cinza-100); }
+    :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
+    :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
+    :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M6.5 7.5v9" />
+          <path d="M17.5 7.5v9" />
+          <path d="M3.5 9.5v5" />
+          <path d="M20.5 9.5v5" />
+          <path d="M6.5 12h11" />
+        </svg>
+      </span>
+      <span class="marca-texto">
+        <strong>Cotil</strong>
+        <small>Academia</small>
+      </span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Lançamentos</h1>
+  </header>
+  <main>
+    <section id="painel-lancamentos" class="painel">
+      <div class="filtros">
+        <label class="campo">
+          <span>Categoria</span>
+          <select id="filtro-categoria">
+            <option value="">Todas</option>
+            <option value="aula">Aulas</option>
+            <option value="aluguel">Aluguel</option>
+            <option value="outros">Outros</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>De</span>
+          <input id="filtro-inicio" type="date">
+        </label>
+        <label class="campo">
+          <span>Até</span>
+          <input id="filtro-fim" type="date">
+        </label>
+        <label class="campo">
+          <span>Buscar</span>
+          <input id="busca" type="search" placeholder="Descrição" maxlength="160">
+        </label>
+        <span class="espaco"></span>
+        <button id="novo" type="button" class="botao">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          Novo lançamento
+        </button>
+      </div>
+      <h2>Receitas avulsas</h2>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-id">ID</th>
+              <th>Categoria</th>
+              <th>Descrição</th>
+              <th class="col-valor">Valor</th>
+              <th class="col-data">Data</th>
+              <th class="col-acoes">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+        </table>
+      </div>
+      <p id="status" role="status"></p>
+    </section>
+
+    <section id="acesso-negado" class="painel" hidden>
+      <h2>Acesso restrito</h2>
+      <p class="msg-info">Esta tela é exclusiva do administrador.</p>
+    </section>
+  </main>
+
+  <dialog id="dialogo-form" aria-labelledby="titulo-form">
+    <h2 id="titulo-form">Novo lançamento</h2>
+    <form id="formulario" novalidate>
+      <label class="campo">
+        <span>Categoria</span>
+        <select id="categoria">
+          <option value="aula">Aulas</option>
+          <option value="aluguel">Aluguel</option>
+          <option value="outros">Outros</option>
+        </select>
+      </label>
+      <label class="campo">
+        <span>Descrição</span>
+        <input id="descricao" type="text" maxlength="160" autocomplete="off" placeholder="Ex.: Aulas avulsas do mês">
+      </label>
+      <label class="campo">
+        <span>Valor (R$)</span>
+        <input id="valor" type="number" min="0.01" max="99999999.99" step="0.01" inputmode="decimal">
+      </label>
+      <label class="campo">
+        <span>Data do lançamento</span>
+        <input id="data" type="date">
+      </label>
+      <p id="erro-formulario" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-form" type="button" class="secundario">Cancelar</button>
+        <button id="salvar" type="submit" class="botao">Cadastrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-excluir" class="menor" aria-labelledby="titulo-excluir">
+    <h2 id="titulo-excluir">Excluir lançamento</h2>
+    <div class="dialogo-conteudo">
+      <p id="texto-excluir"></p>
+      <p id="erro-excluir" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-excluir" type="button" class="secundario">Cancelar</button>
+        <button id="confirmar-excluir" type="button" class="perigo">Excluir</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>

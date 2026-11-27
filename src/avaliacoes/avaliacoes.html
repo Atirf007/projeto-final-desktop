@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Avaliações físicas</title>
+  <style>
+    :root {
+      --cinza-50: #f8fafc;
+      --cinza-100: #f3f4f6;
+      --cinza-200: #e5e7eb;
+      --cinza-300: #d1d5db;
+      --cinza-400: #9ca3af;
+      --cinza-500: #6b7280;
+      --cinza-600: #4b5563;
+      --cinza-700: #374151;
+      --cinza-800: #1f2937;
+      --cinza-900: #111827;
+
+      --verde-50: #ecfdf5;
+      --verde-100: #d1fae5;
+      --verde-200: #a7f3d0;
+      --verde-500: #10b981;
+      --verde-600: #059669;
+      --verde-700: #047857;
+
+      --fundo: #f8fafc;
+      --superficie: #ffffff;
+      --texto: #111827;
+      --texto-suave: #4b5563;
+      --borda: #e5e7eb;
+      --branco: #ffffff;
+
+      --erro: #b91c1c;
+      --erro-suave: #fef2f2;
+      --erro-borda: #fecaca;
+      --alerta: #92400e;
+      --alerta-suave: #fffbeb;
+      --alerta-borda: #fde68a;
+      --sucesso: #166534;
+
+      --esp-1: 4px;
+      --esp-2: 8px;
+      --esp-3: 12px;
+      --esp-4: 16px;
+      --esp-5: 24px;
+      --esp-6: 32px;
+      --fs-12: 12px;
+      --fs-13: 13px;
+      --fs-14: 14px;
+      --fs-16: 16px;
+      --fs-20: 20px;
+      --altura-controle: 40px;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+      --primaria-900: var(--cinza-900);
+      --primaria-800: var(--cinza-800);
+      --primaria-700: var(--cinza-700);
+      --primaria-600: var(--cinza-600);
+      --primaria-500: var(--cinza-500);
+      --secundaria: var(--verde-500);
+      --secundaria-hover: var(--verde-600);
+      --secundaria-suave: var(--verde-50);
+      --secundaria-borda: var(--verde-200);
+      --bg-pagina: var(--fundo);
+      --bg-card: var(--superficie);
+      --aviso: var(--alerta);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--fonte); background: var(--bg-pagina); color: var(--primaria-900); line-height: 1.5; }
+    header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; background: var(--primaria-800); color: var(--branco); padding: 14px 28px; border-bottom: 3px solid var(--secundaria); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12); }
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .marca-logo { width: 34px; height: 34px; flex: none; display: grid; place-items: center; background: var(--secundaria); border-radius: 8px; }
+    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: var(--branco); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cinza-200); }
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .voltar { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit; color: var(--branco); background: transparent; border: 1px solid var(--primaria-500); border-radius: 8px; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .voltar:hover { background: var(--primaria-700); border-color: var(--branco); }
+    .voltar:focus-visible { outline: 2px solid var(--secundaria); outline-offset: 2px; }
+    .voltar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    main { padding: 28px 32px 40px; max-width: 1440px; margin: 0 auto; }
+    .painel { background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-card); padding: 24px; box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05); }
+    .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--cinza-200); }
+    .campo { display: grid; gap: 6px; }
+    .campo span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); }
+    input, select, textarea { padding: 12px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
+    input:focus, select:focus, textarea:focus { border-color: var(--secundaria); box-shadow: 0 0 0 3px var(--secundaria-suave); }
+    textarea { resize: vertical; min-height: 72px; }
+    .espaco { flex: 1; }
+    h2 { position: relative; margin: 0 0 16px; padding-left: 12px; font-size: 16px; font-weight: 700; color: var(--primaria-800); }
+    h2::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 16px; border-radius: 2px; background: var(--secundaria); }
+    h3 { margin: 0 0 8px; font-size: 14px; color: var(--primaria-800); }
+    .tabela { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th { padding: 12px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; color: var(--primaria-600); background: var(--cinza-100); border-bottom: 1px solid var(--cinza-200); white-space: nowrap; }
+    tbody td { padding: 12px 14px; color: var(--primaria-700); border-bottom: 1px solid var(--cinza-200); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg-pagina); }
+    .col-nome strong { display: block; font-weight: 600; color: var(--primaria-800); }
+    .col-nome small { display: block; font-size: 12px; color: var(--primaria-500); }
+    .col-data { white-space: nowrap; }
+    .destaque { font-weight: 700; color: var(--primaria-800); }
+    #status { margin: 16px 0 0; font-size: 13px; color: var(--primaria-500); min-height: 20px; }
+    #status.erro { color: var(--erro); }
+    .botao { padding: 13px 22px; font-size: 14px; font-family: inherit; font-weight: 600; color: var(--branco); background: var(--primaria-800); border: 1px solid var(--primaria-800); border-radius: var(--raio-controle); cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
+    .botao:hover:not(:disabled) { background: var(--primaria-700); border-color: var(--primaria-700); }
+    .botao:disabled { opacity: 0.6; cursor: default; }
+    .botao.secundario { color: var(--primaria-700); background: var(--bg-card); border-color: var(--cinza-200); }
+    .botao.secundario:hover:not(:disabled) { background: var(--cinza-100); border-color: var(--cinza-200); }
+    .botao.verde { background: var(--secundaria-hover); border-color: var(--secundaria-hover); }
+    .botao.verde:hover:not(:disabled) { background: var(--verde-700); border-color: var(--verde-700); }
+    .botao.perigo { background: var(--erro); border-color: var(--erro); }
+    .botao.perigo:hover:not(:disabled) { background: var(--erro); border-color: var(--erro); }
+    .botao.pequeno { padding: 8px 12px; font-size: 12px; }
+    .acoes-linha { display: flex; gap: 8px; flex-wrap: wrap; }
+    .evolucao { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--cinza-200); }
+    .evolucao-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+    .evolucao-topo small { font-size: 12px; color: var(--primaria-500); }
+    .grafico { width: 100%; min-height: 200px; overflow-x: auto; }
+    .grafico svg { display: block; width: 100%; height: 230px; }
+    .grafico-vazio { display: grid; place-items: center; min-height: 140px; padding: 20px; font-size: 13px; color: var(--primaria-500); background: var(--bg-pagina); border: 1px dashed var(--cinza-200); border-radius: var(--raio-controle); }
+    dialog { width: min(820px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 0; color: var(--primaria-900); background: var(--bg-card); border: 1px solid var(--cinza-200); border-top: 4px solid var(--secundaria); border-radius: var(--raio-card); box-shadow: 0 10px 25px rgba(17, 24, 39, 0.2); }
+    dialog.menor { width: min(600px, calc(100vw - 32px)); }
+    dialog::backdrop { background: rgba(17, 24, 39, 0.45); }
+    dialog h2 { margin: 24px 24px 0; }
+    .dialogo-conteudo { padding: 20px 24px 24px; }
+    .grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .grade .span2 { grid-column: span 2; }
+    .grade .span3 { grid-column: 1 / -1; }
+    .acoes { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 24px; flex-wrap: wrap; }
+    .msg-erro { min-height: 20px; margin: 0; font-size: 13px; color: var(--erro); }
+    .msg-info { min-height: 20px; margin: 8px 0 0; font-size: 13px; color: var(--primaria-600); }
+    .msg-info.erro { color: var(--erro); }
+    .msg-info.sucesso { color: var(--secundaria-hover); }
+    .detalhes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 20px; }
+    .detalhes dt { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-500); }
+    .detalhes dd { margin: 2px 0 0; color: var(--primaria-800); word-break: break-word; }
+    .detalhes .span3 { grid-column: 1 / -1; }
+    .oculto { display: none !important; }
+    @media (max-width: 900px) { .grade, .detalhes { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grade .span3, .detalhes .span3 { grid-column: 1 / -1; } }
+    @media (max-width: 640px) { main { padding: 20px; } .grade, .detalhes { grid-template-columns: 1fr; } .grade .span2, .grade .span3, .detalhes .span3 { grid-column: auto; } }
+
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    ::selection { background: var(--cinza-300); color: var(--cinza-900); }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: var(--cinza-100); }
+    ::-webkit-scrollbar-thumb { background: var(--cinza-400); border-radius: 8px; border: 2px solid var(--cinza-100); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--verde-500); }
+
+    body {
+      background:
+        radial-gradient(900px 420px at 100% -10%, rgba(107, 114, 128, 0.12), transparent 60%),
+        linear-gradient(180deg, var(--cinza-100) 0%, var(--cinza-50) 320px);
+      background-attachment: fixed;
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--cinza-800) 0%, var(--cinza-700) 55%, var(--cinza-600) 100%) !important;
+      border-bottom: 3px solid var(--verde-500) !important;
+      box-shadow: 0 6px 18px rgba(31, 41, 55, 0.2) !important;
+    }
+
+    .marca-logo { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16); }
+
+    .painel, .cartao, .card, .opcao, .secao, .bloco {
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(31, 41, 55, 0.05), 0 8px 24px -12px rgba(31, 41, 55, 0.16);
+      transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .painel-bot { border-top: 3px solid var(--verde-500) !important; }
+
+    .opcao:hover {
+      transform: translateY(-3px);
+      border-color: var(--verde-500);
+      box-shadow: 0 2px 4px rgba(31, 41, 55, 0.06), 0 16px 32px -14px rgba(16, 185, 129, 0.35);
+    }
+
+    h2 { letter-spacing: -0.01em; }
+
+    button {
+      border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(31, 41, 55, 0.14);
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    }
+
+    button:not(.secundario):not(.perigo):not(.opcao):not(.voltar):not(#sair) {
+      background: linear-gradient(135deg, var(--cinza-700) 0%, var(--cinza-800) 100%);
+      border-color: var(--cinza-700);
+      color: var(--branco);
+    }
+
+    button:not(.secundario):not(.perigo):not(.opcao):not(.voltar):not(#sair):hover:not(:disabled) {
+      background: linear-gradient(135deg, var(--verde-500) 0%, var(--verde-700) 100%);
+      border-color: var(--verde-700);
+      box-shadow: 0 6px 14px -6px rgba(16, 185, 129, 0.55);
+      transform: translateY(-1px);
+    }
+
+    .opcao,
+    .opcao strong,
+    .opcao em {
+      color: var(--cinza-900);
+    }
+
+    .opcao {
+      background: var(--borda);
+      border-color: var(--cinza-300);
+    }
+
+    .opcao span {
+      color: var(--cinza-700);
+      font-weight: 500;
+    }
+
+    .opcao em {
+      color: var(--cinza-700);
+      background: var(--cinza-100);
+      border-color: var(--cinza-300);
+    }
+
+    .opcao:hover:not(:disabled) {
+      background: var(--borda);
+      border-color: var(--verde-500);
+    }
+
+    .voltar,
+    #sair {
+      background: transparent;
+      color: var(--branco);
+      border-color: var(--primaria-500);
+    }
+
+    .voltar:hover:not(:disabled),
+    #sair:hover:not(:disabled) {
+      background: var(--primaria-700);
+      border-color: var(--verde-500);
+      transform: none;
+    }
+
+    button.secundario { background: var(--cinza-100); color: var(--cinza-700); border-color: var(--cinza-300); }
+    button.secundario:hover:not(:disabled) { background: var(--borda); border-color: var(--cinza-400); }
+    button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 1px 2px rgba(31, 41, 55, 0.12); }
+
+    input, select, textarea {
+      border-radius: 10px;
+      border: 1px solid var(--cinza-300);
+      background: var(--branco);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    input:hover, select:hover, textarea:hover { border-color: var(--cinza-400); }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--verde-500);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.14);
+    }
+
+    table { border-collapse: separate; border-spacing: 0; width: 100%; }
+    thead th {
+      background: var(--borda);
+      color: var(--cinza-700);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 2px solid var(--verde-500);
+    }
+    tbody tr { transition: background 0.12s ease; }
+    tbody tr:nth-child(even) { background: var(--cinza-100); }
+    tbody tr:hover { background: var(--borda); }
+    tbody td { border-bottom: 1px solid var(--borda); }
+
+    .selo, .selo-mini { border-radius: 999px; letter-spacing: 0.02em; }
+    .status { border-radius: 10px; }
+    .vazio { border-radius: 12px; border: 1px dashed var(--cinza-300); background: var(--cinza-100); color: var(--cinza-500); }
+
+    .aviso-enviado { background: var(--cinza-100) !important; border-color: var(--cinza-300) !important; border-left: 4px solid var(--verde-500) !important; }
+    .comparacao-dias { background: var(--cinza-100); border-color: var(--cinza-300); border-left: 4px solid var(--verde-500); }
+
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .kpi {
+      display: grid;
+      gap: 6px;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, var(--cinza-50) 0%, var(--cinza-100) 100%);
+      border: 1px solid var(--borda);
+      border-left: 4px solid var(--verde-500);
+      border-radius: 12px;
+      box-shadow: 0 8px 20px -14px rgba(31, 41, 55, 0.5);
+    }
+    .kpi span { font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cinza-500); }
+    .kpi strong { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--cinza-800); }
+    .kpi small { font-size: 11px; color: var(--cinza-500); }
+
+    .ranking { display: grid; gap: 12px; }
+    .ranking-item {
+      display: grid;
+      grid-template-columns: minmax(110px, 150px) 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 14px;
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
+      border-radius: 10px;
+    }
+    .ranking-item.lider { border-left: 4px solid var(--verde-500); }
+    .ranking-item > span { font-size: 13px; font-weight: 700; color: var(--cinza-700); }
+    .ranking-trilha { height: 10px; background: var(--borda); border-radius: 999px; overflow: hidden; }
+    .ranking-barra { display: block; height: 100%; background: linear-gradient(90deg, var(--cinza-500) 0%, var(--cinza-700) 100%); border-radius: 999px; }
+    .ranking-item.lider .ranking-barra { background: linear-gradient(90deg, var(--verde-500) 0%, var(--verde-700) 100%); }
+    .ranking-item > strong { font-size: 13px; color: var(--cinza-800); }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; transform: none !important; }
+    }
+
+    .painel { padding: 22px 24px; }
+
+    .filtros {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--cinza-100);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+    }
+
+    .filtros .campo span,
+    .filtros label > span {
+      color: var(--cinza-600);
+      font-weight: 700;
+    }
+
+    .campo input,
+    .campo select,
+    .filtros input,
+    .filtros select {
+      min-height: 42px;
+      padding: 10px 12px;
+      background: var(--branco);
+      border: 1px solid var(--cinza-300);
+      border-radius: 10px;
+    }
+
+    .filtros button,
+    .acoes button,
+    .acoes-linha button,
+    button.pequeno,
+    .botao.pequeno {
+      padding: 8px 13px;
+      font-size: 12px;
+      min-height: 36px;
+    }
+
+    .acoes,
+    .acoes-linha {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    h2,
+    .titulo-secao {
+      color: var(--cinza-800);
+    }
+
+    table {
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 11px 12px;
+    }
+
+    tbody td {
+      padding: 10px 12px;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover { background: var(--borda); }
+
+    .selo,
+    .selo-mini {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .selo.ativo,
+    .selo.confirmada,
+    .selo.presente,
+    .selo.concluida,
+    .selo.ok {
+      color: var(--verde-700);
+      background: var(--verde-50);
+      border: 1px solid var(--verde-200);
+    }
+
+    .selo.inativo,
+    .selo.cancelada,
+    .selo.falta,
+    .selo.neutro {
+      color: var(--cinza-600);
+      background: var(--cinza-100);
+      border: 1px solid var(--cinza-300);
+    }
+
+    .selo.cancelada,
+    .selo.falha {
+      color: var(--erro);
+      background: var(--erro-suave);
+      border-color: var(--erro-borda);
+    }
+
+    .vazio,
+    .msg-info,
+    .nota-previsao {
+      padding: 12px 14px;
+      color: var(--cinza-600);
+      background: var(--cinza-100);
+      border: 1px dashed var(--cinza-300);
+      border-radius: 10px;
+    }
+
+    .status {
+      padding: 10px 14px;
+      background: var(--cinza-100);
+      border: 1px solid var(--borda);
+      border-radius: 10px;
+    }
+
+    .status.erro,
+    #status.erro {
+      color: var(--erro);
+      background: var(--erro-suave);
+      border-color: var(--erro-borda);
+    }
+
+    dialog {
+      max-width: min(780px, 92vw);
+      padding: 0;
+      color: var(--cinza-800);
+      background: var(--cinza-50);
+      border: 1px solid var(--borda);
+      border-radius: 16px;
+      box-shadow: 0 24px 60px -24px rgba(17, 24, 39, 0.65);
+    }
+
+    dialog::backdrop {
+      background: rgba(17, 24, 39, 0.55);
+      backdrop-filter: blur(3px);
+    }
+
+    dialog h2,
+    dialog h3 {
+      margin: 0;
+      padding: 18px 24px;
+      color: var(--branco);
+      background: linear-gradient(135deg, var(--cinza-800) 0%, var(--cinza-700) 100%);
+      border-bottom: 3px solid var(--verde-500);
+      border-radius: 16px 16px 0 0;
+    }
+
+    dialog form,
+    dialog .conteudo {
+      padding: 22px 24px;
+    }
+    html { scroll-behavior: smooth; }
+    body { min-height: 100vh; }
+    :where(button) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; cursor: pointer; }
+    :where(button svg) { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    :where(.painel, .cartao, .card, .opcao, .secao, .bloco, .filtros, .kpi, table, dialog) { border-radius: 14px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; overflow: hidden; }
+    :where(thead th) { letter-spacing: 0.05em; text-transform: uppercase; }
+    :where(tbody td, .vazio, .msg-info, .status) { line-height: 1.45; }
+    :where(dialog) { max-height: calc(100vh - 40px); overflow: auto; }
+    :where(.msg-erro, .erro, #status.erro) { font-weight: 600; }
+    .opcao:not(:disabled) em { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
+    @media (max-width: 720px) {
+      :where(.painel, .filtros, dialog form, .dialogo-conteudo) { padding: 16px; }
+      :where(.tabela) { overflow-x: auto; }
+    }
+    @media print {
+      :where(header, .voltar, #sair, .filtros, .acoes, .acoes-linha) { display: none !important; }
+      :where(body, .painel, table, dialog) { background: var(--branco) !important; box-shadow: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+    }
+
+    :where(body) { font-family: var(--fonte); font-size: var(--fs-14); color: var(--texto); line-height: 1.5; }
+    :where(h1) { font-size: var(--fs-20); font-weight: 700; }
+    :where(h2) { font-size: var(--fs-16); font-weight: 700; }
+    :where(button, input, select, textarea) { font-family: inherit; font-size: var(--fs-14); min-height: var(--altura-controle); border-radius: var(--raio-controle); }
+    :where(button) { gap: var(--esp-2); }
+    :where(input, select, textarea) { padding: var(--esp-3) var(--esp-4); }
+    :where(label, .campo > span) { color: var(--texto-suave); }
+    :where(input::placeholder, textarea::placeholder) { color: var(--cinza-400); opacity: 1; }
+    :where(button, input, select, textarea, a, summary):focus-visible { outline: 3px solid var(--verde-700); outline-offset: 2px; }
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 3px solid var(--verde-700);
+      outline-offset: 2px;
+    }
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--verde-600);
+      box-shadow: 0 0 0 3px var(--verde-100);
+    }
+    .voltar:focus-visible { outline: 3px solid var(--verde-200); outline-offset: 3px; }
+    :where(table) { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+    :where(thead th) { color: var(--cinza-700); background: var(--cinza-100); }
+    :where(tbody td) { color: var(--texto-suave); line-height: 1.45; }
+    :where(tbody tr:nth-child(even) td) { background: var(--cinza-50); }
+    :where(.filtros, .acoes, .acoes-linha) { gap: var(--esp-3); }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6.5 7.5v9" /><path d="M17.5 7.5v9" /><path d="M3.5 9.5v5" /><path d="M20.5 9.5v5" /><path d="M6.5 12h11" /></svg>
+      </span>
+      <span class="marca-texto"><strong>Cotil</strong><small>Academia</small></span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Avaliações físicas</h1>
+  </header>
+  <main>
+    <section class="painel">
+      <div class="filtros">
+        <label class="campo">
+          <span>Aluno</span>
+          <select id="filtro-aluno"><option value="">Todos os alunos</option></select>
+        </label>
+        <label class="campo">
+          <span>De</span>
+          <input id="filtro-inicio" type="date">
+        </label>
+        <label class="campo">
+          <span>Até</span>
+          <input id="filtro-fim" type="date">
+        </label>
+        <button id="limpar-filtros" type="button" class="botao secundario">Limpar</button>
+        <span class="espaco"></span>
+        <button id="nova" type="button" class="botao oculto">Nova avaliação</button>
+      </div>
+      <h2>Histórico de avaliações</h2>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Aluno</th>
+              <th>Data</th>
+              <th>Peso</th>
+              <th>Altura</th>
+              <th>IMC</th>
+              <th>% Gordura</th>
+              <th>Cintura</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+        </table>
+      </div>
+      <p id="status" role="status"></p>
+
+      <div id="evolucao-painel" class="evolucao oculto">
+        <div class="evolucao-topo">
+          <h2 id="titulo-evolucao">Evolução do aluno</h2>
+          <small id="resumo-evolucao"></small>
+        </div>
+        <div id="grafico" class="grafico"></div>
+        <div id="grafico-vazio" class="grafico-vazio oculto">Ainda não há avaliações suficientes para montar a evolução deste aluno.</div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="dialogo-form" aria-labelledby="titulo-form">
+    <h2 id="titulo-form">Nova avaliação</h2>
+    <form id="formulario" class="dialogo-conteudo" novalidate>
+      <input id="avaliacao-id" type="hidden">
+      <div class="grade">
+        <label class="campo span3"><span>Aluno</span><select id="aluno"></select></label>
+        <label class="campo"><span>Data</span><input id="data-avaliacao" type="date"></label>
+        <label class="campo"><span>Peso (kg)</span><input id="peso" type="number" min="20" max="400" step="0.01" inputmode="decimal"></label>
+        <label class="campo"><span>Altura (cm)</span><input id="altura" type="number" min="80" max="250" step="1" inputmode="numeric"></label>
+        <label class="campo"><span>% de gordura</span><input id="percentual-gordura" type="number" min="0" max="70" step="0.01" inputmode="decimal"></label>
+        <label class="campo"><span>Cintura (cm)</span><input id="cintura" type="number" min="0" max="300" step="0.01" inputmode="decimal"></label>
+        <label class="campo"><span>Quadril (cm)</span><input id="quadril" type="number" min="0" max="300" step="0.01" inputmode="decimal"></label>
+        <label class="campo"><span>Peito (cm)</span><input id="peito" type="number" min="0" max="300" step="0.01" inputmode="decimal"></label>
+        <label class="campo"><span>Braço (cm)</span><input id="braco" type="number" min="0" max="300" step="0.01" inputmode="decimal"></label>
+        <label class="campo"><span>Coxa (cm)</span><input id="coxa" type="number" min="0" max="300" step="0.01" inputmode="decimal"></label>
+        <label class="campo span3"><span>Observações</span><textarea id="observacoes" maxlength="2000"></textarea></label>
+      </div>
+      <p id="erro-formulario" class="msg-erro" role="alert"></p>
+      <div class="acoes">
+        <button id="cancelar-form" type="button" class="botao secundario">Cancelar</button>
+        <button id="salvar" type="submit" class="botao">Registrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogo-detalhe" class="menor" aria-labelledby="titulo-detalhe">
+    <h2 id="titulo-detalhe">Avaliação</h2>
+    <div class="dialogo-conteudo">
+      <dl id="detalhes" class="detalhes"></dl>
+      <div class="acoes">
+        <button id="fechar-detalhe" type="button" class="botao secundario">Fechar</button>
+        <button id="editar-detalhe" type="button" class="botao">Editar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dialogo-excluir" class="menor" aria-labelledby="titulo-excluir">
+    <h2 id="titulo-excluir">Excluir avaliação</h2>
+    <div class="dialogo-conteudo">
+      <p id="texto-excluir" style="margin:0;color:var(--primaria-700)"></p>
+      <p id="erro-excluir" class="msg-erro" role="alert" style="margin-top:10px"></p>
+      <div class="acoes">
+        <button id="cancelar-excluir" type="button" class="botao secundario">Cancelar</button>
+        <button id="confirmar-excluir" type="button" class="botao perigo">Excluir</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>

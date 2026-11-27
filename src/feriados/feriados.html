@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>Cotil — Feriados</title>
+  <style>
+    :root {
+      --cinza-50: #f8fafc;
+      --cinza-100: #f3f4f6;
+      --cinza-200: #e5e7eb;
+      --cinza-300: #d1d5db;
+      --cinza-400: #9ca3af;
+      --cinza-500: #6b7280;
+      --cinza-600: #4b5563;
+      --cinza-700: #374151;
+      --cinza-800: #1f2937;
+      --cinza-900: #111827;
+
+      --verde-50: #ecfdf5;
+      --verde-100: #d1fae5;
+      --verde-200: #a7f3d0;
+      --verde-500: #10b981;
+      --verde-600: #059669;
+      --verde-700: #047857;
+
+      --fundo: #f8fafc;
+      --superficie: #ffffff;
+      --texto: #111827;
+      --texto-suave: #4b5563;
+      --borda: #e5e7eb;
+      --branco: #ffffff;
+
+      --erro: #b91c1c;
+      --erro-suave: #fef2f2;
+      --erro-borda: #fecaca;
+      --alerta: #92400e;
+      --alerta-suave: #fffbeb;
+      --alerta-borda: #fde68a;
+      --sucesso: #166534;
+
+      --esp-1: 4px;
+      --esp-2: 8px;
+      --esp-3: 12px;
+      --esp-4: 16px;
+      --esp-5: 24px;
+      --esp-6: 32px;
+      --fs-12: 12px;
+      --fs-13: 13px;
+      --fs-14: 14px;
+      --fs-16: 16px;
+      --fs-20: 20px;
+      --altura-controle: 40px;
+      --raio-card: 12px;
+      --raio-controle: 8px;
+      --fonte: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+      --primaria-900: var(--cinza-900);
+      --primaria-800: var(--cinza-800);
+      --primaria-700: var(--cinza-700);
+      --primaria-600: var(--cinza-600);
+      --primaria-500: var(--cinza-500);
+      --secundaria: var(--verde-500);
+      --secundaria-hover: var(--verde-600);
+      --secundaria-suave: var(--verde-50);
+      --secundaria-borda: var(--verde-200);
+      --bg-pagina: var(--fundo);
+      --bg-card: var(--superficie);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--fonte); background: var(--bg-pagina); color: var(--primaria-900); line-height: 1.5; }
+    header { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; background: var(--primaria-800); color: #ffffff; padding: 14px 28px; border-bottom: 3px solid var(--secundaria); box-shadow: 0 1px 3px rgba(17, 24, 39, 0.12); }
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .marca-logo { width: 34px; height: 34px; flex: none; display: grid; place-items: center; background: var(--secundaria); border-radius: 8px; }
+    .marca-logo svg { width: 20px; height: 20px; fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .marca-texto { display: grid; line-height: 1.2; }
+    .marca-texto strong { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .marca-texto small { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #d1d5db; }
+    .divisor { width: 1px; height: 26px; background: var(--primaria-600); }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .voltar { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; font-family: inherit; color: #ffffff; background: transparent; border: 1px solid var(--primaria-500); border-radius: 8px; cursor: pointer; }
+    .voltar:hover { background: var(--primaria-700); border-color: #ffffff; }
+    .voltar svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    main { padding: 28px 32px 40px; max-width: 1440px; margin: 0 auto; display: grid; gap: 20px; }
+    .painel { background: var(--bg-card); border: 1px solid var(--cinza-200); border-radius: var(--raio-card); padding: 24px; box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05); }
+    .painel-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    h2 { position: relative; margin: 0 0 8px; padding-left: 12px; font-size: 16px; font-weight: 700; color: var(--primaria-800); }
+    h2::before { content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 4px; height: 16px; border-radius: 2px; background: var(--secundaria); }
+    .descricao { margin: 0; font-size: 13px; color: var(--primaria-500); }
+    .fonte { padding: 6px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--secundaria-hover); background: var(--secundaria-suave); border: 1px solid var(--secundaria-borda); border-radius: 999px; }
+    .filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--cinza-200); }
+    .campo { display: grid; gap: 6px; }
+    .campo span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primaria-600); }
+    input, select { padding: 12px 14px; font-size: 14px; font-family: inherit; font-weight: 500; border-radius: var(--raio-controle); outline: none; background: var(--bg-card); color: var(--primaria-900); border: 1px solid var(--cinza-200); }
+    input:focus, select:focus { border-color: var(--secundaria); box-shadow: 0 0 0 3px var(--secundaria-suave); }
+    .botao { padding: 12px 18px; font-size: 14px; font-family: inherit; font-weight: 600; color: #ffffff; background: var(--primaria-800); border: 1px solid var(--primaria-800); border-radius: var(--raio-controle); cursor: pointer; }
+    .botao:hover:not(:disabled) { background: var(--primaria-700); }
+    .botao:disabled { opacity: 0.6; cursor: default; }
+    .botao.secundario { color: var(--primaria-700); background: var(--bg-card); border-color: var(--cinza-200); }
+    .botao.pequeno { padding: 7px 12px; font-size: 12px; }
+    .tabela { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    thead th { padding: 12px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; color: var(--primaria-600); background: var(--cinza-100); border-bottom: 1px solid var(--cinza-200); white-space: nowrap; }
+    tbody td { padding: 12px 14px; color: var(--primaria-700); border-bottom: 1px solid var(--cinza-200); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg-pagina); }
+    .col-data { white-space: nowrap; }
+    .col-data strong { display: block; color: var(--primaria-800); }
+    .col-data small { display: block; font-size: 12px; color: var(--primaria-500); text-transform: capitalize; }
+    .col-nome { font-weight: 600; color: var(--primaria-800); }
+    .selo { display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 999px; white-space: nowrap; color: var(--primaria-600); background: var(--cinza-100); }
+    .vazio { padding: 20px 14px; text-align: center; color: var(--primaria-500); font-size: 13px; }
+    #resumo { margin: 16px 0 0; font-size: 13px; font-weight: 600; color: var(--primaria-600); }
+    #status { margin: 6px 0 0; font-size: 13px; color: var(--primaria-500); min-height: 20px; }
+    #status.erro { color: var(--erro); }
+    .resultado { margin-top: 16px; padding: 14px 16px; font-size: 14px; color: var(--primaria-600); background: var(--bg-pagina); border: 1px solid var(--cinza-200); border-radius: var(--raio-controle); }
+    .resultado.erro { color: var(--erro); background: var(--erro-suave); }
+    @media (max-width: 720px) { main { padding: 20px; } .filtros { align-items: stretch; } }
+    .resultado.encontrado {
+      padding: var(--esp-4);
+      color: var(--alerta);
+      background: var(--alerta-suave);
+      border: 1px solid var(--alerta-borda);
+      border-left: 5px solid var(--alerta);
+      border-radius: var(--raio-controle);
+      font-weight: 700;
+    }
+    .resultado.encontrado::before { content: "📅 "; }
+    .selo.nacional { color: var(--verde-700); background: var(--verde-50); border-color: var(--verde-200); }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="voltar" type="button" class="voltar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      Voltar ao menu
+    </button>
+    <span class="divisor" aria-hidden="true"></span>
+    <div class="marca">
+      <span class="marca-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M6.5 7.5v9" /><path d="M17.5 7.5v9" /><path d="M3.5 9.5v5" /><path d="M20.5 9.5v5" /><path d="M6.5 12h11" /></svg>
+      </span>
+      <span class="marca-texto"><strong>Cotil</strong><small>Academia</small></span>
+    </div>
+    <span class="divisor" aria-hidden="true"></span>
+    <h1>Feriados nacionais</h1>
+  </header>
+  <main>
+    <section class="painel">
+      <div class="painel-topo">
+        <div>
+          <h2>Calendário do ano</h2>
+          <p class="descricao">Consulta realizada pela BrasilAPI. Os dados são mantidos em cache por 24 horas.</p>
+        </div>
+        <span class="fonte">BrasilAPI</span>
+      </div>
+      <div class="filtros">
+        <label class="campo">
+          <span>Ano</span>
+          <input id="ano" type="number" min="1900" max="2100" step="1">
+        </label>
+        <button id="carregar" type="button" class="botao">Consultar feriados</button>
+        <label class="campo">
+          <span>Tipo</span>
+          <select id="filtro-tipo">
+            <option value="">Todos</option>
+            <option value="national">Nacional</option>
+            <option value="state">Estadual</option>
+            <option value="municipal">Municipal</option>
+          </select>
+        </label>
+      </div>
+      <div class="tabela">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Feriado</th>
+              <th>Tipo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+        </table>
+      </div>
+      <p id="resumo"></p>
+      <p id="status" role="status"></p>
+    </section>
+
+    <section class="painel">
+      <h2>Verificar uma data</h2>
+      <p class="descricao">Confirme na BrasilAPI se uma data específica é feriado.</p>
+      <div class="filtros" style="margin-bottom:0;padding-bottom:0;border-bottom:none">
+        <label class="campo">
+          <span>Data</span>
+          <input id="data" type="date">
+        </label>
+        <button id="verificar" type="button" class="botao secundario">Verificar data</button>
+      </div>
+      <div id="resultado-verificacao" class="resultado" role="status">Selecione uma data para verificar.</div>
+    </section>
+  </main>
+</body>
+</html>
