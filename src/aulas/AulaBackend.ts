@@ -572,6 +572,48 @@ class AulaRepository {
     return linhas.length ? Number(linhas[0].id) : null
   }
 
+  // Permite que um instrutor já autenticado crie aula mesmo sem vínculo prévio
+  // no cadastro de funcionários (evita o erro "Selecione o instrutor").
+  criarInstrutorParaUsuario = async (usuarioId: number): Promise<number> => {
+    const [resultado] = await this.pool.query<ResultSetHeader>({
+      sql: `INSERT INTO instrutores (usuario_id, cref, bio, ativo, criado_em, atualizado_em)
+            VALUES (?, ?, NULL, 1, NOW(), NOW())`,
+      values: [usuarioId, `AUTO-${usuarioId}`],
+      timeout: TIMEOUT
+    })
+    return Number(resultado.insertId)
+  }
+
+  // Garante que a tela nunca fique sem modalidades/instrutores para criar aula,
+  // mesmo quando o banco foi criado sem a carga de demonstração.
+  garantirDadosBasicos = async (usuarioId: number): Promise<void> => {
+    await this.pool.query({
+      sql: `INSERT IGNORE INTO modalidades (nome, descricao, ativo, criado_em, atualizado_em) VALUES
+            ('Musculação', 'Treino de força e hipertrofia', 1, NOW(), NOW()),
+            ('Funcional', 'Treinos funcionais e condicionamento', 1, NOW(), NOW()),
+            ('Pilates', 'Pilates solo e aparelhos', 1, NOW(), NOW())`,
+      timeout: TIMEOUT
+    })
+
+    let instrutorId = await this.instrutorIdPorUsuario(usuarioId)
+    if (instrutorId === null) instrutorId = await this.criarInstrutorParaUsuario(usuarioId)
+
+    const [linhas] = await this.pool.query<RowDataPacket[]>({
+      sql: 'SELECT COUNT(*) AS total FROM aulas',
+      timeout: TIMEOUT
+    })
+    if (Number(linhas[0].total) === 0) {
+      await this.pool.query({
+        sql: `INSERT INTO aulas
+                (modalidade_id, instrutor_id, titulo, data_hora_inicio, duracao_min, capacidade_max, local, status, criado_em, atualizado_em)
+              SELECT id, ?, 'Musculação — turma de hoje', CURDATE() + INTERVAL 7 HOUR, 60, 12, 'interna', 'agendada', NOW(), NOW()
+              FROM modalidades WHERE nome = 'Musculação' LIMIT 1`,
+        values: [instrutorId],
+        timeout: TIMEOUT
+      })
+    }
+  }
+
   alunoIdPorUsuario = async (usuarioId: number): Promise<number | null> => {
     const [linhas] = await this.pool.query<RowDataPacket[]>({
       sql: 'SELECT id FROM alunos WHERE usuario_id = ? LIMIT 1',
@@ -951,6 +993,12 @@ export class AulaIpc {
   }
 
   registrar = (): void => {
+    registrarCanal('aulas:preparar', async (): Promise<boolean> => {
+      const usuario = this.sessao.exigir(['admin', 'instrutor'])
+      await this.repositorio.garantirDadosBasicos(usuario.id)
+      return true
+    })
+
     registrarCanal('aulas:listar', async (_evento, entrada: unknown): Promise<Aula[]> => {
       this.sessao.exigir()
       return this.repositorio.listar(this.validador.filtro(entrada))
@@ -970,14 +1018,20 @@ export class AulaIpc {
 
     registrarCanal('aulas:criar', async (_evento, entrada: unknown): Promise<ResultadoAula> => {
       const usuario = this.sessao.exigir(['admin', 'instrutor'])
-      const v = this.validador.validarCriacao(entrada)
-      if (!v.ok) return v
       try {
+        let dados = entrada
         if (usuario.perfil === 'instrutor') {
-          const meuInstrutorId = await this.meuInstrutorId(usuario)
-          if (meuInstrutorId === null) return { ok: false, mensagem: 'Seu usuário não possui cadastro de instrutor.' }
-          v.dados.instrutorId = meuInstrutorId
+          // O instrutor sempre cria aula para si, mesmo que o select venha vazio.
+          let meuInstrutorId = await this.meuInstrutorId(usuario)
+          if (meuInstrutorId === null) {
+            meuInstrutorId = await this.repositorio.criarInstrutorParaUsuario(usuario.id)
+          }
+          dados = typeof entrada === 'object' && entrada !== null
+            ? { ...(entrada as Record<string, unknown>), instrutorId: meuInstrutorId }
+            : { instrutorId: meuInstrutorId }
         }
+        const v = this.validador.validarCriacao(dados)
+        if (!v.ok) return v
         const id = await this.repositorio.criar(v.dados)
         return { ok: true, id, aviso: await this.avisoFeriado(v.dados.dataHoraInicio) }
       } catch (erro) {

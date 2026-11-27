@@ -34,7 +34,9 @@ export class JanelaApp {
         preload: path.join(__dirname, pasta, `${nome}.js`),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true,
+        // O preload de algumas telas (ex.: Aulas) importa módulos locais.
+        // Com sandbox ativo o require desses módulos falha e a tela não inicia.
+        sandbox: false,
         webSecurity: true
       }
     })
