@@ -11,7 +11,7 @@ export class MenuIpc {
     { id: 'bot', titulo: 'Gerenciar Bot', descricao: 'Automação de avisos por clima', grupo: 'Ferramentas', perfis: ['admin', 'instrutor'] },
     { id: 'funcionarios', titulo: 'Funcionários', descricao: 'Instrutores e equipe', grupo: 'Cadastros', perfis: ['admin'] },
     { id: 'alunos', titulo: 'Alunos', descricao: 'Cadastro e consulta de alunos', grupo: 'Cadastros', perfis: ['admin', 'instrutor'] },
-    { id: 'aulas', titulo: 'Aulas', descricao: 'Agenda, inscrições e presenças', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor', 'aluno'] },
+    { id: 'aulas', titulo: 'Aulas', descricao: 'Agenda, inscrições e presenças', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
     { id: 'presencas', titulo: 'Presenças', descricao: 'Registros de presença dos alunos', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
     { id: 'inscricoes', titulo: 'Inscrições', descricao: 'Inscrições nas aulas e status', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
     { id: 'feriados', titulo: 'Feriados', descricao: 'Calendário nacional da BrasilAPI', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
@@ -22,7 +22,6 @@ export class MenuIpc {
     { id: 'lancamentos', titulo: 'Lançamentos', descricao: 'Receitas avulsas por categoria', grupo: 'Ferramentas', perfis: ['admin'] },
     { id: 'visitantes', titulo: 'Visitantes', descricao: 'Aulas experimentais e visitas', grupo: 'Rotina da academia', perfis: ['admin', 'instrutor'] },
     { id: 'notificacoes', titulo: 'Notificações', descricao: 'Histórico dos lembretes de vencimento', grupo: 'Ferramentas', perfis: ['admin'] },
-    { id: 'portal', titulo: 'Meu painel', descricao: 'Minhas medidas, frequência e avisos', grupo: 'Área do aluno', perfis: ['aluno'] },
     { id: 'usuarios', titulo: 'Usuários', descricao: 'Cadastro e consulta de usuários', grupo: 'Cadastros', perfis: ['admin'] }
   ]
 
@@ -58,10 +57,8 @@ export class MenuIpc {
     })
 
     registrarCanal('menu:voltar', (evento): void => {
-      this.sessao.exigir()
-
       const origem = BrowserWindow.fromWebContents(evento.sender)
-      setImmediate(() => this.aoVoltar(origem))
+      this.aoVoltar(origem)
     })
   }
 }

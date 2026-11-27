@@ -10,6 +10,9 @@ type UsuarioBanco = { id: number; nome: string; senha_hash: string; perfil: Perf
 
 export class ErroAutenticacao extends Error {}
 
+// Somente a equipe acessa o aplicativo desktop. Alunos não entram no sistema.
+const PERFIS_COM_ACESSO: Perfil[] = ['admin', 'instrutor']
+
 export class Senha {
   private derivar = (senha: string, sal: Buffer, tamanho: number): Promise<Buffer> =>
     new Promise((resolver, rejeitar) => {
@@ -116,6 +119,10 @@ export class AutenticacaoServico {
     if (!usuario || !valida) {
       this.limitador.falhou(chave)
       throw new ErroAutenticacao('E-mail ou senha inválidos.')
+    }
+
+    if (!PERFIS_COM_ACESSO.includes(usuario.perfil)) {
+      throw new ErroAutenticacao('Acesso permitido apenas a administradores e instrutores.')
     }
 
     this.limitador.sucesso(chave)
